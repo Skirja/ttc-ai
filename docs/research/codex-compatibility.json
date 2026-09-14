@@ -1,0 +1,229 @@
+{
+  "schema_version": 2,
+  "generated_at_unix": 1789354942,
+  "codex_version": "codex-cli 0.154.0-alpha.6.2",
+  "ttc_binary": "/home/skirja/Work/Personal/ttc-ai/target/release/ttc",
+  "isolated_codex_home": true,
+  "hook_trust_override_requested": true,
+  "destructive_commands_used": false,
+  "verdict": "incompatible",
+  "automatic_rewrite_enabled": false,
+  "invariants": {
+    "safe_rewrite_executes_once": true,
+    "approval_equivalence": false,
+    "shell_fidelity": false,
+    "cwd_fidelity": true,
+    "unknown_passthrough": true,
+    "competing_hook_behavior": true,
+    "permission_mode_behavior": false,
+    "exit_status_available": false,
+    "documented_original_command_approval_equivalence": false
+  },
+  "blockers": [
+    "approval_equivalence",
+    "shell_fidelity",
+    "permission_mode_behavior",
+    "exit_status_available",
+    "documented_original_command_approval_equivalence"
+  ],
+  "cases": [
+    {
+      "name": "safe_diagnostic",
+      "timed_out": false,
+      "codex_exit": 0,
+      "hook_calls": 1,
+      "permission_mode": "bypassPermissions",
+      "tool_input": {
+        "command": "printf 'TTC_SAFE_DIAGNOSTIC\\n'"
+      },
+      "command_exit_codes": [
+        0
+      ],
+      "sentinel_count": 1,
+      "output_excerpt": "TTC_SAFE_DIAGNOSTIC\n",
+      "requests": 2,
+      "passed": true
+    },
+    {
+      "name": "prefix_denial_baseline",
+      "timed_out": false,
+      "codex_exit": 0,
+      "hook_calls": 1,
+      "permission_mode": "bypassPermissions",
+      "tool_input": {
+        "command": "ttc-blocked-command"
+      },
+      "command_exit_codes": [],
+      "sentinel_count": 0,
+      "output_excerpt": "",
+      "requests": 2,
+      "passed": true
+    },
+    {
+      "name": "prefix_denial",
+      "timed_out": false,
+      "codex_exit": 0,
+      "hook_calls": 1,
+      "permission_mode": "bypassPermissions",
+      "tool_input": {
+        "command": "ttc-blocked-command"
+      },
+      "command_exit_codes": [
+        0
+      ],
+      "sentinel_count": 1,
+      "output_excerpt": "TTC_PREFIX_DENIAL_EXECUTED\n",
+      "requests": 2,
+      "passed": false
+    },
+    {
+      "name": "escalation",
+      "timed_out": false,
+      "codex_exit": 0,
+      "hook_calls": 1,
+      "permission_mode": "bypassPermissions",
+      "tool_input": {
+        "command": "printf 'TTC_ESCALATION_EXECUTED\\n'"
+      },
+      "command_exit_codes": [],
+      "sentinel_count": 0,
+      "output_excerpt": "",
+      "requests": 2,
+      "passed": true
+    },
+    {
+      "name": "explicit_shell",
+      "timed_out": false,
+      "codex_exit": 0,
+      "hook_calls": 1,
+      "permission_mode": "bypassPermissions",
+      "tool_input": {
+        "command": "printf 'TTC_SHELL=%s\\n' \"${TTC_EXPLICIT_SHELL:-missing}\""
+      },
+      "command_exit_codes": [
+        0
+      ],
+      "sentinel_count": 1,
+      "output_excerpt": "TTC_SHELL=missing\n",
+      "requests": 2,
+      "passed": false
+    },
+    {
+      "name": "explicit_workdir",
+      "timed_out": false,
+      "codex_exit": 0,
+      "hook_calls": 1,
+      "permission_mode": "bypassPermissions",
+      "tool_input": {
+        "command": "pwd"
+      },
+      "command_exit_codes": [
+        0
+      ],
+      "sentinel_count": 1,
+      "output_excerpt": "<temporary root>/work/actual\n",
+      "requests": 2,
+      "passed": true
+    },
+    {
+      "name": "unknown_command",
+      "timed_out": false,
+      "codex_exit": 0,
+      "hook_calls": 1,
+      "permission_mode": "bypassPermissions",
+      "tool_input": {
+        "command": "ttc-command-that-does-not-exist"
+      },
+      "command_exit_codes": [
+        127
+      ],
+      "sentinel_count": 0,
+      "output_excerpt": "/bin/bash: line 1: ttc-command-that-does-not-exist: command not found\n",
+      "requests": 2,
+      "passed": true
+    },
+    {
+      "name": "competing_deny_first",
+      "timed_out": false,
+      "codex_exit": 0,
+      "hook_calls": 2,
+      "permission_mode": "bypassPermissions",
+      "tool_input": {
+        "command": "printf 'TTC_COMPETING_EXECUTED\\n'"
+      },
+      "command_exit_codes": [],
+      "sentinel_count": 0,
+      "output_excerpt": "",
+      "requests": 2,
+      "passed": true
+    },
+    {
+      "name": "competing_deny_last",
+      "timed_out": false,
+      "codex_exit": 0,
+      "hook_calls": 2,
+      "permission_mode": "bypassPermissions",
+      "tool_input": {
+        "command": "printf 'TTC_COMPETING_EXECUTED\\n'"
+      },
+      "command_exit_codes": [],
+      "sentinel_count": 0,
+      "output_excerpt": "",
+      "requests": 2,
+      "passed": true
+    },
+    {
+      "name": "permission_never",
+      "timed_out": false,
+      "codex_exit": 0,
+      "hook_calls": 1,
+      "permission_mode": "bypassPermissions",
+      "tool_input": {
+        "command": "printf 'TTC_PERMISSION_NEVER\\n'"
+      },
+      "command_exit_codes": [
+        0
+      ],
+      "sentinel_count": 1,
+      "output_excerpt": "TTC_PERMISSION_NEVER\n",
+      "requests": 2,
+      "passed": false
+    },
+    {
+      "name": "permission_on_request",
+      "timed_out": false,
+      "codex_exit": 0,
+      "hook_calls": 1,
+      "permission_mode": "bypassPermissions",
+      "tool_input": {
+        "command": "printf 'TTC_PERMISSION_ON_REQUEST\\n'"
+      },
+      "command_exit_codes": [
+        0
+      ],
+      "sentinel_count": 1,
+      "output_excerpt": "TTC_PERMISSION_ON_REQUEST\n",
+      "requests": 2,
+      "passed": false
+    },
+    {
+      "name": "post_exit_status",
+      "timed_out": false,
+      "codex_exit": 0,
+      "hook_calls": 1,
+      "permission_mode": "bypassPermissions",
+      "tool_input": {
+        "command": "printf 'TTC_POST_RAW\\n'; exit 7"
+      },
+      "command_exit_codes": [
+        7
+      ],
+      "sentinel_count": 1,
+      "output_excerpt": "TTC_POST_RAW\n",
+      "requests": 2,
+      "post_tool_response_type": "str",
+      "post_hook_has_structured_exit_status": false,
+      "passed": false
+    }
+  ]
+}

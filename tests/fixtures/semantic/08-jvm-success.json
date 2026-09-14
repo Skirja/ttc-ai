@@ -1,0 +1,6 @@
+{
+  "family": "jvm",
+  "case": "success",
+  "raw": "Downloading from central: https://repo.maven.apache.org/maven2/pkg.jar\ntool summary: completed\n",
+  "expected": "tool summary: completed\n\nTTC: 0 passing records, 1 progress lines compacted\n"
+}

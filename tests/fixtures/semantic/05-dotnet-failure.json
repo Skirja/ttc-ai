@@ -1,0 +1,6 @@
+{
+  "family": "dotnet",
+  "case": "failure",
+  "raw": "  Passed App.Tests.Login [12 ms]\nerror: assertion failed\n  src/auth.rs:42:7\nexpected: 401\nactual: 200\n",
+  "expected": "error: assertion failed\n  src/auth.rs:42:7\nexpected: 401\nactual: 200\n\nTTC: 1 passing records, 0 progress lines compacted\n"
+}

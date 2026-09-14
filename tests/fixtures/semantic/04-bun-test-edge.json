@@ -1,0 +1,6 @@
+{
+  "family": "bun-test",
+  "case": "edge",
+  "raw": "(pass) auth > login [0.42ms]\nUnicode αβ\nANSI \u001b[31merror\u001b[0m\nno trailing newline",
+  "expected": "Unicode αβ\nANSI \u001b[31merror\u001b[0m\nno trailing newline\nTTC: 1 passing records, 0 progress lines compacted\n"
+}

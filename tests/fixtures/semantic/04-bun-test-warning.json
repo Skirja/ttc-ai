@@ -1,0 +1,6 @@
+{
+  "family": "bun-test",
+  "case": "warning",
+  "raw": "(pass) auth > login [0.42ms]\nwarning: deprecated API\nsecurity warning: dependency issue\n",
+  "expected": "warning: deprecated API\nsecurity warning: dependency issue\n\nTTC: 1 passing records, 0 progress lines compacted\n"
+}

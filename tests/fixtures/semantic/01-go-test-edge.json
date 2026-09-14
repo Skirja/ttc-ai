@@ -1,0 +1,6 @@
+{
+  "family": "go-test",
+  "case": "edge",
+  "raw": "--- PASS: TestLogin (0.00s)\nUnicode αβ\nANSI \u001b[31merror\u001b[0m\nno trailing newline",
+  "expected": "Unicode αβ\nANSI \u001b[31merror\u001b[0m\nno trailing newline\nTTC: 1 passing records, 0 progress lines compacted\n"
+}

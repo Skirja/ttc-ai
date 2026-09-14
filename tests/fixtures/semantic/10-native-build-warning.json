@@ -1,0 +1,6 @@
+{
+  "family": "native-build",
+  "case": "warning",
+  "raw": "[ 12%] Building C object src/main.c.o\nwarning: deprecated API\nsecurity warning: dependency issue\n",
+  "expected": "warning: deprecated API\nsecurity warning: dependency issue\n\nTTC: 0 passing records, 1 progress lines compacted\n"
+}

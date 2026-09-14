@@ -1,0 +1,6 @@
+{
+  "family": "native-build",
+  "case": "success",
+  "raw": "[2/100] Building CXX object src/main.cpp.o\ntool summary: completed\n",
+  "expected": "tool summary: completed\n\nTTC: 0 passing records, 1 progress lines compacted\n"
+}

@@ -1,0 +1,9 @@
+{
+  "checked_at": "2026-09-12T19:37:35.113070+00:00",
+  "rtk_release": "v0.49.0",
+  "rtk_release_sha": "b1c0dc00649c50fbe8930f849c800d4d6ca12091",
+  "rtk_develop_sha": "fc19d7a77845131de51b2d11d8e7525798ccc7e2",
+  "codex_source_sha": "b04a2c264516ec2e6b3c91dd73ad18a21fd5a88f",
+  "installed_codex": "0.154.0-alpha.6.2",
+  "source_note": "Public main is not proof of installed binary equivalence."
+}

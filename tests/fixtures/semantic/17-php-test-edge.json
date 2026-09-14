@@ -1,0 +1,6 @@
+{
+  "family": "php-test",
+  "case": "edge",
+  "raw": ".......... 10 / 100 ( 10%)\nUnicode αβ\nANSI \u001b[31merror\u001b[0m\nno trailing newline",
+  "expected": "Unicode αβ\nANSI \u001b[31merror\u001b[0m\nno trailing newline\nTTC: 0 passing records, 1 progress lines compacted\n"
+}

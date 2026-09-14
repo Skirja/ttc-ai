@@ -1,0 +1,23 @@
+{
+  "codex_exit": 0,
+  "hook_called": true,
+  "event": {
+    "session_id": "01a09935-90d5-7d40-b927-fa51d62c40de",
+    "turn_id": "01a09935-90e1-7682-ab3a-a772d5725557",
+    "cwd": "<temporary workspace>",
+    "hook_event_name": "PostToolUse",
+    "model": "ttc-probe",
+    "permission_mode": "bypassPermissions",
+    "tool_name": "Bash",
+    "tool_input": {
+      "command": "pwd; printf 'TTC_PROBE_RAW\\n'; exit 7"
+    },
+    "tool_response": "<temporary root>/work/actual\nTTC_PROBE_RAW\n",
+    "tool_use_id": "call1"
+  },
+  "model_received_feedback": true,
+  "requests": 2,
+  "original_command_exit": 7,
+  "hook_omits_exit_status": true,
+  "hook_cwd_differs_from_execution": true
+}

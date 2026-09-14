@@ -1,0 +1,6 @@
+{
+  "family": "packages",
+  "case": "success",
+  "raw": "Progress: resolved 100, reused 80, downloaded 20, added 100, done\ntool summary: completed\n",
+  "expected": "tool summary: completed\n\nTTC: 0 passing records, 1 progress lines compacted\n"
+}

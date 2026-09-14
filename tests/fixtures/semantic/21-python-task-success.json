@@ -1,0 +1,6 @@
+{
+  "family": "python-task",
+  "case": "success",
+  "raw": "py312: install_deps> python -I -m pip install pytest\ntool summary: completed\n",
+  "expected": "tool summary: completed\n\nTTC: 0 passing records, 1 progress lines compacted\n"
+}

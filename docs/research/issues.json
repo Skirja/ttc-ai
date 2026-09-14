@@ -1,0 +1,65 @@
+[
+  {
+    "number": 2358,
+    "title": "Config-driven routing for package-manager script commands (e.g. pnpm scripts)",
+    "state": "open",
+    "updated_at": "2026-08-10T09:29:40Z",
+    "url": "https://github.com/rtk-ai/rtk/issues/2358"
+  },
+  {
+    "number": 1489,
+    "title": "bug(rewrite): npm run lint forced into rtk lint on Biome projects",
+    "state": "open",
+    "updated_at": "2026-05-28T10:45:41Z",
+    "url": "https://github.com/rtk-ai/rtk/issues/1489"
+  },
+  {
+    "number": 2879,
+    "title": "bug: pnpm lint hook rewrite defaults to ESLint; \"command not found\" (exit 254) misreported as \"possibly out of memory\"",
+    "state": "open",
+    "updated_at": "2026-07-08T04:53:55Z",
+    "url": "https://github.com/rtk-ai/rtk/issues/2879"
+  },
+  {
+    "number": 3675,
+    "title": "`pnpm test` / `pnpm build` are not routed, only `pnpm run <script>`",
+    "state": "open",
+    "updated_at": "2026-08-23T18:36:30Z",
+    "url": "https://github.com/rtk-ai/rtk/issues/3675"
+  },
+  {
+    "number": 2094,
+    "title": "bug: hook rewrite of `pnpm lint` discards package.json script body \u2014 same false-green as #185 at the hook layer",
+    "state": "open",
+    "updated_at": "2026-07-01T13:10:14Z",
+    "url": "https://github.com/rtk-ai/rtk/issues/2094"
+  },
+  {
+    "number": 2832,
+    "title": "pnpm lint rewrite path reports \"No issues found\" while silently dropping ESLint warnings",
+    "state": "closed",
+    "updated_at": "2026-09-05T12:29:09Z",
+    "url": "https://github.com/rtk-ai/rtk/issues/2832"
+  },
+  {
+    "number": 259,
+    "title": "`pnpm --filter` command results in rtk usage output",
+    "state": "closed",
+    "updated_at": "2026-04-13T17:54:50Z",
+    "url": "https://github.com/rtk-ai/rtk/issues/259"
+  },
+  {
+    "number": 444,
+    "title": "Add `pnpm nx` command patterns for Nx monorepos",
+    "state": "open",
+    "updated_at": "2026-05-27T09:20:25Z",
+    "url": "https://github.com/rtk-ai/rtk/issues/444"
+  },
+  {
+    "number": 2878,
+    "title": "bug: rtk prettier silently hides prettier 3 failures (stdout-only capture + [warn] filter)",
+    "state": "open",
+    "updated_at": "2026-07-08T04:53:58Z",
+    "url": "https://github.com/rtk-ai/rtk/issues/2878"
+  }
+]

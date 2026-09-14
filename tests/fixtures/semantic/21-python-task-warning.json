@@ -1,0 +1,6 @@
+{
+  "family": "python-task",
+  "case": "warning",
+  "raw": "py312: install_deps> python -I -m pip install pytest\nwarning: deprecated API\nsecurity warning: dependency issue\n",
+  "expected": "warning: deprecated API\nsecurity warning: dependency issue\n\nTTC: 0 passing records, 1 progress lines compacted\n"
+}

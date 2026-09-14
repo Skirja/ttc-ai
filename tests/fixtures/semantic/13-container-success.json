@@ -1,0 +1,6 @@
+{
+  "family": "container",
+  "case": "success",
+  "raw": "abcdef012345: Pull complete\ntool summary: completed\n",
+  "expected": "tool summary: completed\n\nTTC: 0 passing records, 1 progress lines compacted\n"
+}

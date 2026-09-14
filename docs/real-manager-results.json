@@ -1,0 +1,52 @@
+[
+  {
+    "manager": "npm",
+    "failure_case": false,
+    "original_exit": 0,
+    "ttc_exit": 0,
+    "lifecycle_and_argv_identical": true,
+    "trace": [
+      "precheck:check --pre",
+      "check:check",
+      "check:test --max-warnings 0",
+      "postcheck:check --post"
+    ]
+  },
+  {
+    "manager": "npm",
+    "failure_case": true,
+    "original_exit": 7,
+    "ttc_exit": 7,
+    "lifecycle_and_argv_identical": true,
+    "trace": [
+      "precheck:check --pre",
+      "check:check",
+      "check:test --max-warnings 0"
+    ]
+  },
+  {
+    "manager": "pnpm",
+    "failure_case": false,
+    "original_exit": 0,
+    "ttc_exit": 0,
+    "lifecycle_and_argv_identical": true,
+    "trace": [
+      "precheck:check --pre",
+      "check:check",
+      "check:test -- --max-warnings 0",
+      "postcheck:check --post"
+    ]
+  },
+  {
+    "manager": "pnpm",
+    "failure_case": true,
+    "original_exit": 7,
+    "ttc_exit": 7,
+    "lifecycle_and_argv_identical": true,
+    "trace": [
+      "precheck:check --pre",
+      "check:check",
+      "check:test -- --max-warnings 0"
+    ]
+  }
+]

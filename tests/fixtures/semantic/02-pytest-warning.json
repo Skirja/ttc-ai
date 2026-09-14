@@ -1,0 +1,6 @@
+{
+  "family": "pytest",
+  "case": "warning",
+  "raw": "tests/test_auth.py::test_login PASSED [ 50%]\nwarning: deprecated API\nsecurity warning: dependency issue\n",
+  "expected": "warning: deprecated API\nsecurity warning: dependency issue\n\nTTC: 1 passing records, 0 progress lines compacted\n"
+}
