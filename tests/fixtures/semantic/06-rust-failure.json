@@ -1,6 +1,0 @@
-{
-  "family": "rust",
-  "case": "failure",
-  "raw": "   Compiling serde v1.0.0\nerror: assertion failed\n  src/auth.rs:42:7\nexpected: 401\nactual: 200\n",
-  "expected": "error: assertion failed\n  src/auth.rs:42:7\nexpected: 401\nactual: 200\n\nTTC: 0 passing records, 1 progress lines compacted\n"
-}

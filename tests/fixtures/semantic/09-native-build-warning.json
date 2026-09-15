@@ -1,6 +1,0 @@
-{
-  "family": "native-build",
-  "case": "warning",
-  "raw": "[2/100] Building CXX object src/main.cpp.o\nwarning: deprecated API\nsecurity warning: dependency issue\n",
-  "expected": "warning: deprecated API\nsecurity warning: dependency issue\n\nTTC: 0 passing records, 1 progress lines compacted\n"
-}

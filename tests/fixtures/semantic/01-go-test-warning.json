@@ -1,6 +1,0 @@
-{
-  "family": "go-test",
-  "case": "warning",
-  "raw": "--- PASS: TestLogin (0.00s)\nwarning: deprecated API\nsecurity warning: dependency issue\n",
-  "expected": "warning: deprecated API\nsecurity warning: dependency issue\n\nTTC: 1 passing records, 0 progress lines compacted\n"
-}

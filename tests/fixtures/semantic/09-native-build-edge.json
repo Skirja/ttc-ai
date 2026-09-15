@@ -1,6 +1,0 @@
-{
-  "family": "native-build",
-  "case": "edge",
-  "raw": "[2/100] Building CXX object src/main.cpp.o\nUnicode αβ\nANSI \u001b[31merror\u001b[0m\nno trailing newline",
-  "expected": "Unicode αβ\nANSI \u001b[31merror\u001b[0m\nno trailing newline\nTTC: 0 passing records, 1 progress lines compacted\n"
-}

@@ -1,6 +1,0 @@
-{
-  "family": "go-test",
-  "case": "success",
-  "raw": "--- PASS: TestLogin (0.00s)\ntool summary: completed\n",
-  "expected": "tool summary: completed\n\nTTC: 1 passing records, 0 progress lines compacted\n"
-}

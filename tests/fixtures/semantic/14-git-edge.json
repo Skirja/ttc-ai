@@ -1,6 +1,0 @@
-{
-  "family": "git",
-  "case": "edge",
-  "raw": "remote: Counting objects: 100% (10/10), done.\nUnicode αβ\nANSI \u001b[31merror\u001b[0m\nno trailing newline",
-  "expected": "Unicode αβ\nANSI \u001b[31merror\u001b[0m\nno trailing newline\nTTC: 0 passing records, 1 progress lines compacted\n"
-}

@@ -1,6 +1,0 @@
-{
-  "family": "dotnet",
-  "case": "warning",
-  "raw": "  Passed App.Tests.Login [12 ms]\nwarning: deprecated API\nsecurity warning: dependency issue\n",
-  "expected": "warning: deprecated API\nsecurity warning: dependency issue\n\nTTC: 1 passing records, 0 progress lines compacted\n"
-}

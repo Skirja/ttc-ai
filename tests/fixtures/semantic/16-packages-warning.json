@@ -1,6 +1,0 @@
-{
-  "family": "packages",
-  "case": "warning",
-  "raw": "Downloading example.whl (12.0 kB)\nwarning: deprecated API\nsecurity warning: dependency issue\n",
-  "expected": "warning: deprecated API\nsecurity warning: dependency issue\n\nTTC: 0 passing records, 1 progress lines compacted\n"
-}

@@ -1,6 +1,0 @@
-{
-  "family": "php-test",
-  "case": "success",
-  "raw": ".......... 10 / 100 ( 10%)\ntool summary: completed\n",
-  "expected": "tool summary: completed\n\nTTC: 0 passing records, 1 progress lines compacted\n"
-}

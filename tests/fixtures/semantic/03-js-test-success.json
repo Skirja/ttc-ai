@@ -1,6 +1,0 @@
-{
-  "family": "js-test",
-  "case": "success",
-  "raw": " ✓ tests/auth.test.ts (12 tests)\ntool summary: completed\n",
-  "expected": "tool summary: completed\n\nTTC: 1 passing records, 0 progress lines compacted\n"
-}

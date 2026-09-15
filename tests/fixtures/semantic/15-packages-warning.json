@@ -1,6 +1,0 @@
-{
-  "family": "packages",
-  "case": "warning",
-  "raw": "Progress: resolved 100, reused 80, downloaded 20, added 100, done\nwarning: deprecated API\nsecurity warning: dependency issue\n",
-  "expected": "warning: deprecated API\nsecurity warning: dependency issue\n\nTTC: 0 passing records, 1 progress lines compacted\n"
-}

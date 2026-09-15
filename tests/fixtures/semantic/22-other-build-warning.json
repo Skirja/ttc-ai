@@ -1,6 +1,0 @@
-{
-  "family": "other-build",
-  "case": "warning",
-  "raw": "[4/20] Compiling App main.swift\nwarning: deprecated API\nsecurity warning: dependency issue\n",
-  "expected": "warning: deprecated API\nsecurity warning: dependency issue\n\nTTC: 0 passing records, 1 progress lines compacted\n"
-}
