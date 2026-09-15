@@ -1,8 +1,10 @@
 # Greenfield Specification — TTC Automatic Bash Output Filter
 
-**Status:** Proposed  
-**Target awal:** Linux, Bash/POSIX, Codex CLI  
-**Implementasi:** binary Rust baru tanpa membawa kode atau arsitektur TTC lama  
+**Status:** Proposed<br>
+**Target awal:** Linux, Bash/POSIX, Codex CLI<br>
+**Implementasi:** binary Rust baru tanpa membawa kode atau arsitektur TTC lama<br>
+**Versi rilis pertama:** 0.1.0 (SemVer)<br>
+**Lisensi:** MIT<br>
 **Urutan wajib:** selesaikan binary TTC terlebih dahulu, lalu buat hook Codex
 
 ## 1. Tujuan
@@ -51,6 +53,8 @@ Command asli selalu dijalankan tepat satu kali. TTC tidak mengganti package mana
 - Tidak ada instruksi AGENTS.md, CLAUDE.md, atau prompt tambahan untuk meminta
   model memakai TTC.
 - Linux dan shell POSIX adalah target rilis pertama.
+- Artifact rilis pertama adalah binary `x86_64-unknown-linux-gnu`.
+- Codex CLI minimum yang didukung adalah 0.154.0.
 - Project lama hanya referensi kebutuhan; kode dan arsitekturnya tidak digunakan.
 
 ## 3. Urutan implementasi
@@ -68,9 +72,10 @@ Deliverable:
 - filter engine;
 - exact passthrough;
 - exit code dan signal propagation;
-- filter ecosystem utama;
+- seluruh ecosystem yang tercantum dalam specification;
 - monorepo support;
-- unit, integration, dan fixture tests.
+- unit, integration, fixture, dan real-tool smoke tests;
+- release-mode binary dan artifact CI Linux yang lulus acceptance Phase 1.
 
 Hook Codex tidak dikerjakan sebelum acceptance Phase 1 lulus.
 
@@ -80,10 +85,12 @@ Setelah Phase 1 lulus:
 
 - tambahkan ttc hook codex;
 - tambahkan ttc install codex;
+- tambahkan ttc uninstall codex;
 - hook selalu membungkus semua Bash command;
 - test memakai Codex CLI yang benar-benar terpasang;
 - buktikan output model-facing lebih pendek untuk command filterable;
-- buktikan output command passthrough identik dengan baseline.
+- buktikan output command passthrough identik dengan baseline;
+- publikasikan GitHub Release hanya setelah acceptance Phase 2 lulus.
 
 ## 4. CLI contract
 
@@ -131,11 +138,17 @@ Commands minimum:
     ttc <program> [args...]
     ttc '<complete shell command>'
     ttc raw <id>
-    ttc explain <command>
-    ttc doctor
-    ttc hook codex
     ttc install codex
     ttc uninstall codex
+    ttc uninstall
+
+`ttc hook codex` adalah entrypoint internal yang dipasang ke config Codex dan
+tidak ditampilkan sebagai command utama pada help. Namespace internal hook
+boleh ditambah untuk harness lain tanpa mengubah execution atau filter engine.
+
+`ttc --version` membaca versi SemVer yang sama dengan package Rust. `ttc --help`
+menampilkan command publik, tetapi tidak ada `explain`, `doctor`, atau
+self-update pada MVP.
 
 ### 4.3 Exit behavior
 
@@ -208,16 +221,26 @@ Contoh yang tidak dibungkus ulang:
 
 ttc install codex:
 
-- menyalin binary ke path user;
+- tidak menyalin atau memperbarui binary;
+- memverifikasi binary terpasang di `~/.local/bin/ttc`;
+- memverifikasi Codex CLI minimum 0.154.0;
 - menambahkan satu PreToolUse hook dengan matcher ^Bash$;
-- mengaktifkan fitur hook Codex;
+- memakai absolute path `~/.local/bin/ttc` pada command hook;
+- memverifikasi fitur hook tersedia tanpa compatibility profile;
 - tidak mengubah model atau setting unrelated;
 - idempotent;
 - membuat backup config;
-- mencetak instruksi trust jika diperlukan.
+- mencetak instruksi trust jika diperlukan;
 - tidak menulis AGENTS.md, CLAUDE.md, atau instruction file lain.
 
-ttc uninstall codex hanya menghapus hook dan binary yang dimiliki TTC.
+`ttc uninstall codex` hanya menghapus hook Codex yang dimiliki TTC. Binary,
+integrasi harness lain, setting unrelated, dan perubahan config setelah install
+tetap dipertahankan.
+
+`ttc uninstall` menghapus instalasi global TTC hanya jika tidak ada integrasi
+harness aktif. Command ini menghapus binary dan metadata milik TTC. Managed PATH
+entry dipertahankan jika `~/.local/bin` berisi program lain agar uninstall TTC
+tidak merusak tool lain.
 
 Tidak ada kondisi hook terlihat aktif tetapi diam-diam tidak wrapping. Jika hook terpasang dan trusted, setiap Bash command masuk melalui TTC.
 
@@ -702,6 +725,11 @@ MVP:
 
 Urutan internal masing-masing stream harus tetap sama.
 
+Binary di `~/.local/bin/ttc` harus readable dan executable ketika command
+dijalankan dalam sandbox Codex read-only, workspace-write, maupun
+danger-full-access. TTC tidak menambah writable root atau memperlebar permission
+command asli.
+
 ## 11. Raw output retrieval
 
 Raw output menggunakan file biasa, bukan database. Command `ttc raw` hanya
@@ -709,16 +737,29 @@ membaca hasil capture; command ini bukan bypass filtering dan tidak menjalankan
 ulang command asli.
 
 - lokasi default: XDG_STATE_HOME/ttc/runs;
+- fallback jika lokasi default tidak writable: direktori temporary per-user
+  dengan permission 0700;
 - satu ID random per invocation;
 - permission user-only;
-- maksimum 32 MiB;
-- simpan hanya jika ada filtering atau command gagal;
+- maksimum 32 MiB total per invocation;
+- jika batas terlampaui, pertahankan bagian terbaru dan catat jumlah byte yang
+  dibuang;
+- simpan hanya jika ada byte yang benar-benar dikompaksi;
+- failure tanpa kompaksi tidak disimpan dan tetap byte-exact;
+- untuk invocation yang dikompaksi, capture berisi original stdout/stderr sebelum
+  filtering agar output asli dapat direplay, subject to batas 32 MiB;
+- simpan event ber-tag stream agar stdout dan stderr dapat direplay dalam urutan
+  yang diamati TTC;
 - hapus file lebih lama dari 24 jam saat invocation berikutnya;
-- storage failure membuat TTC beralih ke raw output.
+- jika storage default dan fallback sama-sama gagal, TTC beralih ke raw output
+  tanpa menjalankan ulang command.
 
 Output:
 
     raw: ttc raw ID
+
+Summary kompaksi dan hint raw ditulis ke stderr. Jika tidak ada kompaksi, TTC
+tidak menambahkan metadata apa pun.
 
 Commands:
 
@@ -726,6 +767,10 @@ Commands:
     ttc raw ID --stdout
     ttc raw ID --stderr
     ttc raw ID --tail 100
+
+Tanpa selector, `ttc raw ID` mereplay stdout dan stderr dalam urutan event yang
+diamati. Selector `--stdout` dan `--stderr` mengekstrak stream masing-masing.
+Command mencari ID pada lokasi XDG maupun fallback temporary.
 
 ## 12. Minimal configuration
 
@@ -750,9 +795,68 @@ Tidak ada:
 Tidak ada environment variable atau subcommand untuk melewati filtering.
 Untuk menonaktifkan integrasi, pengguna menjalankan `ttc uninstall codex`.
 
-## 13. Test plan
+## 13. Distribution dan versioning
 
-### 13.1 Unit tests
+Source distribusi publik adalah GitHub repository `skirja/ttc-ai`.
+
+Rilis pertama:
+
+- versi package dan binary: `0.1.0`;
+- tag: `v0.1.0`;
+- target: `x86_64-unknown-linux-gnu`;
+- asset executable langsung bernama `ttc-x86_64-unknown-linux-gnu`;
+- checksum `SHA256SUMS`;
+- `install.sh` sebagai jalur install utama.
+
+Tag `vX.Y.Z` hanya boleh dibuat setelah seluruh acceptance binary dan Codex
+lulus. Tag menjalankan ulang CI, memverifikasi versi tag sama dengan versi
+package, membangun dan smoke-test release binary, membuat checksum, lalu
+memublikasikan GitHub Release otomatis.
+
+Installer utama:
+
+    curl --proto '=https' --tlsv1.2 -LsSf \
+      https://github.com/skirja/ttc-ai/releases/latest/download/install.sh | sh
+
+`install.sh`:
+
+- selalu memasang stable release terbaru;
+- mendukung Linux x86_64 pada MVP dan menolak platform lain dengan jelas;
+- mengunduh executable dan checksum dari GitHub Release;
+- memverifikasi SHA-256 sebelum install;
+- membuat `~/.local/bin` bila belum ada;
+- memasang binary secara atomik sebagai `~/.local/bin/ttc` dengan permission
+  executable;
+- mencatat version, checksum, installed path, PATH ownership, dan integrasi
+  harness aktif pada metadata user di `XDG_DATA_HOME/ttc/install.toml` dengan
+  default `~/.local/share/ttc/install.toml`;
+- menolak menimpa `~/.local/bin/ttc` yang tidak terbukti dimiliki TTC;
+- idempotent untuk versi yang sama dan mengganti versi lama dengan versi latest;
+- tidak menjalankan `ttc install codex` secara otomatis;
+- jika `~/.local/bin` belum ada di PATH Bash, membuat backup lalu menambahkan
+  managed block idempotent ke `~/.bashrc`;
+- mencetak instruksi `source` atau membuka shell baru karena installer tidak
+  dapat mengubah environment parent shell;
+- mencetak `~/.local/bin/ttc install codex` sebagai next action yang langsung
+  dapat dipakai sebelum PATH direload;
+- jika update shell config gagal, binary tetap terpasang dan installer mencetak
+  instruksi PATH manual.
+
+Pengguna manual dapat mengunduh executable dan checksum yang sama, menjalankan
+verifikasi, memberi permission dengan `chmod +x`, lalu memindahkan binary ke
+path pilihannya. Jalur manual di luar `~/.local/bin/ttc` tidak didaftarkan oleh
+`ttc install codex` pada MVP.
+
+Update dilakukan dengan menjalankan ulang installer latest. Tidak ada
+`ttc update`, version selector, atau network access dari binary TTC pada MVP.
+
+CI utama berjalan pada branch `master`. Artifact release-mode Phase 1 harus
+lulus sebelum implementasi hook Codex dimulai. Public release hanya dibuat
+setelah Phase 2 lulus.
+
+## 14. Test plan
+
+### 14.1 Unit tests
 
 - POSIX quoting round-trip;
 - recursive wrapper prevention;
@@ -764,8 +868,11 @@ Untuk menonaktifkan integrasi, pengguna menjalankan `ttc uninstall codex`.
 - long-line passthrough;
 - mixed stdout/stderr;
 - parser failure becomes raw.
+- raw event replay dan stream selector;
+- 32 MiB tail retention dan dropped-byte metadata;
+- install manifest ownership dan SemVer consistency.
 
-### 13.2 Execution tests
+### 14.2 Execution tests
 
 - original command runs exactly once;
 - success exit code preserved;
@@ -776,9 +883,12 @@ Untuk menonaktifkan integrasi, pengguna menjalankan `ttc uninstall codex`.
 - environment inherited;
 - shell operators execute correctly;
 - watch/dev raw streaming;
-- storage failure switches to raw without rerun.
+- XDG denial memakai temporary user-only storage;
+- seluruh storage failure switches to raw without rerun;
+- read-only, workspace-write, dan danger-full-access tidak mengubah permission
+  command asli.
 
-### 13.3 Ecosystem fixtures
+### 14.3 Ecosystem fixtures
 
 Success, failure, warning, dan large fixture minimum untuk:
 
@@ -791,9 +901,15 @@ Success, failure, warning, dan large fixture minimum untuk:
 - Maven/Gradle;
 - dotnet.
 
-Large fixture minimum 1.000 passing atau progress records.
+Tambahkan fixture untuk C/C++ build tools, Swift, Ruby, container, dan
+infrastructure. Large fixture minimum 1.000 passing atau progress records dan
+harus mengurangi byte output minimum 80% tanpa kehilangan warning, error,
+failure, diagnostic, atau final summary.
 
-### 13.4 Monorepo E2E
+Setiap ecosystem family memiliki minimal satu smoke E2E memakai tool asli.
+Versi tool dipin pada CI agar hasil reproducible.
+
+### 14.4 Monorepo E2E
 
 Required fixtures:
 
@@ -813,9 +929,23 @@ Assertions:
 - error package mana pun terlihat;
 - exit code sama dengan baseline.
 
-### 13.5 Codex hook E2E
+### 14.5 Distribution E2E
+
+- tag dan package version mismatch gagal;
+- artifact Linux dapat dijalankan tanpa source tree;
+- checksum valid dan checksum mismatch ditolak;
+- fresh install, reinstall same version, dan update berjalan atomik;
+- PATH block Bash idempotent dan fallback instruction benar;
+- `ttc uninstall` menolak saat integrasi harness aktif;
+- global uninstall tidak menghapus PATH bila `~/.local/bin` dipakai program lain.
+
+### 14.6 Codex hook E2E
 
 Gunakan Codex CLI terpasang, bukan serializer tiruan.
+Minimum version test adalah 0.154.0. Test lokal memakai login yang sudah ada,
+release-mode TTC binary, temporary fixture workspace, dan `codex exec
+--ephemeral`. Config dan artifact test harus dipulihkan atau dihapus setelah
+setiap run.
 
 Cases:
 
@@ -828,10 +958,14 @@ Cases:
 7. npm run dev — raw streaming;
 8. quote dan shell operator — command sekali;
 9. command TTC — tidak recursive.
+10. executable TTC dapat dipanggil pada read-only, workspace-write, dan
+    danger-full-access tanpa memperlebar permission command asli.
 
 Ukur bytes dan token pada request model berikutnya, bukan hanya terminal output.
+Large filterable output wajib berkurang minimum 80% secara byte dan token harus
+lebih rendah daripada baseline.
 
-## 14. Definition of Done
+## 15. Definition of Done
 
 Phase 1 selesai jika:
 
@@ -839,9 +973,11 @@ Phase 1 selesai jika:
 - seluruh test dan lint lulus;
 - command asli selalu dijalankan sekali;
 - exit, signal, cwd, dan environment benar;
-- ecosystem utama dan monorepo fixtures lulus;
+- seluruh ecosystem, monorepo fixtures, dan pinned real-tool smoke tests lulus;
 - unknown command raw byte-exact;
-- test besar menghasilkan output lebih pendek.
+- setiap large fixture mengurangi byte minimum 80%;
+- release-mode `x86_64-unknown-linux-gnu` artifact dan installer lulus CI pada
+  branch `master`.
 
 Phase 2 selesai jika:
 
@@ -852,9 +988,13 @@ Phase 2 selesai jika:
 - npm run test, pnpm test, cargo test, dan mixed monorepo menghasilkan output model-facing lebih pendek;
 - cat dan unknown command identik baseline;
 - failure dan exit status identik baseline;
-- install langsung aktif tanpa compatibility profile atau hidden flag.
+- seluruh sandbox mode lulus;
+- test lokal ephemeral tidak menyisakan session, config, atau fixture;
+- install langsung aktif tanpa compatibility profile atau hidden flag;
+- tag `v0.1.0` menghasilkan public GitHub Release dengan executable, checksum,
+  dan installer.
 
-## 15. Non-goals
+## 16. Non-goals
 
 MVP tidak mencoba:
 
@@ -870,84 +1010,21 @@ MVP tidak mencoba:
 - mengganti execution logic Turbo/Nx/package manager;
 - full RTK feature parity pada rilis pertama.
 
-## 16. Repository layout
+## 17. Repository layout
 
-    Cargo.toml
-    src/
-      main.rs
-      cli.rs
-      invocation.rs
-      execute.rs
-      hook.rs
-      classify/
-        mod.rs
-        command.rs
-        manifests.rs
-        signatures.rs
-      filters/
-        mod.rs
-        javascript.rs
-        rust.rs
-        python.rs
-        go.rs
-        php.rs
-        jvm.rs
-        dotnet.rs
-        build.rs
-      raw_store.rs
-    tests/
-      execution.rs
-      hook.rs
-      monorepo.rs
-      fixtures/
-    docs/
-      greenfield-ttc-spec.md
+Gunakan satu Rust binary crate dengan modul berdasarkan tanggung jawab: CLI,
+invocation/execution, classification, filter families, raw storage, harness
+adapter, dan installer integration. Test integration dan fixture dipisahkan dari
+source production. Jangan membuat workspace multi-crate, daemon, database, atau
+abstraksi harness generik di luar interface minimum yang dibutuhkan Codex.
 
-Satu crate binary cukup. Pecah menjadi workspace hanya jika benar-benar dibutuhkan.
-
-## 17. Milestones
-
-### M1 — Process wrapper
-
-- direct argv dan single-string native-shell command;
-- stdout/stderr streaming;
-- exact passthrough;
-- exit/signal propagation.
-
-### M2 — Core filters
-
-- JavaScript test;
-- Rust;
-- Python;
-- Go;
-- diagnostic retention;
-- raw output retrieval.
-
-### M3 — Package scripts dan monorepo
-
-- npm/pnpm/yarn/bun;
-- nested scripts;
-- Turbo/Nx;
-- mixed-language detection.
-
-### M4 — Additional ecosystems
-
-- PHP;
-- Java/Gradle/Maven;
-- dotnet;
-- C/C++/Swift/Ruby.
-
-### M5 — Codex hook
-
-- official allow + updatedInput;
-- install/uninstall;
-- always-wrap;
-- Codex CLI E2E;
-- model-facing token measurement.
+Struktur boleh berkembang saat implementasi selama dependency tetap satu arah,
+filter family dapat diuji terpisah, dan execution engine tidak bergantung pada
+harness tertentu.
 
 ## 18. Final behavior
 
-Aturan TTC greenfield:
+Aturan TTC:
 
 > Hook selalu membungkus Bash command. TTC hanya memfilter output yang benar-benar dikenali. Semua output lain diteruskan penuh.
 
