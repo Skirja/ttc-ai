@@ -18,6 +18,11 @@ import tempfile
 import threading
 import time
 
+try:
+    import tiktoken
+except ImportError:
+    tiktoken = None
+
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = ROOT / "docs/research/codex-compatibility.json"
@@ -109,7 +114,7 @@ class ProbeServer:
 
 
 def hook_source(event_path, mode, ttc_binary):
-    return f"""import json,pathlib,shlex,sys
+    return f"""import json,pathlib,shlex,subprocess,sys
 event=json.load(sys.stdin)
 path=pathlib.Path({str(event_path)!r})
 with path.open('a',encoding='utf-8') as stream:
@@ -117,8 +122,18 @@ with path.open('a',encoding='utf-8') as stream:
 mode={mode!r}
 if mode == 'rewrite':
     original=event.get('tool_input',{{}}).get('command','')
-    wrapped=shlex.quote({str(ttc_binary)!r})+' run --shell /bin/sh --command '+shlex.quote(original)
-    print(json.dumps({{'hookSpecificOutput':{{'hookEventName':'PreToolUse','permissionDecision':'allow','updatedInput':{{'command':wrapped}}}}}}))
+    context=event.get('execution_context',{{}})
+    shell=context.get('shell',{{}})
+    parts=[shlex.quote({str(ttc_binary)!r}),'run','--shell',shlex.quote(shell.get('executable','')),'--dialect','posix','--cwd',shlex.quote(context.get('cwd',''))]
+    if shell.get('login'):
+        parts.append('--login')
+    parts.extend(['--command',shlex.quote(original)])
+    print(json.dumps({{'hookSpecificOutput':{{'hookEventName':'PreToolUse','permissionDecision':'rewrite','updatedInput':{{'command':' '.join(parts)}}}}}}))
+elif mode == 'production':
+    completed=subprocess.run([{str(ttc_binary)!r},'hook','codex'],input=json.dumps(event),text=True,capture_output=True)
+    sys.stdout.write(completed.stdout)
+    sys.stderr.write(completed.stderr)
+    raise SystemExit(completed.returncode)
 elif mode == 'deny':
     print(json.dumps({{'hookSpecificOutput':{{'hookEventName':'PreToolUse','permissionDecision':'deny','permissionDecisionReason':'TTC probe competing denial'}}}}))
 else:
@@ -153,6 +168,30 @@ def read_hook_events(path):
     return [json.loads(line) for line in path.read_text().splitlines() if line]
 
 
+def strings(value):
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for child in value.values():
+            yield from strings(child)
+    elif isinstance(value, list):
+        for child in value:
+            yield from strings(child)
+
+
+def model_facing_output(requests):
+    if len(requests) < 2:
+        return ""
+    candidates = [text for text in strings(requests[1]) if "TTC_MODEL_OUTPUT" in text]
+    return max(candidates, key=len, default="")
+
+
+def token_count(text):
+    if tiktoken is None:
+        raise RuntimeError("tiktoken is required; install scripts/requirements-codex-probe.txt")
+    return len(tiktoken.get_encoding("o200k_base").encode(text))
+
+
 def case_definitions(actual, explicit_shell):
     return [
         {
@@ -161,6 +200,13 @@ def case_definitions(actual, explicit_shell):
             "permission": "never",
             "command": "printf 'TTC_SAFE_DIAGNOSTIC\\n'",
             "sentinel": "TTC_SAFE_DIAGNOSTIC",
+        },
+        {
+            "name": "rewrite_exit_status",
+            "mode": "rewrite",
+            "permission": "never",
+            "command": "printf 'TTC_REWRITE_EXIT\\n'; exit 7",
+            "sentinel": "TTC_REWRITE_EXIT",
         },
         {
             "name": "prefix_denial_baseline",
@@ -206,6 +252,14 @@ def case_definitions(actual, explicit_shell):
             "tool_overrides": {"workdir": str(actual)},
         },
         {
+            "name": "explicit_login",
+            "mode": "rewrite",
+            "permission": "never",
+            "command": "printf 'TTC_LOGIN=%s\\n' \"${TTC_LOGIN_MODE:-missing}\"",
+            "sentinel": "TTC_LOGIN=",
+            "tool_overrides": {"shell": str(explicit_shell), "login": True},
+        },
+        {
             "name": "unknown_command",
             "mode": "noop",
             "permission": "never",
@@ -245,22 +299,29 @@ def case_definitions(actual, explicit_shell):
             "expected_permission_mode": "default",
         },
         {
-            "name": "post_exit_status",
-            "mode": "post",
+            "name": "model_output_baseline",
+            "mode": "noop",
             "permission": "never",
-            "command": "printf 'TTC_POST_RAW\\n'; exit 7",
-            "sentinel": "TTC_POST_RAW",
+            "command": "cargo test",
+            "sentinel": "TTC_MODEL_OUTPUT",
+        },
+        {
+            "name": "model_output_rewrite",
+            "mode": "rewrite",
+            "permission": "never",
+            "command": "cargo test",
+            "sentinel": "TTC_MODEL_OUTPUT",
         },
     ]
 
 
-def run_case(codex, ttc_binary, root, case):
+def run_case(codex, ttc_binary, root, case, production_hook):
     home = root / case["name"] / "home"
     work = root / "work"
     home.mkdir(parents=True)
     event_path = root / case["name"] / "hook-events.jsonl"
     candidate = root / case["name"] / "candidate.py"
-    hook_mode = "noop" if case["mode"] == "post" else case["mode"]
+    hook_mode = "production" if production_hook and case["mode"] == "rewrite" else case["mode"]
     candidate.write_text(hook_source(event_path, hook_mode, ttc_binary))
     competing = case.get("competing")
     if competing:
@@ -279,8 +340,7 @@ def run_case(codex, ttc_binary, root, case):
                 "timeout": 2,
             }
         ]
-    event_name = "PostToolUse" if case["mode"] == "post" else "PreToolUse"
-    hooks = {"hooks": {event_name: [{"matcher": "^Bash$", "hooks": handlers}]}}
+    hooks = {"hooks": {"PreToolUse": [{"matcher": "^Bash$", "hooks": handlers}]}}
     (home / "hooks.json").write_text(json.dumps(hooks))
     if case.get("rule"):
         rules = home / "rules"
@@ -308,6 +368,8 @@ supports_websockets = false
         environment = os.environ.copy()
         environment["CODEX_HOME"] = str(home)
         environment["PATH"] = str(root / "bin") + os.pathsep + environment.get("PATH", "")
+        environment["TTC_DATA_DIR"] = str(root / "ttc-data")
+        environment["TTC_CONFIG"] = str(root / "ttc-config.toml")
         args = [
             codex,
             "--dangerously-bypass-hook-trust",
@@ -342,14 +404,22 @@ supports_websockets = false
             "codex_exit": None if timed_out else process.returncode,
             "hook_calls": len(hook_events),
             "permission_mode": hook_events[0].get("permission_mode") if hook_events else None,
+            "hook_protocol_version": hook_events[0].get("hook_protocol_version") if hook_events else None,
+            "execution_context_present": bool(hook_events and hook_events[0].get("execution_context")),
             "tool_input": hook_events[0].get("tool_input") if hook_events else None,
             "command_exit_codes": [item.get("exit_code") for item in items],
             "sentinel_count": output.count(case["sentinel"]),
             "output_excerpt": sanitized_output[-1000:],
             "requests": len(server.requests),
         }
+        facing = model_facing_output(server.requests)
+        if facing:
+            result["model_facing_bytes"] = len(facing.encode())
+            result["model_facing_tokens_o200k"] = token_count(facing)
         if case["name"] == "safe_diagnostic":
             result["passed"] = result["sentinel_count"] == 1 and result["command_exit_codes"] == [0]
+        elif case["name"] == "rewrite_exit_status":
+            result["passed"] = result["sentinel_count"] == 1 and result["command_exit_codes"] == [7]
         elif case["name"] in {
             "prefix_denial_baseline",
             "prefix_denial",
@@ -362,19 +432,16 @@ supports_websockets = false
             result["passed"] = "TTC_SHELL=preserved" in output and result["sentinel_count"] == 1
         elif case["name"] == "explicit_workdir":
             result["passed"] = str(root / "work" / "actual") in output
+        elif case["name"] == "explicit_login":
+            result["passed"] = "TTC_LOGIN=preserved" in output and result["sentinel_count"] == 1
         elif case["name"] == "unknown_command":
             result["passed"] = result["sentinel_count"] == 0 and any(
                 code not in (None, 0) for code in result["command_exit_codes"]
             )
         elif case["name"].startswith("permission_"):
             result["passed"] = result["permission_mode"] == case["expected_permission_mode"]
-        elif case["name"] == "post_exit_status":
-            response = hook_events[0].get("tool_response") if hook_events else None
-            result["post_tool_response_type"] = type(response).__name__
-            result["post_hook_has_structured_exit_status"] = isinstance(response, dict) and any(
-                key in response for key in ("exit_code", "status", "outcome")
-            )
-            result["passed"] = result["post_hook_has_structured_exit_status"]
+        elif case["name"].startswith("model_output_"):
+            result["passed"] = bool(facing)
         else:
             result["passed"] = False
         return result
@@ -385,6 +452,7 @@ def main():
     parser.add_argument("--codex", default="codex")
     parser.add_argument("--ttc", type=pathlib.Path, default=ROOT / "target/release/ttc")
     parser.add_argument("--output", type=pathlib.Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--production-hook", action="store_true")
     args = parser.parse_args()
     if not args.ttc.is_file():
         parser.error(f"TTC binary not found: {args.ttc}; run cargo build --release --locked")
@@ -396,48 +464,85 @@ def main():
         work = root / "work"
         actual = work / "actual"
         actual.mkdir(parents=True)
+        (root / "ttc-config.toml").write_text("[hooks]\nenabled=true\n")
         binaries = root / "bin"
         binaries.mkdir()
         blocked = binaries / "ttc-blocked-command"
         blocked.write_text("#!/bin/sh\nprintf 'TTC_PREFIX_DENIAL_EXECUTED\\n'\n")
         blocked.chmod(0o700)
+        cargo = binaries / "cargo"
+        cargo.write_text(
+            "#!/bin/sh\n"
+            "i=0\nwhile [ $i -lt 500 ]; do printf 'test TTC_MODEL_OUTPUT_%s ... ok\\n' \"$i\"; i=$((i+1)); done\n"
+            "printf 'test result: ok. 500 passed; 0 failed\\n'\n"
+        )
+        cargo.chmod(0o700)
         explicit_shell = binaries / "ttc-probe-shell"
         explicit_shell.write_text(
-            "#!/bin/sh\nexport TTC_EXPLICIT_SHELL=preserved\nexec /bin/sh \"$@\"\n"
+            "#!/bin/sh\n"
+            "export TTC_EXPLICIT_SHELL=preserved\n"
+            "if [ \"$1\" = '-lc' ]; then export TTC_LOGIN_MODE=preserved; fi\n"
+            "exec /bin/sh \"$@\"\n"
         )
         explicit_shell.chmod(0o700)
         cases = [
-            run_case(args.codex, args.ttc.resolve(), root, case)
+            run_case(args.codex, args.ttc.resolve(), root, case, args.production_hook)
             for case in case_definitions(actual, explicit_shell)
         ]
 
     by_name = {case["name"]: case for case in cases}
+    baseline = by_name["model_output_baseline"]
+    filtered = by_name["model_output_rewrite"]
+    model_output_fidelity = (
+        baseline.get("model_facing_tokens_o200k", 0)
+        > filtered.get("model_facing_tokens_o200k", 0)
+        > 0
+        and baseline.get("model_facing_bytes", 0) > filtered.get("model_facing_bytes", 0)
+    )
     invariants = {
+        "hook_protocol_v2": all(
+            case.get("tool_input") is not None
+            and case.get("hook_protocol_version") == 2
+            for case in cases
+            if case["hook_calls"]
+        ),
+        "execution_context_available": all(
+            case.get("execution_context_present")
+            for case in cases
+            if case["hook_calls"]
+        ),
         "safe_rewrite_executes_once": by_name["safe_diagnostic"]["passed"],
         "approval_equivalence": by_name["prefix_denial_baseline"]["passed"]
         and by_name["prefix_denial"]["passed"]
         and by_name["escalation"]["passed"],
         "shell_fidelity": by_name["explicit_shell"]["passed"],
         "cwd_fidelity": by_name["explicit_workdir"]["passed"],
+        "login_fidelity": by_name["explicit_login"]["passed"],
+        "sandbox_fidelity": by_name["escalation"]["passed"],
         "unknown_passthrough": by_name["unknown_command"]["passed"],
         "competing_hook_behavior": by_name["competing_deny_first"]["passed"]
         and by_name["competing_deny_last"]["passed"],
         "permission_mode_behavior": by_name["permission_never"]["passed"]
         and by_name["permission_on_request"]["passed"],
-        "exit_status_available": by_name["post_exit_status"]["passed"],
-        "documented_original_command_approval_equivalence": False,
+        "exit_status_fidelity": by_name["rewrite_exit_status"]["passed"],
+        "model_output_fidelity": model_output_fidelity,
     }
     blockers = [name for name, passed in invariants.items() if not passed]
     report = {
         "schema_version": 2,
         "generated_at_unix": int(time.time()),
         "codex_version": version,
+        "os": "linux",
+        "arch": os.uname().machine,
+        "hook_protocol_version": 2,
+        "production_hook": args.production_hook,
+        "tokenizer": {"package": "tiktoken", "encoding": "o200k_base"},
         "ttc_binary": str(args.ttc.resolve()),
         "isolated_codex_home": True,
         "hook_trust_override_requested": True,
         "destructive_commands_used": False,
         "verdict": "compatible" if not blockers else "incompatible",
-        "automatic_rewrite_enabled": False,
+        "automatic_rewrite_enabled": args.production_hook and not blockers,
         "invariants": invariants,
         "blockers": blockers,
         "cases": cases,

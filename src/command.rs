@@ -16,6 +16,7 @@ pub enum Invocation {
     Shell {
         executable: OsString,
         dialect: Shell,
+        login: bool,
         command: String,
     },
 }

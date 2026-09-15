@@ -48,15 +48,19 @@ fn command(inv: &Invocation) -> Result<Command> {
         Invocation::Shell {
             executable,
             dialect,
+            login,
             command,
         } => {
             let mut c = Command::new(executable);
             match dialect {
                 Shell::Posix => {
-                    c.arg("-c");
+                    c.arg(if *login { "-lc" } else { "-c" });
                 }
                 Shell::PowerShell => {
-                    c.args(["-NoProfile", "-Command"]);
+                    if !login {
+                        c.arg("-NoProfile");
+                    }
+                    c.arg("-Command");
                 }
                 Shell::Cmd => {
                     c.args(["/D", "/S", "/C"]);

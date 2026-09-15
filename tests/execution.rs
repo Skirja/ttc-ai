@@ -132,6 +132,33 @@ fn shell_operators_are_executed_by_original_shell() {
     assert!(out.status.success());
     assert_eq!(out.stdout, b"firstlast");
 }
+
+#[test]
+fn login_shell_mode_is_preserved() {
+    let d = tempdir().unwrap();
+    let shell = d.path().join("recording-shell");
+    executable(
+        &shell,
+        "#!/bin/sh\nprintf '%s' \"$1\" > shell-mode\nexec /bin/sh \"$@\"\n",
+    );
+    let out = run(
+        d.path(),
+        &[
+            "run",
+            "--shell",
+            shell.to_str().unwrap(),
+            "--login",
+            "--command",
+            "printf login-preserved",
+        ],
+    );
+    assert!(out.status.success());
+    assert_eq!(out.stdout, b"login-preserved");
+    assert_eq!(
+        std::fs::read_to_string(d.path().join("shell-mode")).unwrap(),
+        "-lc"
+    );
+}
 #[test]
 fn unknown_command_output_is_exact() {
     let d = tempdir().unwrap();

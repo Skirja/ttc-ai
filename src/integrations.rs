@@ -1,8 +1,9 @@
 //! Thin Codex protocol adapter and ownership-aware local installer.
 use crate::{
-    command::quote,
+    command::{Risk, Shell, quote},
     config::{self},
     recovery::{atomic_write, now, private_dir},
+    resolver::classify_cached,
 };
 use anyhow::{Context, Result, bail};
 use serde::{Deserialize, Serialize};
@@ -17,20 +18,61 @@ use std::{
 };
 
 const CODEX_HOOK_INPUT_LIMIT: usize = 1024 * 1024;
-const VERIFIED_CODEX_PROFILES: &[&str] = &[];
+const CODEX_HOOK_PROTOCOL_VERSION: u32 = 2;
+const CODEX_PROFILES: &str = include_str!(concat!(env!("OUT_DIR"), "/codex-profiles.json"));
 
 #[derive(Debug, Deserialize)]
 struct CodexPreToolUseEvent {
+    #[serde(default)]
+    hook_protocol_version: Option<u32>,
     hook_event_name: String,
     tool_name: String,
     cwd: String,
     permission_mode: String,
     tool_input: CodexToolInput,
+    #[serde(default)]
+    execution_context: Option<CodexExecutionContext>,
 }
 
 #[derive(Debug, Deserialize)]
 struct CodexToolInput {
     command: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct CodexExecutionContext {
+    cwd: String,
+    shell: CodexShellContext,
+    sandbox_permissions: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct CodexShellContext {
+    executable: String,
+    dialect: Shell,
+    login: bool,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+pub struct CodexCompatibilityProfile {
+    pub codex_version: String,
+    pub os: String,
+    pub arch: String,
+    pub hook_protocol_version: u32,
+    pub approval_equivalence: bool,
+    pub shell_fidelity: bool,
+    pub cwd_fidelity: bool,
+    pub login_fidelity: bool,
+    pub sandbox_fidelity: bool,
+    pub competing_hook_behavior: bool,
+    pub model_output_fidelity: bool,
+    pub exit_status_fidelity: bool,
+}
+
+#[derive(Debug, Deserialize)]
+struct CodexProfiles {
+    schema_version: u32,
+    profiles: Vec<CodexCompatibilityProfile>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
@@ -50,7 +92,10 @@ pub struct CodexCompatibilityReport {
     pub approval_equivalence: bool,
     pub shell_fidelity: bool,
     pub cwd_fidelity: bool,
-    pub exit_status_available: bool,
+    pub login_fidelity: bool,
+    pub sandbox_fidelity: bool,
+    pub model_output_fidelity: bool,
+    pub exit_status_fidelity: bool,
     pub competing_hook_behavior: bool,
     pub automatic_rewrite_enabled: bool,
     pub blockers: Vec<String>,
@@ -68,7 +113,9 @@ fn parse_codex_event(input: &str) -> Option<CodexPreToolUseEvent> {
         return None;
     }
     let event: CodexPreToolUseEvent = serde_json::from_str(input).ok()?;
-    if event.hook_event_name != "PreToolUse"
+    let protocol = event.hook_protocol_version.unwrap_or(1);
+    if !matches!(protocol, 1 | CODEX_HOOK_PROTOCOL_VERSION)
+        || event.hook_event_name != "PreToolUse"
         || event.tool_name != "Bash"
         || event.tool_input.command.is_empty()
         || !Path::new(&event.cwd).is_absolute()
@@ -77,25 +124,68 @@ fn parse_codex_event(input: &str) -> Option<CodexPreToolUseEvent> {
     {
         return None;
     }
+    if let Some(context) = &event.execution_context
+        && (!Path::new(&context.cwd).is_absolute()
+            || !Path::new(&context.cwd).is_dir()
+            || !Path::new(&context.shell.executable).is_absolute())
+    {
+        return None;
+    }
     Some(event)
 }
 
+fn event_protocol_version(event: &CodexPreToolUseEvent) -> u32 {
+    event.hook_protocol_version.unwrap_or(1)
+}
+
+fn embedded_profiles() -> Vec<CodexCompatibilityProfile> {
+    serde_json::from_str::<CodexProfiles>(CODEX_PROFILES)
+        .ok()
+        .filter(|profiles| profiles.schema_version == 1)
+        .map(|profiles| profiles.profiles)
+        .unwrap_or_default()
+}
+
+fn profile_is_verified(profile: &CodexCompatibilityProfile) -> bool {
+    matches!(
+        profile.hook_protocol_version,
+        1 | CODEX_HOOK_PROTOCOL_VERSION
+    ) && profile.approval_equivalence
+        && profile.shell_fidelity
+        && profile.cwd_fidelity
+        && profile.login_fidelity
+        && profile.sandbox_fidelity
+        && profile.competing_hook_behavior
+        && profile.model_output_fidelity
+        && profile.exit_status_fidelity
+}
+
+fn matching_profile<'a>(
+    codex_version: Option<&str>,
+    profiles: &'a [CodexCompatibilityProfile],
+) -> Option<&'a CodexCompatibilityProfile> {
+    let version = codex_version?;
+    profiles.iter().find(|profile| {
+        profile.codex_version == version
+            && profile.os == std::env::consts::OS
+            && profile.arch == std::env::consts::ARCH
+            && profile_is_verified(profile)
+    })
+}
+
 pub fn compatibility_report(codex_version: Option<String>) -> CodexCompatibilityReport {
-    let profile = codex_version
-        .as_deref()
-        .filter(|version| VERIFIED_CODEX_PROFILES.contains(version))
-        .map(str::to_owned);
-    let verified = profile.is_some();
+    let profiles = embedded_profiles();
+    let matched = matching_profile(codex_version.as_deref(), &profiles);
+    let profile = matched.map(|profile| profile.codex_version.clone());
+    let verified = matched.is_some();
     let blockers = if verified {
         Vec::new()
     } else {
         vec![
             "no version-specific Codex compatibility profile is verified".into(),
-            "PreToolUse rewrite requires an allow decision without documented original-command approval equivalence".into(),
-            "PreToolUse exposes session cwd, not a guaranteed per-command workdir".into(),
-            "the command hook contract does not provide the selected execution shell".into(),
-            "PostToolUse does not provide a stable structured exit-status field".into(),
-            "no compatibility profile embeds and attests the complete competing-hook and permission-mode matrix".into(),
+            "Codex hook protocol v2 with preserving rewrite semantics is not attested".into(),
+            "approval, shell, cwd, login, sandbox, output, and exit fidelity are not all verified".into(),
+            "no compatibility profile embeds the complete competing-hook and permission-mode matrix".into(),
         ]
     };
     CodexCompatibilityReport {
@@ -111,7 +201,10 @@ pub fn compatibility_report(codex_version: Option<String>) -> CodexCompatibility
         approval_equivalence: verified,
         shell_fidelity: verified,
         cwd_fidelity: verified,
-        exit_status_available: verified,
+        login_fidelity: verified,
+        sandbox_fidelity: verified,
+        model_output_fidelity: verified,
+        exit_status_fidelity: verified,
         competing_hook_behavior: verified,
         automatic_rewrite_enabled: verified,
         blockers,
@@ -142,24 +235,98 @@ impl HarnessAdapter for CodexAdapter {
 /// No compatibility profile is enabled without approval-equivalence evidence.
 /// Protocol compatibility alone is deliberately insufficient.
 pub fn compatibility_verified() -> bool {
-    if VERIFIED_CODEX_PROFILES.is_empty() {
-        return false;
-    }
     compatibility_report(installed_codex_version()).automatic_rewrite_enabled
 }
-pub fn hook(input: &str, _binary: &Path) -> Value {
+
+fn is_ttc_wrapper(command: &str, binary: &Path) -> bool {
+    let binary = binary.to_string_lossy();
+    command.contains(binary.as_ref()) && command.contains(" run ")
+}
+
+fn hook_with_profiles(
+    input: &str,
+    binary: &Path,
+    codex_version: Option<&str>,
+    profiles: &[CodexCompatibilityProfile],
+) -> Value {
     let Some(event) = parse_codex_event(input) else {
         return json!({});
     };
-    let Ok(cfg) = config::load(Path::new(&event.cwd)) else {
-        return json!({});
-    };
-    if !cfg.enabled || !cfg.hooks.enabled || !compatibility_verified() {
+    if matching_profile(codex_version, profiles)
+        .is_none_or(|profile| profile.hook_protocol_version != event_protocol_version(&event))
+    {
         return json!({});
     }
-    // There is intentionally no dormant rewrite serializer here. A future profile must
-    // introduce an execution-context-preserving implementation together with its proof.
-    json!({})
+    let execution_cwd = event
+        .execution_context
+        .as_ref()
+        .map_or_else(|| Path::new(&event.cwd), |context| Path::new(&context.cwd));
+    let Ok(cfg) = config::load(execution_cwd) else {
+        return json!({});
+    };
+    if !cfg.enabled || !cfg.recovery.enabled || !cfg.hooks.enabled {
+        return json!({});
+    }
+    rewrite_event(&event, binary)
+}
+
+fn rewrite_event(event: &CodexPreToolUseEvent, binary: &Path) -> Value {
+    let (execution_cwd, shell_executable, dialect, login, sandbox_permissions) = event
+        .execution_context
+        .as_ref()
+        .map(|context| {
+            (
+                context.cwd.as_str(),
+                context.shell.executable.as_str(),
+                context.shell.dialect,
+                context.shell.login,
+                context.sandbox_permissions.as_str(),
+            )
+        })
+        .unwrap_or((&event.cwd, "/bin/bash", Shell::Posix, false, "use_default"));
+    if dialect != Shell::Posix
+        || sandbox_permissions != "use_default"
+        || is_ttc_wrapper(&event.tool_input.command, binary)
+    {
+        return json!({});
+    }
+    let execution_cwd = Path::new(execution_cwd);
+    let class = classify_cached(
+        &event.tool_input.command,
+        execution_cwd,
+        dialect,
+        &config::data_dir().join("discovery"),
+    );
+    if !class.filterable || class.risk > Risk::Diagnostic {
+        return json!({});
+    }
+    let mut parts = vec![
+        quote(&binary.to_string_lossy()),
+        "run".into(),
+        "--shell".into(),
+        quote(shell_executable),
+        "--dialect".into(),
+        "posix".into(),
+        "--cwd".into(),
+        quote(execution_cwd.to_string_lossy().as_ref()),
+    ];
+    if login {
+        parts.push("--login".into());
+    }
+    parts.extend(["--command".into(), quote(&event.tool_input.command)]);
+    json!({
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "allow",
+            "updatedInput": {"command": parts.join(" ")}
+        }
+    })
+}
+
+pub fn hook(input: &str, binary: &Path) -> Value {
+    let profiles = embedded_profiles();
+    let version = installed_codex_version();
+    hook_with_profiles(input, binary, version.as_deref(), &profiles)
 }
 fn binary_name() -> &'static str {
     if cfg!(windows) { "ttc.exe" } else { "ttc" }
@@ -421,7 +588,12 @@ pub fn doctor() -> Value {
         .unwrap_or(true);
     let codex_version = installed_codex_version();
     let compatibility = compatibility_report(codex_version.clone());
-    json!({"schema_version":2,"ttc_version":env!("CARGO_PKG_VERSION"),"binary":std::env::current_exe().ok(),"codex_version":codex_version,"codex_compatibility":compatibility,"installed_binary":bin.exists(),"receipt_present":home.join("ttc-install.json").exists(),"config_valid":config_valid,"hooks_json_valid":!home.join("hooks.json").exists()||hooks_json.is_some(),"hooks_feature_enabled":hooks_enabled,"hook_registered":registered,"hook_executable_works":hook_works,"recovery_writable":writable,"automatic_rewrite_enabled":compatibility_verified(),"limitation":"Codex approval-equivalence and shell/cwd context are not verified; hook is fail-open passthrough","trust_action":"/hooks"})
+    let ttc_config = config::load(&std::env::current_dir().unwrap_or_default()).ok();
+    let ttc_hook_enabled = ttc_config
+        .as_ref()
+        .is_some_and(|cfg| cfg.enabled && cfg.recovery.enabled && cfg.hooks.enabled);
+    let compatible = compatibility.automatic_rewrite_enabled;
+    json!({"schema_version":3,"ttc_version":env!("CARGO_PKG_VERSION"),"binary":std::env::current_exe().ok(),"codex_version":codex_version,"codex_compatibility":compatibility,"installed_binary":bin.exists(),"receipt_present":home.join("ttc-install.json").exists(),"config_valid":config_valid,"hooks_json_valid":!home.join("hooks.json").exists()||hooks_json.is_some(),"hooks_feature_enabled":hooks_enabled,"ttc_hook_enabled":ttc_hook_enabled,"hook_registered":registered,"hook_executable_works":hook_works,"recovery_writable":writable,"compatible":compatible,"enabled":ttc_hook_enabled,"automatic_rewrite_active":compatible && ttc_hook_enabled && registered && hook_works,"automatic_rewrite_enabled":compatible && ttc_hook_enabled,"limitation":if compatible {"automatic rewrite requires explicit TTC hook enablement and a trusted registered hook"} else {"no exact Codex hook protocol v2 compatibility profile is verified"},"trust_action":"/hooks"})
 }
 
 #[cfg(test)]
@@ -430,15 +602,14 @@ mod tests {
 
     #[test]
     fn typed_codex_event_requires_complete_supported_metadata() {
-        let valid = r#"{"hook_event_name":"PreToolUse","tool_name":"Bash","cwd":"/tmp","permission_mode":"dontAsk","tool_input":{"command":"cargo test","future":true},"future":"retained"}"#;
+        let valid = r#"{"hook_protocol_version":2,"hook_event_name":"PreToolUse","tool_name":"Bash","cwd":"/tmp","permission_mode":"dontAsk","tool_input":{"command":"cargo test","future":true},"execution_context":{"cwd":"/tmp","shell":{"executable":"/bin/bash","dialect":"posix","login":false},"sandbox_permissions":"use_default"},"future":"retained"}"#;
         let event = parse_codex_event(valid).expect("valid event");
         assert_eq!(event.tool_input.command, "cargo test");
         for invalid in [
             "{}",
-            r#"{"hook_event_name":"PostToolUse","tool_name":"Bash","cwd":"/tmp","permission_mode":"dontAsk","tool_input":{"command":"cargo test"}}"#,
-            r#"{"hook_event_name":"PreToolUse","tool_name":"Bash","cwd":"relative","permission_mode":"dontAsk","tool_input":{"command":"cargo test"}}"#,
-            r#"{"hook_event_name":"PreToolUse","tool_name":"Bash","cwd":"/tmp","permission_mode":"unexpected","tool_input":{"command":"cargo test"}}"#,
-            r#"{"hook_event_name":"PreToolUse","tool_name":"Bash","cwd":"/tmp","permission_mode":"dontAsk","tool_input":{"command":7}}"#,
+            r#"{"hook_protocol_version":2,"hook_event_name":"PostToolUse","tool_name":"Bash","cwd":"/tmp","permission_mode":"dontAsk","tool_input":{"command":"cargo test"},"execution_context":{"cwd":"/tmp","shell":{"executable":"/bin/bash","dialect":"posix","login":false},"sandbox_permissions":"use_default"}}"#,
+            r#"{"hook_protocol_version":2,"hook_event_name":"PreToolUse","tool_name":"Bash","cwd":"relative","permission_mode":"dontAsk","tool_input":{"command":"cargo test"},"execution_context":{"cwd":"/tmp","shell":{"executable":"/bin/bash","dialect":"posix","login":false},"sandbox_permissions":"use_default"}}"#,
+            r#"{"hook_protocol_version":2,"hook_event_name":"PreToolUse","tool_name":"Bash","cwd":"/tmp","permission_mode":"unexpected","tool_input":{"command":"cargo test"},"execution_context":{"cwd":"/tmp","shell":{"executable":"/bin/bash","dialect":"posix","login":false},"sandbox_permissions":"use_default"}}"#,
         ] {
             assert!(parse_codex_event(invalid).is_none(), "{invalid}");
         }
@@ -459,9 +630,86 @@ mod tests {
         assert!(!report.approval_equivalence);
         assert!(!report.shell_fidelity);
         assert!(!report.cwd_fidelity);
-        assert!(!report.exit_status_available);
+        assert!(!report.login_fidelity);
+        assert!(!report.sandbox_fidelity);
+        assert!(!report.model_output_fidelity);
+        assert!(!report.exit_status_fidelity);
         assert!(!report.competing_hook_behavior);
         assert!(!report.blockers.is_empty());
         assert!(!compatibility_verified());
+    }
+
+    #[test]
+    fn verified_profile_requires_every_invariant_and_exact_platform() {
+        let mut profile = verified_test_profile();
+        assert!(matching_profile(Some("codex-cli test"), &[profile.clone()]).is_some());
+        profile.login_fidelity = false;
+        assert!(matching_profile(Some("codex-cli test"), &[profile]).is_none());
+        assert!(matching_profile(Some("other"), &[verified_test_profile()]).is_none());
+    }
+
+    #[test]
+    fn eligible_v2_event_serializes_preserving_rewrite() {
+        let input = r#"{"hook_protocol_version":2,"hook_event_name":"PreToolUse","tool_name":"Bash","cwd":"/tmp","permission_mode":"dontAsk","tool_input":{"command":"cargo test"},"execution_context":{"cwd":"/tmp","shell":{"executable":"/bin/bash","dialect":"posix","login":true},"sandbox_permissions":"use_default"}}"#;
+        let event = parse_codex_event(input).unwrap();
+        let output = rewrite_event(&event, Path::new("/opt/ttc/bin/ttc"));
+        assert_eq!(output["hookSpecificOutput"]["permissionDecision"], "allow");
+        let command = output["hookSpecificOutput"]["updatedInput"]["command"]
+            .as_str()
+            .unwrap();
+        assert!(command.contains("'cargo test'"));
+        assert!(command.contains("--shell '/bin/bash'"));
+        assert!(command.contains("--cwd '/tmp'"));
+        assert!(command.contains("--login"));
+    }
+
+    #[test]
+    fn official_codex_event_uses_session_cwd_and_allow_rewrite() {
+        let input = r#"{"hook_event_name":"PreToolUse","tool_name":"Bash","cwd":"/tmp","permission_mode":"default","tool_input":{"command":"cargo test"}}"#;
+        let event = parse_codex_event(input).unwrap();
+        let output = rewrite_event(&event, Path::new("/opt/ttc/bin/ttc"));
+        assert_eq!(output["hookSpecificOutput"]["permissionDecision"], "allow");
+        let command = output["hookSpecificOutput"]["updatedInput"]["command"]
+            .as_str()
+            .unwrap();
+        assert!(command.contains("--shell '/bin/bash'"));
+        assert!(command.contains("--cwd '/tmp'"));
+    }
+
+    #[test]
+    fn unsafe_or_recursive_events_are_not_rewritten() {
+        for command in [
+            "rm -rf ./sentinel",
+            "cargo test | tee output",
+            "/ttc run -- cargo test",
+        ] {
+            let input = format!(
+                r#"{{"hook_protocol_version":2,"hook_event_name":"PreToolUse","tool_name":"Bash","cwd":"/tmp","permission_mode":"dontAsk","tool_input":{{"command":{}}},"execution_context":{{"cwd":"/tmp","shell":{{"executable":"/bin/bash","dialect":"posix","login":false}},"sandbox_permissions":"use_default"}}}}"#,
+                serde_json::to_string(command).unwrap()
+            );
+            let event = parse_codex_event(&input).unwrap();
+            assert_eq!(
+                rewrite_event(&event, Path::new("/ttc")),
+                json!({}),
+                "{command}"
+            );
+        }
+    }
+
+    fn verified_test_profile() -> CodexCompatibilityProfile {
+        CodexCompatibilityProfile {
+            codex_version: "codex-cli test".into(),
+            os: std::env::consts::OS.into(),
+            arch: std::env::consts::ARCH.into(),
+            hook_protocol_version: CODEX_HOOK_PROTOCOL_VERSION,
+            approval_equivalence: true,
+            shell_fidelity: true,
+            cwd_fidelity: true,
+            login_fidelity: true,
+            sandbox_fidelity: true,
+            competing_hook_behavior: true,
+            model_output_fidelity: true,
+            exit_status_fidelity: true,
+        }
     }
 }

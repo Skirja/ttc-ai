@@ -98,6 +98,8 @@ enum Commands {
 struct Run {
     #[arg(long, requires = "command")]
     shell: Option<OsString>,
+    #[arg(long, requires = "shell")]
+    login: bool,
     #[arg(long, requires = "shell", conflicts_with = "argv")]
     command: Option<String>,
     #[arg(long, value_enum, default_value = "posix")]
@@ -416,6 +418,7 @@ fn run(r: Run, raw: bool) -> Result<()> {
         Invocation::Shell {
             executable,
             dialect: r.dialect.into(),
+            login: r.login,
             command,
         }
     } else {
