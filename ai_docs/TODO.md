@@ -44,32 +44,32 @@ perlu.
 
 ### Implementation checklist
 
-- [ ] Inisialisasi satu binary crate bernama `ttc`; jangan membuat workspace
+- [x] Inisialisasi satu binary crate bernama `ttc`; jangan membuat workspace
   multi-crate.
-- [ ] Tetapkan package version `0.1.0` dan pastikan hanya ada satu sumber versi
+- [x] Tetapkan package version `0.1.0` dan pastikan hanya ada satu sumber versi
   untuk package serta `ttc --version`.
-- [ ] Pin Rust toolchain yang dipakai CI agar build reproducible.
-- [ ] Susun modul berdasarkan tanggung jawab: CLI, invocation/execution,
+- [x] Pin Rust toolchain yang dipakai CI agar build reproducible.
+- [x] Susun modul berdasarkan tanggung jawab: CLI, invocation/execution,
   classification, filter families, raw storage, dan harness adapter.
-- [ ] Jaga dependency satu arah: harness memakai core, core tidak mengetahui
+- [x] Jaga dependency satu arah: harness memakai core, core tidak mengetahui
   Codex atau harness lain.
-- [ ] Implementasikan public `--help` dan `--version`; jangan menambahkan
+- [x] Implementasikan public `--help` dan `--version`; jangan menambahkan
   `explain`, `doctor`, atau placeholder command.
-- [ ] Tambahkan `LICENSE` MIT dan README minimum yang menunjuk ke SPEC serta
+- [x] Tambahkan `LICENSE` MIT dan README minimum yang menunjuk ke SPEC serta
   status greenfield.
-- [ ] Tambahkan baseline GitHub Actions untuk format, Clippy, test, dan debug
+- [x] Tambahkan baseline GitHub Actions untuk format, Clippy, test, dan debug
   build pada branch `master`/pull request.
-- [ ] Tetapkan convention fixture, integration test, dan temporary test data
+- [x] Tetapkan convention fixture, integration test, dan temporary test data
   agar test tidak menulis state pengguna.
 
 ### Acceptance criteria
 
-- [ ] Debug dan release build berhasil pada Linux x86_64.
-- [ ] `ttc --version` tepat menghasilkan versi `0.1.0` dalam format CLI yang
+- [x] Debug dan release build berhasil pada Linux x86_64.
+- [x] `ttc --version` tepat menghasilkan versi `0.1.0` dalam format CLI yang
   stabil.
-- [ ] Help hanya menampilkan interface publik yang sudah diimplementasikan.
-- [ ] Tidak ada dependency pada source/arsitektur TTC lama.
-- [ ] Tidak ada daemon, database, telemetry, atau network client di binary.
+- [x] Help hanya menampilkan interface publik yang sudah diimplementasikan.
+- [x] Tidak ada dependency pada source/arsitektur TTC lama.
+- [x] Tidak ada daemon, database, telemetry, atau network client di binary.
 
 ### Verification commands
 
@@ -85,9 +85,19 @@ cargo build --release
 
 ### Evidence
 
-- [ ] Commit implementasi dicatat.
-- [ ] Output verification commands dicatat pada commit/CI run.
-- [ ] Artifact: `target/release/ttc` untuk smoke test lokal.
+- [x] Commit implementasi dicatat.
+- [x] Output verification commands dicatat pada commit/CI run.
+- [x] Artifact: `target/release/ttc` untuk smoke test lokal.
+
+Bukti lokal 2026-09-15 pada branch `feat/m1-foundation`:
+
+- Seluruh verification command M1 selesai dengan exit status 0.
+- `cargo test --all-targets --all-features` menjalankan 3 integration test dan
+  seluruhnya lulus.
+- `target/release/ttc` terverifikasi sebagai executable ELF x86-64 GNU/Linux;
+  `--version` menghasilkan `ttc 0.1.0` dan help hanya memuat opsi yang tersedia.
+- M1 ditutup pada sesi ini berdasarkan seluruh verifikasi lokal yang lulus;
+  perubahan tetap berada di worktree/staging dan CI GitHub belum dijalankan.
 
 ---
 
