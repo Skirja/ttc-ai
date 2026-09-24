@@ -174,8 +174,8 @@ Bukti lokal M2 pada Linux x86_64:
 - [CI run 35969037570](https://github.com/Skirja/ttc-ai/actions/runs/35969037570)
   pada commit dokumentasi `0c64d90441bc93b7774719cdadad64588fdc1d3a`
   juga lulus kedua job dan menyediakan artifact yang sama. M2 selesai pada
-  [PR #1](https://github.com/Skirja/ttc-ai/pull/1); merge ke `master`
-  menunggu review pengguna.
+  [PR #1](https://github.com/Skirja/ttc-ai/pull/1) dan sudah di-merge pengguna
+  ke `master` sebagai commit `e2c97b5ec43ada7256ff9acd4c0af2c84c1f9bf2`.
 
 ---
 
@@ -188,43 +188,43 @@ dikompaksi, dan aman ketika input atau storage tidak dapat diproses.
 
 ### Implementation checklist
 
-- [ ] Gunakan bounded channel antara reader stdout/stderr dan output processor.
-- [ ] Implementasikan framing per stream dengan pending line maksimum 1 MiB.
-- [ ] Long line, non-UTF-8, dan framing/parser failure beralih ke raw tanpa
+- [x] Gunakan bounded channel antara reader stdout/stderr dan output processor.
+- [x] Implementasikan framing per stream dengan pending line maksimum 1 MiB.
+- [x] Long line, non-UTF-8, dan framing/parser failure beralih ke raw tanpa
   kehilangan byte.
-- [ ] Implementasikan config optional `~/.config/ttc/config.toml` dengan default
+- [x] Implementasikan config optional `~/.config/ttc/config.toml` dengan default
   `max_raw_mb = 32` dan `retention_hours = 24`.
-- [ ] Invalid config tidak boleh menjalankan ulang command atau menyebabkan
+- [x] Invalid config tidak boleh menjalankan ulang command atau menyebabkan
   output yang tidak pasti dibuang.
-- [ ] Implementasikan capture file biasa dengan random run ID, event ber-tag
+- [x] Implementasikan capture file biasa dengan random run ID, event ber-tag
   stdout/stderr, dan permission user-only.
-- [ ] Capture hanya dibuat/ditahan bila minimal satu byte dikompaksi; failure
+- [x] Capture hanya dibuat/ditahan bila minimal satu byte dikompaksi; failure
   tanpa kompaksi tetap exact passthrough tanpa TTC metadata.
-- [ ] Saat ada kompaksi, capture original stdout/stderr sebelum filtering agar
+- [x] Saat ada kompaksi, capture original stdout/stderr sebelum filtering agar
   replay dapat mengembalikan output asli, subject to batas storage.
-- [ ] Batasi capture total 32 MiB menggunakan tail terbaru dan metadata jumlah
+- [x] Batasi capture total 32 MiB menggunakan tail terbaru dan metadata jumlah
   byte yang dibuang.
-- [ ] Gunakan XDG state sebagai lokasi utama dan temporary directory per-user
+- [x] Gunakan XDG state sebagai lokasi utama dan temporary directory per-user
   permission 0700 sebagai fallback sandbox.
-- [ ] Jika seluruh storage gagal, hentikan kompaksi berikutnya dan emit raw tanpa
+- [x] Jika seluruh storage gagal, hentikan kompaksi berikutnya dan emit raw tanpa
   rerun.
-- [ ] Hapus capture lebih tua dari retention saat invocation berikutnya.
-- [ ] Implementasikan `ttc raw ID`, `--stdout`, `--stderr`, dan `--tail N`.
-- [ ] Replay default mengikuti urutan event yang diamati; selector mengekstrak
+- [x] Hapus capture lebih tua dari retention saat invocation berikutnya.
+- [x] Implementasikan `ttc raw ID`, `--stdout`, `--stderr`, dan `--tail N`.
+- [x] Replay default mengikuti urutan event yang diamati; selector mengekstrak
   byte stream terkait.
-- [ ] Tulis summary kompaksi dan raw hint hanya ke stderr.
+- [x] Tulis summary kompaksi dan raw hint hanya ke stderr.
 
 ### Acceptance criteria
 
-- [ ] Memory tidak tumbuh sebanding dengan ukuran output besar.
-- [ ] Capture >32 MiB menyimpan tail terbaru dan dropped-byte count benar.
-- [ ] Default replay, stream selector, dan tail menghasilkan byte yang benar.
-- [ ] ID ditemukan pada XDG maupun temporary fallback.
-- [ ] Permission directory/file hanya untuk user pemilik.
-- [ ] Cleanup retention tidak menghapus capture yang masih valid.
-- [ ] XDG denial memakai fallback; kegagalan kedua storage menjadi raw tanpa
+- [x] Memory tidak tumbuh sebanding dengan ukuran output besar.
+- [x] Capture >32 MiB menyimpan tail terbaru dan dropped-byte count benar.
+- [x] Default replay, stream selector, dan tail menghasilkan byte yang benar.
+- [x] ID ditemukan pada XDG maupun temporary fallback.
+- [x] Permission directory/file hanya untuk user pemilik.
+- [x] Cleanup retention tidak menghapus capture yang masih valid.
+- [x] XDG denial memakai fallback; kegagalan kedua storage menjadi raw tanpa
   rerun.
-- [ ] Invocation tanpa kompaksi tidak menghasilkan file, summary, atau hint.
+- [x] Invocation tanpa kompaksi tidak menghasilkan file, summary, atau hint.
 
 ### Verification commands
 
@@ -238,9 +238,39 @@ cargo test --test config
 
 ### Evidence
 
-- [ ] Commit implementasi dicatat.
-- [ ] Peak-memory result untuk large stream dicatat.
-- [ ] Permission, truncation, fallback, dan cleanup test artifacts dicatat.
+- [x] Commit implementasi final dan CI PR dicatat.
+- [x] Peak-memory result untuk large stream dicatat.
+- [x] Permission, truncation, fallback, dan cleanup test artifacts dicatat.
+
+Bukti lokal M3 pada Linux x86_64 (branch `feat/m3-streaming-raw`):
+
+- Lima command verification M3, `cargo fmt --all -- --check`,
+  `cargo clippy --all-targets --all-features -- -D warnings`,
+  `cargo test --all-targets --all-features`, dan `cargo build --release` lulus.
+- `sh scripts/m3-evidence.sh target/m3-evidence/report.txt` setelah perbaikan
+  review mencatat peak RSS 2.900 KiB untuk output 64 MiB dan 2.960 KiB untuk
+  output 256 MiB; selisih 60 KiB. Tidak ada capture file pada invocation
+  tanpa kompaksi.
+- `tests/raw_store.rs` membuktikan file capture maksimum 32 MiB, suffix byte
+  asli, dropped-byte count, mode file `0600`, dan direktori `0700`.
+  `tests/storage_failure.rs` membuktikan fallback, lookup ID, cleanup, dan
+  raw tanpa rerun ketika kedua lokasi gagal. `tests/raw_cli.rs` membuktikan
+  replay berurutan, selector, dan byte tail.
+- `sh scripts/m2-evidence.sh target/m2-evidence/report.txt` tetap menghasilkan
+  perbandingan stdout dan stderr byte-identical.
+- Perbaikan review menambah tes `failed_append_keeps_last_committed_capture`,
+  `rename_failure_keeps_partial_file_replayable`, lookup fallback pada XDG
+  `EACCES`, dan root fallback `/tmp` yang stabil. Lima verification command M3,
+  baseline repository gate, serta skrip bukti M2/M3 lulus lagi secara lokal.
+- Commit implementasi `1c793b79fa9d5a6dcc15ca3d5f56b7570ba1f558`
+  diuji pada [PR #2](https://github.com/Skirja/ttc-ai/pull/2). Ketiga job
+  pada [CI run 35974053659](https://github.com/Skirja/ttc-ai/actions/runs/35974053659)
+  lulus untuk commit tersebut. Artifact `m3-streaming-evidence` menyimpan
+  laporan peak RSS; artifact `m2-byte-comparison` menyimpan regresi passthrough.
+- Perbaikan review pada commit `d5c00ca58f4b6e4f3644ffbc782c4372d6fed035`
+  diuji oleh [CI run 35976764504](https://github.com/Skirja/ttc-ai/actions/runs/35976764504)
+  di PR #2. Ketiga job lulus dan artifact `m3-streaming-evidence` serta
+  `m2-byte-comparison` tersedia untuk commit tersebut.
 
 ---
 

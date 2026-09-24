@@ -738,7 +738,7 @@ ulang command asli.
 
 - lokasi default: XDG_STATE_HOME/ttc/runs;
 - fallback jika lokasi default tidak writable: direktori temporary per-user
-  dengan permission 0700;
+  `/tmp/ttc-<uid>/runs` yang stabil antar invocation dengan permission 0700;
 - satu ID random per invocation;
 - permission user-only;
 - maksimum 32 MiB total per invocation;
@@ -770,7 +770,15 @@ Commands:
 
 Tanpa selector, `ttc raw ID` mereplay stdout dan stderr dalam urutan event yang
 diamati. Selector `--stdout` dan `--stderr` mengekstrak stream masing-masing.
+Hasil selector ditulis ke stdout agar dapat dipipe. `--tail N` mengambil N byte
+terakhir dari replay setelah selector diterapkan; N boleh nol dan dapat memotong
+event di tengah. Capture yang terpotong menyatakan jumlah byte asli yang dibuang
+melalui stderr saat direplay.
 Command mencari ID pada lokasi XDG maupun fallback temporary.
+Penolakan akses pada lokasi XDG tidak menghentikan pencarian fallback. Bila
+penulisan capture gagal setelah kompaksi dimulai, bagian capture terakhir yang
+valid tetap dapat direplay lewat ID selama filenya dapat dibaca, termasuk dari
+file staging bila finalisasi gagal. Output berikutnya berjalan raw.
 
 ## 12. Minimal configuration
 
@@ -782,6 +790,10 @@ Default:
 
     max_raw_mb = 32
     retention_hours = 24
+
+Kedua nilai adalah batas maksimum sekaligus default. Config hanya boleh memakai
+bilangan bulat positif yang lebih kecil atau sama dengan 32 MiB dan 24 jam.
+Config invalid membuat invocation berjalan raw tanpa menjalankan ulang command.
 
 Tidak ada:
 

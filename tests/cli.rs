@@ -1,4 +1,7 @@
-use std::process::{Command, Output};
+mod common;
+
+use common::ttc_command;
+use std::process::Output;
 
 const EXPECTED_HELP: &str = "\
 TTC Automatic Bash Output Filter
@@ -6,6 +9,7 @@ TTC Automatic Bash Output Filter
 Usage: ttc [OPTIONS]
        ttc <program> [args...]
        ttc '<complete shell command>'
+       ttc raw <id> [--stdout | --stderr] [--tail N]
 
 Options:
   -h, --help     Print help
@@ -13,7 +17,7 @@ Options:
 ";
 
 fn run(arguments: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_ttc"))
+    ttc_command()
         .args(arguments)
         .output()
         .expect("ttc test binary should run")
@@ -40,14 +44,13 @@ fn help_only_lists_the_implemented_public_interface() {
         assert!(output.stderr.is_empty());
     }
 
-    for unavailable_command in ["raw", "install", "uninstall", "hook", "explain", "doctor"] {
+    for unavailable_command in ["install", "uninstall", "hook", "explain", "doctor"] {
         assert!(!EXPECTED_HELP.contains(unavailable_command));
     }
 }
 
 #[test]
 fn help_does_not_advertise_future_commands() {
-    assert!(!EXPECTED_HELP.contains("raw"));
     assert!(!EXPECTED_HELP.contains("install"));
     assert!(!EXPECTED_HELP.contains("uninstall"));
     assert!(!EXPECTED_HELP.contains("hook"));

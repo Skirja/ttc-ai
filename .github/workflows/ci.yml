@@ -79,3 +79,36 @@ jobs:
           name: m2-byte-comparison
           path: target/m2-evidence/report.txt
           if-no-files-found: error
+
+  m3-streaming:
+    name: M3 streaming and raw retrieval
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt,clippy
+
+      - name: Verify streaming and raw retrieval
+        run: |
+          cargo test --test streaming
+          cargo test --test raw_store
+          cargo test --test raw_cli
+          cargo test --test storage_failure
+          cargo test --test config
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Record bounded memory evidence
+        run: sh scripts/m3-evidence.sh target/m3-evidence/report.txt
+
+      - name: Upload passing M3 report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: m3-streaming-evidence
+          path: target/m3-evidence/report.txt
+          if-no-files-found: error

@@ -1,11 +1,12 @@
 //! Execute the original command once and stream its unmodified output.
 
 use std::ffi::{OsStr, OsString};
-use std::io::{self, IsTerminal, Read, Write};
+use std::io::{self, IsTerminal};
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::process::{CommandExt, ExitStatusExt};
 use std::path::Path;
 use std::process::{Command, ExitCode, ExitStatus, Stdio};
+use std::sync::mpsc;
 use std::thread;
 
 use nix::sys::signal::{Signal, killpg};
@@ -14,7 +15,9 @@ use signal_hook::consts::signal::{SIGINT, SIGTERM};
 use signal_hook::iterator::Signals;
 use signal_hook::low_level;
 
-const COPY_BUFFER_SIZE: usize = 32 * 1024;
+use super::config::Config;
+use super::raw_store::{self, StorePaths, Stream};
+use super::streaming::{self, Retain};
 
 pub(crate) fn run(arguments: &[OsString]) -> ExitCode {
     let mut command = if arguments.len() == 1 {
@@ -27,6 +30,15 @@ pub(crate) fn run(arguments: &[OsString]) -> ExitCode {
         command
     };
 
+    let config = match Config::load() {
+        Ok(config) => config,
+        Err(_) => {
+            let error = command.exec();
+            return report_start_error(error);
+        }
+    };
+    raw_store::cleanup(config);
+
     if has_terminal()
         || may_start_background_shell_job(arguments)
         || is_known_raw_command(arguments)
@@ -35,7 +47,7 @@ pub(crate) fn run(arguments: &[OsString]) -> ExitCode {
         return report_start_error(error);
     }
 
-    stream_child(&mut command)
+    stream_child(&mut command, config)
 }
 
 fn may_start_background_shell_job(arguments: &[OsString]) -> bool {
@@ -117,7 +129,7 @@ fn is_known_raw_command(arguments: &[OsString]) -> bool {
     ) || (name == "tail" && words.contains(&"-f"))
 }
 
-fn stream_child(command: &mut Command) -> ExitCode {
+fn stream_child(command: &mut Command, config: Config) -> ExitCode {
     // Installing signal handlers before spawn closes the gap in which a
     // signal could otherwise terminate the wrapper but leave the child alive.
     let mut signals = match Signals::new([SIGINT, SIGTERM]) {
@@ -148,9 +160,13 @@ fn stream_child(command: &mut Command) -> ExitCode {
 
     let stdout = child.stdout.take().expect("piped stdout is available");
     let stderr = child.stderr.take().expect("piped stderr is available");
-    let stdout_thread = thread::spawn(move || copy_raw(stdout, io::stdout()));
-    let stderr_thread = thread::spawn(move || copy_raw(stderr, io::stderr()));
-
+    let (sender, receiver) = mpsc::sync_channel(8);
+    let stderr_sender = sender.clone();
+    let stdout_thread =
+        thread::spawn(move || streaming::read_stream(stdout, Stream::Stdout, sender));
+    let stderr_thread =
+        thread::spawn(move || streaming::read_stream(stderr, Stream::Stderr, stderr_sender));
+    let report = streaming::process(receiver, config, StorePaths::from_env().ok(), &mut Retain);
     let status = child.wait();
     signal_handle.close();
     let _ = signal_thread.join();
@@ -165,6 +181,12 @@ fn stream_child(command: &mut Command) -> ExitCode {
             Err(_) => eprintln!("ttc: output forwarding thread panicked"),
         }
     }
+    if let Some(error) = &report.forwarding_error {
+        eprintln!("ttc: output forwarding failed: {error}");
+    }
+    if let Err(error) = streaming::write_metadata(&report, &mut io::stderr()) {
+        eprintln!("ttc: writing summary failed: {error}");
+    }
 
     match status {
         Ok(status) => exit_like_child(status),
@@ -172,18 +194,6 @@ fn stream_child(command: &mut Command) -> ExitCode {
             eprintln!("ttc: waiting for command failed: {error}");
             ExitCode::FAILURE
         }
-    }
-}
-
-fn copy_raw(mut input: impl Read, mut output: impl Write) -> io::Result<()> {
-    let mut buffer = [0u8; COPY_BUFFER_SIZE];
-    loop {
-        let read = input.read(&mut buffer)?;
-        if read == 0 {
-            return Ok(());
-        }
-        output.write_all(&buffer[..read])?;
-        output.flush()?;
     }
 }
 
