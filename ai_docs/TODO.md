@@ -146,8 +146,8 @@ cargo test --test shell_contract
 
 ### Evidence
 
-- [ ] Commit implementasi dicatat.
-- [ ] Baseline-versus-TTC byte comparison disimpan sebagai test artifact.
+- [x] Commit implementasi dicatat.
+- [x] Baseline-versus-TTC byte comparison disimpan sebagai test artifact.
 - [x] Invocation-count dan signal test lulus pada Linux.
 
 Bukti lokal M2 pada Linux x86_64:
@@ -160,6 +160,12 @@ Bukti lokal M2 pada Linux x86_64:
 - `tests/execution.rs` dan `tests/shell_contract.rs` membuktikan invocation
   count satu kali, termasuk saat output forwarding gagal. `tests/signals.rs`
   membuktikan SIGINT dan SIGTERM pada Linux.
+- Commit implementasi: `57f99546f6034fc8782ab65b7522c8daa0126f97`.
+  [PR #1](https://github.com/Skirja/ttc-ai/pull/1) menjalankan
+  [CI run 35967544849](https://github.com/Skirja/ttc-ai/actions/runs/35967544849)
+  dan kedua job lulus pada commit tersebut.
+- Artifact CI `m2-byte-comparison` pada run yang sama menyimpan laporan `cmp`
+  baseline-versus-TTC untuk stdout dan stderr.
 
 ---
 
