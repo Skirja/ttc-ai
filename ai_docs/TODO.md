@@ -174,8 +174,8 @@ Bukti lokal M2 pada Linux x86_64:
 - [CI run 35969037570](https://github.com/Skirja/ttc-ai/actions/runs/35969037570)
   pada commit dokumentasi `0c64d90441bc93b7774719cdadad64588fdc1d3a`
   juga lulus kedua job dan menyediakan artifact yang sama. M2 selesai pada
-  [PR #1](https://github.com/Skirja/ttc-ai/pull/1); merge ke `master`
-  menunggu review pengguna.
+  [PR #1](https://github.com/Skirja/ttc-ai/pull/1) dan sudah di-merge pengguna
+  ke `master` sebagai commit `e2c97b5ec43ada7256ff9acd4c0af2c84c1f9bf2`.
 
 ---
 
@@ -238,7 +238,7 @@ cargo test --test config
 
 ### Evidence
 
-- [ ] Commit implementasi dicatat.
+- [x] Commit implementasi dicatat.
 - [x] Peak-memory result untuk large stream dicatat.
 - [x] Permission, truncation, fallback, dan cleanup test artifacts dicatat.
 
@@ -257,7 +257,11 @@ Bukti lokal M3 pada Linux x86_64 (branch `feat/m3-streaming-raw`):
   replay berurutan, selector, dan byte tail.
 - `sh scripts/m2-evidence.sh target/m2-evidence/report.txt` tetap menghasilkan
   perbandingan stdout dan stderr byte-identical.
-- Commit implementasi dan CI run PR dicatat setelah PR gate lulus.
+- Commit implementasi `1c793b79fa9d5a6dcc15ca3d5f56b7570ba1f558`
+  diuji pada [PR #2](https://github.com/Skirja/ttc-ai/pull/2). Ketiga job
+  pada [CI run 35974053659](https://github.com/Skirja/ttc-ai/actions/runs/35974053659)
+  lulus untuk commit tersebut. Artifact `m3-streaming-evidence` menyimpan
+  laporan peak RSS; artifact `m2-byte-comparison` menyimpan regresi passthrough.
 
 ---
 
