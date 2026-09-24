@@ -5,7 +5,7 @@ mod core;
 
 use common::{TestDir, ttc_command};
 use core::config::Config;
-use core::raw_store::{Capture, StorePaths, Stream};
+use core::raw_store::{self, Capture, Selection, StorePaths, Stream};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 
@@ -66,4 +66,36 @@ fn no_compaction_creates_no_capture_file() {
     assert!(capture.finish().unwrap().is_none());
     assert!(!roots.0[0].exists());
     assert!(!roots.0[1].exists());
+}
+
+#[test]
+fn capture_started_after_memory_wrap_replays_latest_original_bytes() {
+    let dir = TestDir::new();
+    let roots = StorePaths([
+        dir.path().join("state/ttc/runs"),
+        dir.path().join("temp/ttc/runs"),
+    ]);
+    let config = Config {
+        max_raw_mb: 1,
+        retention_hours: 24,
+    };
+    let mut original = vec![b'a'; 2 * 1024 * 1024];
+    let end = original.len();
+    original[end - 4..].copy_from_slice(b"tail");
+    let mut capture = Capture::new(config, roots.clone());
+    capture.record(Stream::Stdout, &original).unwrap();
+    let id = capture.enable(config).unwrap().to_owned();
+    capture.finish().unwrap();
+    let mut replay = Vec::new();
+    let dropped = raw_store::replay_at_to(
+        &roots,
+        &id,
+        Selection::Stdout,
+        None,
+        &mut replay,
+        &mut Vec::new(),
+    )
+    .unwrap();
+    assert_eq!(replay, original[original.len() - replay.len()..]);
+    assert_eq!(dropped as usize + replay.len(), original.len());
 }

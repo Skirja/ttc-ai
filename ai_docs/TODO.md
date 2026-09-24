@@ -238,7 +238,7 @@ cargo test --test config
 
 ### Evidence
 
-- [x] Commit implementasi dicatat.
+- [ ] Commit implementasi final dan CI PR dicatat.
 - [x] Peak-memory result untuk large stream dicatat.
 - [x] Permission, truncation, fallback, dan cleanup test artifacts dicatat.
 
@@ -247,9 +247,10 @@ Bukti lokal M3 pada Linux x86_64 (branch `feat/m3-streaming-raw`):
 - Lima command verification M3, `cargo fmt --all -- --check`,
   `cargo clippy --all-targets --all-features -- -D warnings`,
   `cargo test --all-targets --all-features`, dan `cargo build --release` lulus.
-- `sh scripts/m3-evidence.sh target/m3-evidence/report.txt` mencatat peak RSS
-  2.956 KiB untuk output 64 MiB dan 2.888 KiB untuk output 256 MiB;
-  selisih -68 KiB. Tidak ada capture file pada invocation tanpa kompaksi.
+- `sh scripts/m3-evidence.sh target/m3-evidence/report.txt` setelah perbaikan
+  review mencatat peak RSS 2.900 KiB untuk output 64 MiB dan 2.960 KiB untuk
+  output 256 MiB; selisih 60 KiB. Tidak ada capture file pada invocation
+  tanpa kompaksi.
 - `tests/raw_store.rs` membuktikan file capture maksimum 32 MiB, suffix byte
   asli, dropped-byte count, mode file `0600`, dan direktori `0700`.
   `tests/storage_failure.rs` membuktikan fallback, lookup ID, cleanup, dan
@@ -257,11 +258,16 @@ Bukti lokal M3 pada Linux x86_64 (branch `feat/m3-streaming-raw`):
   replay berurutan, selector, dan byte tail.
 - `sh scripts/m2-evidence.sh target/m2-evidence/report.txt` tetap menghasilkan
   perbandingan stdout dan stderr byte-identical.
+- Perbaikan review menambah tes `failed_append_keeps_last_committed_capture`,
+  `rename_failure_keeps_partial_file_replayable`, lookup fallback pada XDG
+  `EACCES`, dan root fallback `/tmp` yang stabil. Lima verification command M3,
+  baseline repository gate, serta skrip bukti M2/M3 lulus lagi secara lokal.
 - Commit implementasi `1c793b79fa9d5a6dcc15ca3d5f56b7570ba1f558`
   diuji pada [PR #2](https://github.com/Skirja/ttc-ai/pull/2). Ketiga job
   pada [CI run 35974053659](https://github.com/Skirja/ttc-ai/actions/runs/35974053659)
   lulus untuk commit tersebut. Artifact `m3-streaming-evidence` menyimpan
   laporan peak RSS; artifact `m2-byte-comparison` menyimpan regresi passthrough.
+  Commit dan run CI untuk perbaikan review akan dicatat setelah gate PR lulus.
 
 ---
 

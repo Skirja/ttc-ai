@@ -3,9 +3,9 @@ mod common;
 #[path = "../src/core/mod.rs"]
 mod core;
 
-use common::{TestDir, ttc_command};
+use common::TestDir;
 use core::config::Config;
-use core::raw_store::{self, StorePaths, Stream};
+use core::raw_store::{self, Selection, StorePaths, Stream};
 use core::streaming::{self, CompactKind, Filter};
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
@@ -39,8 +39,9 @@ fn roots(dir: &TestDir) -> StorePaths {
 #[test]
 fn denied_xdg_uses_user_only_fallback() {
     let dir = TestDir::new();
-    fs::create_dir_all(dir.path().join("state")).unwrap();
-    fs::write(dir.path().join("state/ttc"), b"blocked").unwrap();
+    let state = dir.path().join("state");
+    fs::create_dir_all(&state).unwrap();
+    fs::set_permissions(&state, fs::Permissions::from_mode(0o000)).unwrap();
     let (sender, receiver) = mpsc::sync_channel(8);
     sender.send((Stream::Stdout, b"PASS\n".to_vec())).unwrap();
     drop(sender);
@@ -70,15 +71,102 @@ fn denied_xdg_uses_user_only_fallback() {
             & 0o777,
         0o600
     );
-    let replay = ttc_command()
-        .args(["raw", &id, "--stdout"])
-        .env("HOME", dir.path())
-        .env("XDG_STATE_HOME", dir.path().join("state"))
-        .env("TMPDIR", dir.path().join("temp"))
-        .output()
+    let (mut replay_out, mut replay_err) = (Vec::new(), Vec::new());
+    let dropped = raw_store::replay_at_to(
+        &roots(&dir),
+        &id,
+        Selection::Stdout,
+        None,
+        &mut replay_out,
+        &mut replay_err,
+    )
+    .unwrap();
+    fs::set_permissions(&state, fs::Permissions::from_mode(0o700)).unwrap();
+    assert_eq!(dropped, 0);
+    assert_eq!(replay_out, b"PASS\n");
+    assert!(replay_err.is_empty());
+}
+
+#[test]
+fn fallback_root_uses_stable_system_temp_directory() {
+    let expected = format!("/tmp/ttc-{}/runs", nix::unistd::getuid().as_raw());
+    assert_eq!(
+        StorePaths::from_env().unwrap().0[1].to_string_lossy(),
+        expected
+    );
+}
+
+#[test]
+fn failed_append_keeps_last_committed_capture() {
+    let dir = TestDir::new();
+    let config = Config {
+        max_raw_mb: 1,
+        retention_hours: 24,
+    };
+    let paths = roots(&dir);
+    let mut capture = raw_store::Capture::new(config, paths.clone());
+    capture.record(Stream::Stdout, b"first\n").unwrap();
+    let id = capture.enable(config).unwrap().to_owned();
+    capture
+        .record(Stream::Stdout, &vec![b'a'; 2 * 1024 * 1024])
         .unwrap();
-    assert!(replay.status.success(), "{replay:?}");
-    assert_eq!(replay.stdout, b"PASS\n");
+    let mut before = Vec::new();
+    raw_store::replay_at_to(
+        &paths,
+        &id,
+        Selection::Stdout,
+        None,
+        &mut before,
+        &mut Vec::new(),
+    )
+    .unwrap();
+    capture.inject_append_failure();
+    assert!(
+        capture
+            .record(Stream::Stdout, &vec![b'z'; 32 * 1024])
+            .is_err()
+    );
+    assert_eq!(capture.finish().unwrap(), Some(id.as_str()));
+    let mut after = Vec::new();
+    raw_store::replay_at_to(
+        &paths,
+        &id,
+        Selection::Stdout,
+        None,
+        &mut after,
+        &mut Vec::new(),
+    )
+    .unwrap();
+    assert_eq!(after, before);
+}
+
+#[test]
+fn rename_failure_keeps_partial_file_replayable() {
+    let dir = TestDir::new();
+    let config = Config {
+        max_raw_mb: 1,
+        retention_hours: 24,
+    };
+    let paths = roots(&dir);
+    let mut capture = raw_store::Capture::new(config, paths.clone());
+    capture
+        .record(Stream::Stderr, b"prior diagnostic\n")
+        .unwrap();
+    let id = capture.enable(config).unwrap().to_owned();
+    capture.inject_rename_failure();
+    assert_eq!(capture.finish().unwrap(), Some(id.as_str()));
+    assert!(paths.0[0].join(format!("{id}.part")).exists());
+    let mut out = Vec::new();
+    raw_store::replay_at_to(
+        &paths,
+        &id,
+        Selection::Stderr,
+        None,
+        &mut out,
+        &mut Vec::new(),
+    )
+    .unwrap();
+    assert_eq!(out, b"prior diagnostic\n");
 }
 
 #[test]

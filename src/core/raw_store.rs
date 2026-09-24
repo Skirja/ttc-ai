@@ -8,10 +8,87 @@ use std::time::{Duration, SystemTime};
 
 use super::config::Config;
 
-const HEADER: usize = 64;
+const HEADER_SLOT: usize = 96;
+const HEADER: usize = HEADER_SLOT * 2;
 const RECORD_HEADER: usize = 5;
 const CHUNK: usize = 32 * 1024;
-const MAGIC: &[u8; 8] = b"TTCRAW1\0";
+const JOURNAL: usize = CHUNK + RECORD_HEADER;
+const MAGIC: &[u8; 8] = b"TTCRAW2\0";
+
+#[derive(Clone, Copy)]
+struct RingState {
+    start: usize,
+    end: usize,
+    used: usize,
+    dropped: u64,
+}
+
+#[derive(Clone, Copy)]
+struct DiskHeader {
+    generation: u64,
+    capacity: usize,
+    state: RingState,
+    journal_at: usize,
+    journal_len: usize,
+    active: bool,
+}
+
+impl DiskHeader {
+    fn encode(self) -> [u8; HEADER_SLOT] {
+        let mut bytes = [0; HEADER_SLOT];
+        bytes[..8].copy_from_slice(MAGIC);
+        for (index, value) in [
+            self.generation,
+            self.capacity as u64,
+            self.state.start as u64,
+            self.state.end as u64,
+            self.state.used as u64,
+            self.state.dropped,
+            self.journal_at as u64,
+            self.journal_len as u64,
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            bytes[8 + index * 8..16 + index * 8].copy_from_slice(&value.to_le_bytes());
+        }
+        bytes[72] = u8::from(self.active);
+        let digest = checksum(&bytes[..80]);
+        bytes[80..88].copy_from_slice(&digest.to_le_bytes());
+        bytes
+    }
+
+    fn decode(bytes: &[u8; HEADER_SLOT]) -> Option<Self> {
+        if &bytes[..8] != MAGIC
+            || u64::from_le_bytes(bytes[80..88].try_into().ok()?) != checksum(&bytes[..80])
+            || bytes[72] > 1
+        {
+            return None;
+        }
+        let number = |index: usize| {
+            u64::from_le_bytes(bytes[8 + index * 8..16 + index * 8].try_into().unwrap())
+        };
+        Some(Self {
+            generation: number(0),
+            capacity: usize::try_from(number(1)).ok()?,
+            state: RingState {
+                start: usize::try_from(number(2)).ok()?,
+                end: usize::try_from(number(3)).ok()?,
+                used: usize::try_from(number(4)).ok()?,
+                dropped: number(5),
+            },
+            journal_at: usize::try_from(number(6)).ok()?,
+            journal_len: usize::try_from(number(7)).ok()?,
+            active: bytes[72] == 1,
+        })
+    }
+}
+
+fn checksum(bytes: &[u8]) -> u64 {
+    bytes.iter().fold(0xcbf29ce484222325u64, |hash, byte| {
+        (hash ^ u64::from(*byte)).wrapping_mul(0x100000001b3)
+    })
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Stream {
@@ -44,15 +121,20 @@ pub(crate) struct Capture {
     end: usize,
     used: usize,
     dropped: u64,
+    generation: u64,
     backend: Backend,
     pending_path: Option<PathBuf>,
     final_path: Option<PathBuf>,
     id: Option<String>,
+    #[cfg(test)]
+    fail_append_after_data: bool,
+    #[cfg(test)]
+    fail_finish_rename: bool,
 }
 
 impl Capture {
     pub(crate) fn new(config: Config, roots: StorePaths) -> Self {
-        let capacity = config.max_bytes() - HEADER;
+        let capacity = config.max_bytes() - HEADER - JOURNAL;
         Self {
             roots,
             capacity,
@@ -60,10 +142,15 @@ impl Capture {
             end: 0,
             used: 0,
             dropped: 0,
+            generation: 0,
             backend: Backend::Memory(vec![0; capacity]),
             pending_path: None,
             final_path: None,
             id: None,
+            #[cfg(test)]
+            fail_append_after_data: false,
+            #[cfg(test)]
+            fail_finish_rename: false,
         }
     }
 
@@ -72,6 +159,7 @@ impl Capture {
             if chunk.is_empty() {
                 continue;
             }
+            let previous = self.state();
             let needed = RECORD_HEADER + chunk.len();
             while self.used + needed > self.capacity {
                 let mut header = [0; RECORD_HEADER];
@@ -88,18 +176,78 @@ impl Capture {
                 self.used -= RECORD_HEADER + length;
                 self.dropped += length as u64;
             }
-            let mut header = [0; RECORD_HEADER];
-            header[0] = stream as u8;
-            header[1..5].copy_from_slice(&(chunk.len() as u32).to_le_bytes());
-            self.write_at(self.end, &header)?;
-            self.end = (self.end + RECORD_HEADER) % self.capacity;
-            self.write_at(self.end, chunk)?;
-            self.end = (self.end + chunk.len()) % self.capacity;
-            self.used += needed;
+            let mut encoded = Vec::with_capacity(needed);
+            encoded.push(stream as u8);
+            encoded.extend_from_slice(&(chunk.len() as u32).to_le_bytes());
+            encoded.extend_from_slice(chunk);
             if matches!(self.backend, Backend::File(_)) {
-                self.write_header()?;
+                if let Err(error) = self.append_file(&encoded, previous) {
+                    self.restore(previous);
+                    return Err(error);
+                }
+            } else {
+                self.write_at(self.end, &encoded)?;
+                self.end = (self.end + needed) % self.capacity;
+                self.used += needed;
             }
         }
+        Ok(())
+    }
+
+    fn state(&self) -> RingState {
+        RingState {
+            start: self.start,
+            end: self.end,
+            used: self.used,
+            dropped: self.dropped,
+        }
+    }
+
+    fn restore(&mut self, state: RingState) {
+        self.start = state.start;
+        self.end = state.end;
+        self.used = state.used;
+        self.dropped = state.dropped;
+    }
+
+    fn append_file(&mut self, encoded: &[u8], previous: RingState) -> io::Result<()> {
+        let mut backup = vec![0; encoded.len()];
+        self.read_at(previous.end, &mut backup)?;
+        let Backend::File(file) = &mut self.backend else {
+            unreachable!()
+        };
+        // Write the undo bytes before publishing an intent header. Replay uses
+        // that header and the undo bytes if the ring write or commit fails.
+        file.seek(SeekFrom::Start((HEADER + self.capacity) as u64))?;
+        file.write_all(&backup)?;
+        file.flush()?;
+
+        let intent = DiskHeader {
+            generation: self.generation + 1,
+            capacity: self.capacity,
+            state: previous,
+            journal_at: previous.end,
+            journal_len: encoded.len(),
+            active: true,
+        };
+        self.write_disk_header(1, intent)?;
+        self.write_at(previous.end, encoded)?;
+        #[cfg(test)]
+        if self.fail_append_after_data {
+            return Err(io::Error::other("injected capture append error"));
+        }
+        self.end = (previous.end + encoded.len()) % self.capacity;
+        self.used += encoded.len();
+        let committed = DiskHeader {
+            generation: self.generation + 2,
+            capacity: self.capacity,
+            state: self.state(),
+            journal_at: 0,
+            journal_len: 0,
+            active: false,
+        };
+        self.write_disk_header(0, committed)?;
+        self.generation += 2;
         Ok(())
     }
 
@@ -147,7 +295,15 @@ impl Capture {
                     file.write_all(&data[..self.used - first])?;
                 }
             }
-            let header = self.header_bytes();
+            let header = DiskHeader {
+                generation: 0,
+                capacity: self.capacity,
+                state: self.state(),
+                journal_at: 0,
+                journal_len: 0,
+                active: false,
+            }
+            .encode();
             file.seek(SeekFrom::Start(0))?;
             file.write_all(&header)?;
             file.flush()
@@ -168,33 +324,62 @@ impl Capture {
             return Ok(None);
         };
         let pending = pending.clone();
-        self.write_header()?;
-        if let Backend::File(file) = &mut self.backend {
-            file.flush()?;
+        let flush_result = match &mut self.backend {
+            Backend::File(file) => file.flush(),
+            Backend::Memory(_) => unreachable!(),
+        };
+        if let Err(error) = flush_result {
+            if self.pending_is_replayable(&pending) {
+                return Ok(self.id.as_deref());
+            }
+            return Err(error);
         }
-        fs::rename(&pending, self.final_path.as_ref().unwrap())?;
-        self.pending_path = None;
+        #[cfg(test)]
+        let rename_result = if self.fail_finish_rename {
+            Err(io::Error::other("injected capture rename error"))
+        } else {
+            fs::rename(&pending, self.final_path.as_ref().unwrap())
+        };
+        #[cfg(not(test))]
+        let rename_result = fs::rename(&pending, self.final_path.as_ref().unwrap());
+        match rename_result {
+            Ok(()) => self.pending_path = None,
+            Err(error) if !self.pending_is_replayable(&pending) => return Err(error),
+            Err(_) => {}
+        }
         Ok(self.id.as_deref())
     }
 
-    fn header_bytes(&self) -> [u8; HEADER] {
-        let mut header = [0; HEADER];
-        header[..8].copy_from_slice(MAGIC);
-        for (index, value) in [self.capacity, self.start, self.end, self.used]
-            .into_iter()
-            .enumerate()
-        {
-            header[8 + index * 8..16 + index * 8].copy_from_slice(&(value as u64).to_le_bytes());
-        }
-        header[40..48].copy_from_slice(&self.dropped.to_le_bytes());
-        header
+    fn pending_is_replayable(&self, pending: &Path) -> bool {
+        File::open(pending).is_ok_and(|file| {
+            replay_file(
+                file,
+                pending,
+                Selection::Stdout,
+                Some(0),
+                &mut io::sink(),
+                &mut io::sink(),
+            )
+            .is_ok()
+        })
     }
 
-    fn write_header(&mut self) -> io::Result<()> {
-        let header = self.header_bytes();
+    #[cfg(test)]
+    #[allow(dead_code)]
+    pub(crate) fn inject_append_failure(&mut self) {
+        self.fail_append_after_data = true;
+    }
+
+    #[cfg(test)]
+    #[allow(dead_code)]
+    pub(crate) fn inject_rename_failure(&mut self) {
+        self.fail_finish_rename = true;
+    }
+
+    fn write_disk_header(&mut self, slot: usize, header: DiskHeader) -> io::Result<()> {
         if let Backend::File(file) = &mut self.backend {
-            file.seek(SeekFrom::Start(0))?;
-            file.write_all(&header)?;
+            file.seek(SeekFrom::Start((slot * HEADER_SLOT) as u64))?;
+            file.write_all(&header.encode())?;
             file.flush()?;
         }
         Ok(())
@@ -240,14 +425,6 @@ impl Capture {
     }
 }
 
-impl Drop for Capture {
-    fn drop(&mut self) {
-        if let Some(path) = &self.pending_path {
-            let _ = fs::remove_file(path);
-        }
-    }
-}
-
 #[derive(Clone)]
 pub(crate) struct StorePaths(pub [PathBuf; 2]);
 
@@ -261,9 +438,15 @@ impl StorePaths {
             .filter(|path| path.is_absolute())
             .unwrap_or_else(|| home.join(".local/state"));
         let uid = nix::unistd::getuid().as_raw();
+        // Test harnesses point this at a task-scoped directory. Normal runs
+        // use /tmp regardless of an invocation's TMPDIR value.
+        let temporary = std::env::var_os("TTC_INTERNAL_TEST_TMP_ROOT")
+            .map(PathBuf::from)
+            .filter(|path| path.is_absolute())
+            .unwrap_or_else(|| PathBuf::from("/tmp"));
         Ok(Self([
             state.join("ttc/runs"),
-            std::env::temp_dir().join(format!("ttc-{uid}/runs")),
+            temporary.join(format!("ttc-{uid}/runs")),
         ]))
     }
 }
@@ -355,14 +538,23 @@ pub(crate) enum Selection {
 }
 
 pub(crate) fn replay(id: &str, selection: Selection, tail: Option<u64>) -> io::Result<u64> {
-    replay_at(&StorePaths::from_env()?, id, selection, tail)
+    replay_at_to(
+        &StorePaths::from_env()?,
+        id,
+        selection,
+        tail,
+        &mut io::stdout(),
+        &mut io::stderr(),
+    )
 }
 
-pub(crate) fn replay_at(
+pub(crate) fn replay_at_to(
     paths: &StorePaths,
     id: &str,
     selection: Selection,
     tail: Option<u64>,
+    stdout: &mut impl Write,
+    stderr: &mut impl Write,
 ) -> io::Result<u64> {
     if !valid_id(id) {
         return Err(io::Error::new(
@@ -370,17 +562,23 @@ pub(crate) fn replay_at(
             "invalid raw ID",
         ));
     }
+    let mut denied = None;
     for root in &paths.0 {
-        let path = root.join(format!("{id}.raw"));
-        match File::open(&path) {
-            Ok(file) => return replay_file(file, &path, selection, tail),
-            Err(error)
-                if error.kind() == io::ErrorKind::NotFound
-                    || error.raw_os_error() == Some(nix::libc::ENOTDIR) => {}
-            Err(error) => return Err(error),
+        for extension in ["raw", "part"] {
+            let path = root.join(format!("{id}.{extension}"));
+            match File::open(&path) {
+                Ok(file) => return replay_file(file, &path, selection, tail, stdout, stderr),
+                Err(error)
+                    if error.kind() == io::ErrorKind::NotFound
+                        || error.raw_os_error() == Some(nix::libc::ENOTDIR) => {}
+                Err(error) if error.kind() == io::ErrorKind::PermissionDenied => {
+                    denied = Some(error)
+                }
+                Err(error) => return Err(error),
+            }
         }
     }
-    Err(io::Error::new(io::ErrorKind::NotFound, "raw ID not found"))
+    Err(denied.unwrap_or_else(|| io::Error::new(io::ErrorKind::NotFound, "raw ID not found")))
 }
 
 fn replay_file(
@@ -388,6 +586,8 @@ fn replay_file(
     path: &Path,
     selection: Selection,
     tail: Option<u64>,
+    stdout: &mut impl Write,
+    stderr: &mut impl Write,
 ) -> io::Result<u64> {
     let metadata = fs::symlink_metadata(path)?;
     if !metadata.is_file()
@@ -399,66 +599,93 @@ fn replay_file(
             "unsafe raw file",
         ));
     }
-    let mut header = [0u8; HEADER];
-    file.read_exact(&mut header)?;
-    if &header[..8] != MAGIC {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "invalid raw header",
-        ));
+    let mut slots = [[0u8; HEADER_SLOT]; 2];
+    for slot in &mut slots {
+        file.read_exact(slot)?;
     }
-    let number = |range: std::ops::Range<usize>| -> usize {
-        u64::from_le_bytes(header[range].try_into().unwrap()) as usize
-    };
-    let capacity = number(8..16);
-    let start = number(16..24);
-    let end = number(24..32);
-    let used = number(32..40);
-    let dropped = u64::from_le_bytes(header[40..48].try_into().unwrap());
+    let header = slots
+        .iter()
+        .filter_map(DiskHeader::decode)
+        .max_by_key(|header| header.generation)
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidData, "invalid raw header"))?;
+    let capacity = header.capacity;
+    let state = header.state;
     if capacity == 0
-        || capacity > 32 * 1024 * 1024 - HEADER
-        || start >= capacity
-        || end >= capacity
-        || used > capacity
-        || metadata.len() != (HEADER + capacity) as u64
-        || (start + used) % capacity != end
+        || capacity > 32 * 1024 * 1024 - HEADER - JOURNAL
+        || state.start >= capacity
+        || state.end >= capacity
+        || state.used > capacity
+        || metadata.len() != (HEADER + capacity + JOURNAL) as u64
+        || (state.start + state.used) % capacity != state.end
+        || (header.active
+            && (header.journal_at >= capacity
+                || header.journal_len == 0
+                || header.journal_len > JOURNAL))
     {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
             "invalid raw bounds",
         ));
     }
+    let journal = if header.active {
+        let mut bytes = vec![0; header.journal_len];
+        file.seek(SeekFrom::Start((HEADER + capacity) as u64))?;
+        file.read_exact(&mut bytes)?;
+        Some(JournalView {
+            at: header.journal_at,
+            bytes,
+        })
+    } else {
+        None
+    };
     let mut total = 0u64;
-    walk(&mut file, capacity, start, used, |stream, bytes| {
-        if selected(selection, stream) {
-            total += bytes.len() as u64;
-        }
-        Ok(())
-    })?;
+    walk(
+        &mut file,
+        capacity,
+        state.start,
+        state.used,
+        journal.as_ref(),
+        |stream, bytes| {
+            if selected(selection, stream) {
+                total += bytes.len() as u64;
+            }
+            Ok(())
+        },
+    )?;
     let mut skip = total.saturating_sub(tail.unwrap_or(total));
-    walk(&mut file, capacity, start, used, |stream, bytes| {
-        if !selected(selection, stream) {
-            return Ok(());
-        }
-        let offset = usize::try_from(skip.min(bytes.len() as u64)).unwrap();
-        skip -= offset as u64;
-        if offset < bytes.len() {
-            match selection {
-                Selection::Both if stream == Stream::Stderr => {
-                    let mut stderr = io::stderr();
-                    stderr.write_all(&bytes[offset..])?;
-                    stderr.flush()?;
-                }
-                _ => {
-                    let mut stdout = io::stdout();
-                    stdout.write_all(&bytes[offset..])?;
-                    stdout.flush()?;
+    walk(
+        &mut file,
+        capacity,
+        state.start,
+        state.used,
+        journal.as_ref(),
+        |stream, bytes| {
+            if !selected(selection, stream) {
+                return Ok(());
+            }
+            let offset = usize::try_from(skip.min(bytes.len() as u64)).unwrap();
+            skip -= offset as u64;
+            if offset < bytes.len() {
+                match selection {
+                    Selection::Both if stream == Stream::Stderr => {
+                        stderr.write_all(&bytes[offset..])?;
+                        stderr.flush()?;
+                    }
+                    _ => {
+                        stdout.write_all(&bytes[offset..])?;
+                        stdout.flush()?;
+                    }
                 }
             }
-        }
-        Ok(())
-    })?;
-    Ok(dropped)
+            Ok(())
+        },
+    )?;
+    Ok(state.dropped)
+}
+
+struct JournalView {
+    at: usize,
+    bytes: Vec<u8>,
 }
 
 fn selected(selection: Selection, stream: Stream) -> bool {
@@ -474,6 +701,7 @@ fn walk(
     capacity: usize,
     start: usize,
     used: usize,
+    journal: Option<&JournalView>,
     mut visit: impl FnMut(Stream, &[u8]) -> io::Result<()>,
 ) -> io::Result<()> {
     let mut position = start;
@@ -487,7 +715,7 @@ fn walk(
             ));
         }
         let mut header = [0u8; RECORD_HEADER];
-        read_ring(file, capacity, position, &mut header)?;
+        read_ring_view(file, capacity, position, &mut header, journal)?;
         let stream = Stream::from_byte(header[0])?;
         let length = u32::from_le_bytes(header[1..5].try_into().unwrap()) as usize;
         if length == 0 || length > CHUNK || RECORD_HEADER + length > remaining {
@@ -497,10 +725,33 @@ fn walk(
             ));
         }
         position = (position + RECORD_HEADER) % capacity;
-        read_ring(file, capacity, position, &mut bytes[..length])?;
+        read_ring_view(file, capacity, position, &mut bytes[..length], journal)?;
         visit(stream, &bytes[..length])?;
         position = (position + length) % capacity;
         remaining -= RECORD_HEADER + length;
+    }
+    Ok(())
+}
+
+fn read_ring_view(
+    file: &mut File,
+    capacity: usize,
+    at: usize,
+    bytes: &mut [u8],
+    journal: Option<&JournalView>,
+) -> io::Result<()> {
+    read_ring(file, capacity, at, bytes)?;
+    if let Some(journal) = journal {
+        let mut distance = (at + capacity - journal.at) % capacity;
+        for byte in bytes {
+            if distance < journal.bytes.len() {
+                *byte = journal.bytes[distance];
+            }
+            distance += 1;
+            if distance == capacity {
+                distance = 0;
+            }
+        }
     }
     Ok(())
 }

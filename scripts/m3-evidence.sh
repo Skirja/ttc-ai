@@ -14,7 +14,7 @@ mkdir -p "$scratch/home" "$scratch/state" "$scratch/tmp"
 
 measure() {
   size=$1
-  HOME="$scratch/home" XDG_STATE_HOME="$scratch/state" TMPDIR="$scratch/tmp" \
+  HOME="$scratch/home" XDG_STATE_HOME="$scratch/state" TMPDIR="$scratch/tmp" TTC_INTERNAL_TEST_TMP_ROOT="$scratch/tmp" \
     /usr/bin/time -f '%M' -o "$scratch/rss-$size" \
     "$binary" /bin/dd if=/dev/zero bs=1M count="$size" status=none \
     > /dev/null 2> "$scratch/stderr-$size"
