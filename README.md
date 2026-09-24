@@ -9,9 +9,9 @@ crate Rust. Kontrak produk, safety property, dan urutan implementasi berada di
 
 ## Status
 
-Fondasi executable M1 menyediakan binary `ttc` versi `0.1.0`, batas modul inti,
-dan baseline CI. Eksekusi command dan filtering belum tersedia sampai milestone
-berikutnya selesai.
+Fondasi executable M1 menyediakan binary `ttc` versi `0.1.0` dan baseline CI.
+M2 menambahkan eksekusi direct argv dan shell string dengan output passthrough,
+exit code, dan sinyal yang dipertahankan. Filtering belum tersedia.
 
 ## Pengembangan
 

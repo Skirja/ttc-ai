@@ -4,6 +4,8 @@ const EXPECTED_HELP: &str = "\
 TTC Automatic Bash Output Filter
 
 Usage: ttc [OPTIONS]
+       ttc <program> [args...]
+       ttc '<complete shell command>'
 
 Options:
   -h, --help     Print help
@@ -44,13 +46,9 @@ fn help_only_lists_the_implemented_public_interface() {
 }
 
 #[test]
-fn unsupported_arguments_fail_without_advertising_future_commands() {
-    let output = run(&["cargo", "test"]);
-
-    assert_eq!(output.status.code(), Some(2));
-    assert!(output.stdout.is_empty());
-    assert_eq!(
-        output.stderr,
-        b"error: unsupported arguments\n\nFor more information, try '--help'.\n"
-    );
+fn help_does_not_advertise_future_commands() {
+    assert!(!EXPECTED_HELP.contains("raw"));
+    assert!(!EXPECTED_HELP.contains("install"));
+    assert!(!EXPECTED_HELP.contains("uninstall"));
+    assert!(!EXPECTED_HELP.contains("hook"));
 }

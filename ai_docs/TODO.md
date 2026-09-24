@@ -110,30 +110,30 @@ tepat satu kali sebelum filtering apa pun diperkenalkan.
 
 ### Implementation checklist
 
-- [ ] Implementasikan direct argv: dua atau lebih argument setelah `ttc`
+- [x] Implementasikan direct argv: dua atau lebih argument setelah `ttc`
   diteruskan sebagai program dan argv tanpa shell tambahan.
-- [ ] Implementasikan single-string invocation: tepat satu argument command
+- [x] Implementasikan single-string invocation: tepat satu argument command
   dijalankan satu kali melalui shell POSIX native.
-- [ ] Wariskan cwd, environment, dan stdin tanpa modifikasi.
-- [ ] Baca stdout dan stderr secara concurrent dan pertahankan urutan internal
+- [x] Wariskan cwd, environment, dan stdin tanpa modifikasi.
+- [x] Baca stdout dan stderr secara concurrent dan pertahankan urutan internal
   masing-masing stream.
-- [ ] Teruskan exit code child tanpa normalisasi.
-- [ ] Propagasikan SIGINT dan SIGTERM; bila child mati karena signal, TTC harus
+- [x] Teruskan exit code child tanpa normalisasi.
+- [x] Propagasikan SIGINT dan SIGTERM; bila child mati karena signal, TTC harus
   memiliki hasil signal yang setara.
-- [ ] Buat helper test yang mencatat invocation count tanpa bergantung pada tool
+- [x] Buat helper test yang mencatat invocation count tanpa bergantung pada tool
   ecosystem.
-- [ ] Preclassify command raw/watch/interactive yang diketahui agar stdio dan
+- [x] Preclassify command raw/watch/interactive yang diketahui agar stdio dan
   TTY behavior tidak diubah.
-- [ ] Pastikan error internal setelah spawn tidak pernah menyebabkan rerun.
+- [x] Pastikan error internal setelah spawn tidak pernah menyebabkan rerun.
 
 ### Acceptance criteria
 
-- [ ] Success, exit 7, SIGINT, dan SIGTERM sama dengan baseline langsung.
-- [ ] Command direct argv dan shell string masing-masing berjalan tepat sekali.
-- [ ] Quote, newline, Unicode, environment assignment, pipe, redirect, `&&`,
+- [x] Success, exit 7, SIGINT, dan SIGTERM sama dengan baseline langsung.
+- [x] Command direct argv dan shell string masing-masing berjalan tepat sekali.
+- [x] Quote, newline, Unicode, environment assignment, pipe, redirect, `&&`,
   dan command substitution tiba utuh di shell.
-- [ ] Unknown stdout dan stderr byte-exact per stream.
-- [ ] Raw watch/dev command tetap streaming dan menerima stdin/signal/TTY.
+- [x] Unknown stdout dan stderr byte-exact per stream.
+- [x] Raw watch/dev command tetap streaming dan menerima stdin/signal/TTY.
 
 ### Verification commands
 
@@ -148,7 +148,18 @@ cargo test --test shell_contract
 
 - [ ] Commit implementasi dicatat.
 - [ ] Baseline-versus-TTC byte comparison disimpan sebagai test artifact.
-- [ ] Invocation-count dan signal test lulus pada Linux.
+- [x] Invocation-count dan signal test lulus pada Linux.
+
+Bukti lokal M2 pada Linux x86_64:
+
+- Empat command verification M2, `cargo fmt --all -- --check`,
+  `cargo clippy --all-targets --all-features -- -D warnings`,
+  `cargo test --all-targets --all-features`, dan `cargo build --release` lulus.
+- `sh scripts/m2-evidence.sh target/m2-evidence/report.txt` membandingkan output
+  baseline dan TTC: stdout 120.000 byte serta stderr 140.000 byte identik.
+- `tests/execution.rs` dan `tests/shell_contract.rs` membuktikan invocation
+  count satu kali, termasuk saat output forwarding gagal. `tests/signals.rs`
+  membuktikan SIGINT dan SIGTERM pada Linux.
 
 ---
 
