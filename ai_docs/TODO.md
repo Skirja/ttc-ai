@@ -171,6 +171,11 @@ Bukti lokal M2 pada Linux x86_64:
   `bash -c`, dan pembungkus `env` pada stdio non-TTY. Kedua job pada
   [CI run 35968948114](https://github.com/Skirja/ttc-ai/actions/runs/35968948114)
   lulus dan artifact perbandingan byte tetap diunggah.
+- [CI run 35969037570](https://github.com/Skirja/ttc-ai/actions/runs/35969037570)
+  pada commit dokumentasi `0c64d90441bc93b7774719cdadad64588fdc1d3a`
+  juga lulus kedua job dan menyediakan artifact yang sama. M2 selesai pada
+  [PR #1](https://github.com/Skirja/ttc-ai/pull/1); merge ke `master`
+  menunggu review pengguna.
 
 ---
 
