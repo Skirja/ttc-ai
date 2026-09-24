@@ -8,8 +8,9 @@ license = "MIT"
 repository = "https://github.com/skirja/ttc-ai"
 
 [dependencies]
-nix = { version = "=0.31.3", default-features = false, features = ["signal"] }
+nix = { version = "=0.31.3", default-features = false, features = ["signal", "user"] }
 signal-hook = "=0.4.4"
+toml = "=0.9.7"
 
 [dev-dependencies]
 nix = { version = "=0.31.3", default-features = false, features = ["signal", "term"] }

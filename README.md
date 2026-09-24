@@ -11,7 +11,9 @@ crate Rust. Kontrak produk, safety property, dan urutan implementasi berada di
 
 Fondasi executable M1 menyediakan binary `ttc` versi `0.1.0` dan baseline CI.
 M2 menambahkan eksekusi direct argv dan shell string dengan output passthrough,
-exit code, dan sinyal yang dipertahankan. Filtering belum tersedia.
+exit code, dan sinyal yang dipertahankan. M3 menambahkan streaming bounded,
+config opsional, serta `ttc raw ID` untuk capture yang nanti dibuat saat ada
+kompaksi. Filtering output belum tersedia hingga M4.
 
 ## Pengembangan
 

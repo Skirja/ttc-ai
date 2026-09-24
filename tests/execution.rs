@@ -4,7 +4,7 @@ use std::fs;
 use std::io::Write;
 use std::process::{Command, Output, Stdio};
 
-use common::{TestDir, ttc};
+use common::{TestDir, ttc_command};
 
 fn with_input(mut command: Command, input: &[u8]) -> Output {
     let mut child = command
@@ -37,7 +37,7 @@ fn direct_argv_runs_once_and_inherits_context() {
         .env("M2_VALUE", "nilai-unicode-λ");
     let baseline = with_input(baseline, b"stdin\0bytes\n");
 
-    let mut wrapped = Command::new(ttc());
+    let mut wrapped = ttc_command();
     wrapped
         .args(["/bin/sh", "-c", script])
         .current_dir(dir.path())
@@ -60,7 +60,7 @@ fn direct_argv_preserves_exit_codes() {
             .args(["-c", &script])
             .output()
             .unwrap();
-        let wrapped = Command::new(ttc())
+        let wrapped = ttc_command()
             .args(["/bin/sh", "-c", &script])
             .output()
             .unwrap();
@@ -74,7 +74,7 @@ fn direct_argv_preserves_exit_codes() {
 fn forwarding_failure_never_reruns_the_command() {
     let dir = TestDir::new();
     let count_file = dir.path().join("invocations");
-    let mut child = Command::new(ttc())
+    let mut child = ttc_command()
         .args([
             "/bin/sh",
             "-c",

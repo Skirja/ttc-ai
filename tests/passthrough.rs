@@ -2,7 +2,7 @@ mod common;
 
 use std::process::Command;
 
-use common::ttc;
+use common::ttc_command;
 
 #[test]
 fn unknown_binary_output_is_byte_exact_per_stream() {
@@ -11,7 +11,7 @@ fn unknown_binary_output_is_byte_exact_per_stream() {
         .args(["-c", script])
         .output()
         .unwrap();
-    let wrapped = Command::new(ttc())
+    let wrapped = ttc_command()
         .args(["/bin/sh", "-c", script])
         .output()
         .unwrap();
@@ -29,7 +29,7 @@ fn known_raw_command_preserves_exact_bytes() {
         .args(["%s\\n", "α\nβ"])
         .output()
         .unwrap();
-    let wrapped = Command::new(ttc())
+    let wrapped = ttc_command()
         .args(["/bin/printf", "%s\\n", "α\nβ"])
         .output()
         .unwrap();

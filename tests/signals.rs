@@ -6,7 +6,7 @@ use std::process::{Child, Command, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use common::{TestDir, ttc};
+use common::{TestDir, ttc_command};
 use nix::sys::signal::{Signal, kill, killpg};
 use nix::unistd::Pid;
 
@@ -18,7 +18,7 @@ fn child_signal_status_matches_direct_baseline() {
             .args(["-c", &script])
             .status()
             .unwrap();
-        let wrapped = Command::new(ttc())
+        let wrapped = ttc_command()
             .args(["/bin/sh", "-c", &script])
             .status()
             .unwrap();
@@ -48,7 +48,7 @@ fn signals_to_wrapper_reach_the_child_process_group() {
         let dir = TestDir::new();
         let pidfile = dir.path().join("child-pid");
         let script = "printf '%s' \"$$\" > \"$PIDFILE\"; exec sleep 30";
-        let mut child = Command::new(ttc())
+        let mut child = ttc_command()
             .args(["/bin/sh", "-c", script])
             .env("PIDFILE", &pidfile)
             .stdin(Stdio::null())

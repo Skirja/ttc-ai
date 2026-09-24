@@ -2,6 +2,7 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(0);
@@ -29,4 +30,18 @@ impl Drop for TestDir {
 
 pub fn ttc() -> &'static str {
     env!("CARGO_BIN_EXE_ttc")
+}
+
+thread_local! {
+    static RUNTIME_DIR: TestDir = TestDir::new();
+}
+
+pub fn ttc_command() -> Command {
+    RUNTIME_DIR.with(|dir| {
+        let mut command = Command::new(ttc());
+        command.env("HOME", dir.path());
+        command.env("XDG_STATE_HOME", dir.path().join("state"));
+        command.env("TMPDIR", dir.path().join("tmp"));
+        command
+    })
 }

@@ -9,7 +9,7 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use common::{TestDir, ttc};
+use common::{TestDir, ttc_command};
 use nix::pty::openpty;
 use nix::sys::signal::{Signal, kill};
 use nix::unistd::Pid;
@@ -34,7 +34,7 @@ printf 'redirected\n' > "$OUT_FILE" && cat "$OUT_FILE""#;
         .env("COUNT_FILE", &baseline_count)
         .output()
         .unwrap();
-    let wrapped = Command::new(ttc())
+    let wrapped = ttc_command()
         .arg(script)
         .env("OUT_FILE", &wrapped_file)
         .env("COUNT_FILE", &wrapped_count)
@@ -55,7 +55,7 @@ printf 'redirected\n' > "$OUT_FILE" && cat "$OUT_FILE""#;
 
 #[test]
 fn raw_command_streams_before_stdin_closes() {
-    let mut child = Command::new(ttc())
+    let mut child = ttc_command()
         .args(["/bin/cat", "-"])
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -86,7 +86,7 @@ fn known_watch_command_execs_in_place() {
     fs::write(&fake_npm, b"#!/bin/sh\nprintf '%s' \"$$\"\n").unwrap();
     fs::set_permissions(&fake_npm, fs::Permissions::from_mode(0o755)).unwrap();
 
-    let mut child = Command::new(ttc())
+    let mut child = ttc_command()
         .arg(&fake_npm)
         .args(["run", "dev"])
         .stdout(Stdio::piped())
@@ -109,7 +109,7 @@ fn terminal_is_inherited_by_the_command() {
     let pty = openpty(None, None).unwrap();
     let mut master = File::from(pty.master);
     let slave = File::from(pty.slave);
-    let mut command = Command::new(ttc());
+    let mut command = ttc_command();
     command
         .args([
             "/bin/sh",
@@ -137,7 +137,7 @@ fn background_shell_job_does_not_delay_wrapper_exit() {
     ] {
         let dir = TestDir::new();
         let pidfile = dir.path().join("background-pid");
-        let mut child = Command::new(ttc())
+        let mut child = ttc_command()
             .args(arguments)
             .env("BG_PID", &pidfile)
             .stdin(Stdio::null())
