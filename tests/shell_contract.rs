@@ -3,6 +3,7 @@ mod common;
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::os::unix::fs::PermissionsExt;
+use std::path::Path;
 use std::process::{Command, Stdio};
 use std::sync::mpsc;
 use std::thread;
@@ -10,6 +11,8 @@ use std::time::{Duration, Instant};
 
 use common::{TestDir, ttc};
 use nix::pty::openpty;
+use nix::sys::signal::{Signal, kill};
+use nix::unistd::Pid;
 
 #[test]
 fn one_argument_preserves_posix_shell_semantics() {
@@ -126,14 +129,44 @@ fn terminal_is_inherited_by_the_command() {
 
 #[test]
 fn background_shell_job_does_not_delay_wrapper_exit() {
-    let start = Instant::now();
-    let status = Command::new(ttc())
-        .arg("sleep 2 &")
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .unwrap();
-    assert!(status.success());
-    assert!(start.elapsed() < Duration::from_secs(1));
+    const SCRIPT: &str = "sleep 30 & printf '%s' \"$!\" > \"$BG_PID\"";
+    for arguments in [
+        &[SCRIPT][..],
+        &["bash", "-c", SCRIPT][..],
+        &["/usr/bin/env", "bash", "-c", SCRIPT][..],
+    ] {
+        let dir = TestDir::new();
+        let pidfile = dir.path().join("background-pid");
+        let mut child = Command::new(ttc())
+            .args(arguments)
+            .env("BG_PID", &pidfile)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(3);
+        let status = loop {
+            if let Some(status) = child.try_wait().unwrap() {
+                break status;
+            }
+            if Instant::now() >= deadline {
+                stop_background_job(&pidfile);
+                let _ = child.kill();
+                let _ = child.wait();
+                panic!("TTC waited for a background job: {arguments:?}");
+            }
+            thread::sleep(Duration::from_millis(10));
+        };
+        stop_background_job(&pidfile);
+        assert!(status.success(), "shell command failed: {arguments:?}");
+    }
+}
+
+fn stop_background_job(pidfile: &Path) {
+    if let Ok(pid) = fs::read_to_string(pidfile)
+        && let Ok(pid) = pid.parse::<i32>()
+    {
+        let _ = kill(Pid::from_raw(pid), Signal::SIGTERM);
+    }
 }

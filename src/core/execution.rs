@@ -2,6 +2,7 @@
 
 use std::ffi::{OsStr, OsString};
 use std::io::{self, IsTerminal, Read, Write};
+use std::os::unix::ffi::OsStrExt;
 use std::os::unix::process::{CommandExt, ExitStatusExt};
 use std::path::Path;
 use std::process::{Command, ExitCode, ExitStatus, Stdio};
@@ -38,20 +39,13 @@ pub(crate) fn run(arguments: &[OsString]) -> ExitCode {
 }
 
 fn may_start_background_shell_job(arguments: &[OsString]) -> bool {
-    // A background job can retain stdout/stderr after its shell exits. If TTC
-    // owned those pipes, it could wait for that job and change shell timing.
-    let shell_body = match arguments {
-        [body] => Some(body),
-        [program, option, body]
-            if matches!(program.to_str(), Some("/bin/sh" | "sh")) && option == "-c" =>
-        {
-            Some(body)
-        }
-        _ => None,
-    };
-    shell_body
-        .and_then(|body| body.to_str())
-        .is_some_and(|body| body.contains('&'))
+    // The shell expression may be nested under bash, env, or another wrapper.
+    // A background job can retain output descriptors after its parent exits,
+    // so conservatively preserve the original descriptors when any argument
+    // contains an ampersand. No filtering is active in M2.
+    arguments
+        .iter()
+        .any(|argument| argument.as_bytes().contains(&b'&'))
 }
 
 fn has_terminal() -> bool {
