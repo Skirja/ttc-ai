@@ -166,6 +166,11 @@ Bukti lokal M2 pada Linux x86_64:
   dan kedua job lulus pada commit tersebut.
 - Artifact CI `m2-byte-comparison` pada run yang sama menyimpan laporan `cmp`
   baseline-versus-TTC untuk stdout dan stderr.
+- Perbaikan background shell pada commit
+  `acfca052d91f51a1133386e36aa00fe4cda8f736` diuji dengan shell string,
+  `bash -c`, dan pembungkus `env` pada stdio non-TTY. Kedua job pada
+  [CI run 35968948114](https://github.com/Skirja/ttc-ai/actions/runs/35968948114)
+  lulus dan artifact perbandingan byte tetap diunggah.
 
 ---
 
