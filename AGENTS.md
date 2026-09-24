@@ -161,9 +161,15 @@ cargo build --release
 - The primary branch is `master`.
 - Preserve user changes and unrelated work. Never discard, restore, or rewrite
   them to make a task easier.
+- For implementation work, create a new `feat/<topic>` branch from `master`.
+  Do not commit implementation directly to `master`.
 - Keep commits scoped to one milestone or coherent vertical slice, and commit
   only after its relevant verification passes.
-- Do not push, create tags, publish releases, or modify remote state unless the
+- Push the feature branch and open a pull request targeting `master` so the PR
+  CI workflow runs. Wait for the required CI jobs, fix failures, and record the
+  exact commit and CI run as evidence. The user merges the PR on GitHub; agents
+  must not merge it.
+- Do not push directly to `master`, create tags, or publish releases unless the
   user explicitly requests that action.
 - Treat `v*` tags as release actions: M9 and M10 gates must be complete before a
   `v0.1.0` tag can be created.

@@ -110,30 +110,30 @@ tepat satu kali sebelum filtering apa pun diperkenalkan.
 
 ### Implementation checklist
 
-- [ ] Implementasikan direct argv: dua atau lebih argument setelah `ttc`
+- [x] Implementasikan direct argv: dua atau lebih argument setelah `ttc`
   diteruskan sebagai program dan argv tanpa shell tambahan.
-- [ ] Implementasikan single-string invocation: tepat satu argument command
+- [x] Implementasikan single-string invocation: tepat satu argument command
   dijalankan satu kali melalui shell POSIX native.
-- [ ] Wariskan cwd, environment, dan stdin tanpa modifikasi.
-- [ ] Baca stdout dan stderr secara concurrent dan pertahankan urutan internal
+- [x] Wariskan cwd, environment, dan stdin tanpa modifikasi.
+- [x] Baca stdout dan stderr secara concurrent dan pertahankan urutan internal
   masing-masing stream.
-- [ ] Teruskan exit code child tanpa normalisasi.
-- [ ] Propagasikan SIGINT dan SIGTERM; bila child mati karena signal, TTC harus
+- [x] Teruskan exit code child tanpa normalisasi.
+- [x] Propagasikan SIGINT dan SIGTERM; bila child mati karena signal, TTC harus
   memiliki hasil signal yang setara.
-- [ ] Buat helper test yang mencatat invocation count tanpa bergantung pada tool
+- [x] Buat helper test yang mencatat invocation count tanpa bergantung pada tool
   ecosystem.
-- [ ] Preclassify command raw/watch/interactive yang diketahui agar stdio dan
+- [x] Preclassify command raw/watch/interactive yang diketahui agar stdio dan
   TTY behavior tidak diubah.
-- [ ] Pastikan error internal setelah spawn tidak pernah menyebabkan rerun.
+- [x] Pastikan error internal setelah spawn tidak pernah menyebabkan rerun.
 
 ### Acceptance criteria
 
-- [ ] Success, exit 7, SIGINT, dan SIGTERM sama dengan baseline langsung.
-- [ ] Command direct argv dan shell string masing-masing berjalan tepat sekali.
-- [ ] Quote, newline, Unicode, environment assignment, pipe, redirect, `&&`,
+- [x] Success, exit 7, SIGINT, dan SIGTERM sama dengan baseline langsung.
+- [x] Command direct argv dan shell string masing-masing berjalan tepat sekali.
+- [x] Quote, newline, Unicode, environment assignment, pipe, redirect, `&&`,
   dan command substitution tiba utuh di shell.
-- [ ] Unknown stdout dan stderr byte-exact per stream.
-- [ ] Raw watch/dev command tetap streaming dan menerima stdin/signal/TTY.
+- [x] Unknown stdout dan stderr byte-exact per stream.
+- [x] Raw watch/dev command tetap streaming dan menerima stdin/signal/TTY.
 
 ### Verification commands
 
@@ -146,9 +146,36 @@ cargo test --test shell_contract
 
 ### Evidence
 
-- [ ] Commit implementasi dicatat.
-- [ ] Baseline-versus-TTC byte comparison disimpan sebagai test artifact.
-- [ ] Invocation-count dan signal test lulus pada Linux.
+- [x] Commit implementasi dicatat.
+- [x] Baseline-versus-TTC byte comparison disimpan sebagai test artifact.
+- [x] Invocation-count dan signal test lulus pada Linux.
+
+Bukti lokal M2 pada Linux x86_64:
+
+- Empat command verification M2, `cargo fmt --all -- --check`,
+  `cargo clippy --all-targets --all-features -- -D warnings`,
+  `cargo test --all-targets --all-features`, dan `cargo build --release` lulus.
+- `sh scripts/m2-evidence.sh target/m2-evidence/report.txt` membandingkan output
+  baseline dan TTC: stdout 120.000 byte serta stderr 140.000 byte identik.
+- `tests/execution.rs` dan `tests/shell_contract.rs` membuktikan invocation
+  count satu kali, termasuk saat output forwarding gagal. `tests/signals.rs`
+  membuktikan SIGINT dan SIGTERM pada Linux.
+- Commit implementasi: `57f99546f6034fc8782ab65b7522c8daa0126f97`.
+  [PR #1](https://github.com/Skirja/ttc-ai/pull/1) menjalankan
+  [CI run 35967544849](https://github.com/Skirja/ttc-ai/actions/runs/35967544849)
+  dan kedua job lulus pada commit tersebut.
+- Artifact CI `m2-byte-comparison` pada run yang sama menyimpan laporan `cmp`
+  baseline-versus-TTC untuk stdout dan stderr.
+- Perbaikan background shell pada commit
+  `acfca052d91f51a1133386e36aa00fe4cda8f736` diuji dengan shell string,
+  `bash -c`, dan pembungkus `env` pada stdio non-TTY. Kedua job pada
+  [CI run 35968948114](https://github.com/Skirja/ttc-ai/actions/runs/35968948114)
+  lulus dan artifact perbandingan byte tetap diunggah.
+- [CI run 35969037570](https://github.com/Skirja/ttc-ai/actions/runs/35969037570)
+  pada commit dokumentasi `0c64d90441bc93b7774719cdadad64588fdc1d3a`
+  juga lulus kedua job dan menyediakan artifact yang sama. M2 selesai pada
+  [PR #1](https://github.com/Skirja/ttc-ai/pull/1); merge ke `master`
+  menunggu review pengguna.
 
 ---
 

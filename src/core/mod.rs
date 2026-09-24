@@ -4,6 +4,6 @@
 //! module. Nothing in this module tree may depend on a harness adapter.
 
 mod classification;
-mod execution;
+pub(crate) mod execution;
 mod filters;
 mod raw_store;

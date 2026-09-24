@@ -42,3 +42,40 @@ jobs:
 
       - name: Build release binary
         run: cargo build --release
+
+  m2-passthrough:
+    name: M2 passthrough safety
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt,clippy
+
+      - name: Verify process execution
+        run: cargo test --test execution
+
+      - name: Verify byte-exact passthrough
+        run: cargo test --test passthrough
+
+      - name: Verify signal propagation
+        run: cargo test --test signals
+
+      - name: Verify POSIX shell and TTY behavior
+        run: cargo test --test shell_contract
+
+      - name: Build release binary for evidence
+        run: cargo build --release
+
+      - name: Record baseline byte comparison
+        run: sh scripts/m2-evidence.sh target/m2-evidence/report.txt
+
+      - name: Upload passing comparison report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: m2-byte-comparison
+          path: target/m2-evidence/report.txt
+          if-no-files-found: error
