@@ -238,7 +238,7 @@ cargo test --test config
 
 ### Evidence
 
-- [ ] Commit implementasi final dan CI PR dicatat.
+- [x] Commit implementasi final dan CI PR dicatat.
 - [x] Peak-memory result untuk large stream dicatat.
 - [x] Permission, truncation, fallback, dan cleanup test artifacts dicatat.
 
@@ -267,7 +267,10 @@ Bukti lokal M3 pada Linux x86_64 (branch `feat/m3-streaming-raw`):
   pada [CI run 35974053659](https://github.com/Skirja/ttc-ai/actions/runs/35974053659)
   lulus untuk commit tersebut. Artifact `m3-streaming-evidence` menyimpan
   laporan peak RSS; artifact `m2-byte-comparison` menyimpan regresi passthrough.
-  Commit dan run CI untuk perbaikan review akan dicatat setelah gate PR lulus.
+- Perbaikan review pada commit `d5c00ca58f4b6e4f3644ffbc782c4372d6fed035`
+  diuji oleh [CI run 35976764504](https://github.com/Skirja/ttc-ai/actions/runs/35976764504)
+  di PR #2. Ketiga job lulus dan artifact `m3-streaming-evidence` serta
+  `m2-byte-comparison` tersedia untuk commit tersebut.
 
 ---
 
