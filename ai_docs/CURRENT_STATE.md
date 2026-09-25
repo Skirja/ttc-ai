@@ -1,47 +1,59 @@
 # Current State
 
-**Diperbarui:** 2026-09-24 14:25 WIB
+**Diperbarui:** 2026-09-24 WIB
 
 ## Sedang dikerjakan
 
-- M2 — Process wrapper dan exact passthrough — completed pada branch
-  `feat/m2-process-wrapper`; PR #1 menunggu merge pengguna.
+- M3 — Streaming safety, configuration, dan raw retrieval — completed pada
+  branch `feat/m3-streaming-raw`; [PR #2](https://github.com/Skirja/ttc-ai/pull/2)
+  terbuka dan menunggu review/merge pengguna.
 
 ## Terakhir selesai
 
-- Direct argv dan single-string POSIX shell execution berjalan tepat sekali
-  dengan passthrough per stream, status/sinyal, stdin, cwd, environment, dan
-  TTY. Regresi background shell telah diperbaiki.
-- Kode tersentuh: `src/cli.rs`, `src/core/execution.rs`, `tests/`,
-  `scripts/m2-evidence.sh`, `.github/workflows/ci.yml`, `AGENTS.md`, dan
+- Bounded streaming, framing 1 MiB, config opsional, raw capture 32 MiB, serta
+  replay `ttc raw` selesai. Tiga temuan review ditangani pada `d5c00ca`.
+- Kode tersentuh: `src/core/streaming.rs`, `src/core/raw_store.rs`,
+  `src/core/config.rs`, `src/core/execution.rs`, `src/cli.rs`, `tests/`,
+  `scripts/`, `.github/workflows/ci.yml`, `ai_docs/SPEC.md`, dan
   `ai_docs/TODO.md`.
+- CI terakhir [run 35976973682](https://github.com/Skirja/ttc-ai/actions/runs/35976973682)
+  lulus untuk HEAD `70d6d21edc5f318470603e10a527ca60524f5fad`.
 
 ## Keputusan yang dikunci
 
-- Satu binary crate, tanpa workspace multi-crate. Versi binary berasal dari
-  `CARGO_PKG_VERSION` dan saat ini `0.1.0`.
-- Production dependency `nix` dan `signal-hook` dipakai untuk propagasi sinyal.
-- Branch implementasi memakai `feat/<topik>`, push dan PR ke `master`; pengguna
-  melakukan merge. Repository `Skirja/ttc-ai` tetap privat saat M2.
-- Command dengan `&` terlihat pada argv memakai jalur `exec` untuk menjaga
-  waktu selesai proses background.
+- TTC tetap satu binary crate versi `0.1.0` dari `CARGO_PKG_VERSION`.
+  `nix`/`signal-hook` menangani sinyal; `toml` memparse config.
+- Branch implementasi memakai `feat/<topik>`, push dan PR ke `master`;
+  pengguna melakukan merge. Repository `Skirja/ttc-ai` privat saat M2 dan
+  visibilitasnya tidak diubah pada sesi ini.
+- Command dengan `&` yang terlihat pada argv tetap memakai jalur `exec` agar
+  waktu selesai proses background terjaga.
+- Config hanya boleh memperkecil batas 32 MiB/24 jam; config invalid berjalan
+  raw. `--tail N` menghitung byte dan selector raw menulis ke stdout.
+- Fallback capture stabil di `/tmp/ttc-<uid>/runs`; capture terakhir yang valid
+  dapat direplay dari jurnal/file `.part` setelah penulisan atau finalisasi
+  gagal selama file masih dapat dibaca.
 
 ## Temuan / blocker terbuka
 
-- Tidak ada blocker teknis yang diketahui. Review awal NEEDS CHANGES sudah
-  ditindaklanjuti pada `acfca05`, tetapi kode setelah fix belum direview ulang.
-- PR #1 masih menunggu review dan merge pengguna.
+- Tidak ada blocker teknis yang diketahui. Review awal PR #2 berstatus
+  NEEDS CHANGES; tiga temuannya telah diperbaiki dan CI lulus, tetapi kode
+  setelah fix belum direview ulang secara formal.
+- PR #2 menunggu review/merge pengguna. PR #1 sudah di-merge ke `master`.
 
 ## Batasan yang diketahui
 
-- `target/release/ttc` adalah artifact lokal dan tidak di-commit.
-- Filtering belum tersedia pada M2; analisis shell arbitrer di luar SPEC dan
-  routing background mengenali `&` yang terlihat pada argv.
+- Filtering produksi belum tersedia sampai M4; M3 tetap raw dan memakai
+  filter sintetis hanya di tes.
+- `target/release/ttc` adalah artifact lokal dan tidak di-commit. Analisis
+  shell arbitrer tetap di luar SPEC; routing background mengenali `&` yang
+  terlihat pada argv.
+- Catatan sesi ini dan `CURRENT_STATE.md` belum di-commit.
 
 ## Next action
 
-- Pengguna meninjau dan menggabungkan [PR #1](https://github.com/Skirja/ttc-ai/pull/1).
+- Commit dan push kedua catatan state lokal ini ke branch `feat/m3-streaming-raw`.
 
 ## Arsip terakhir
 
-- `ai_docs/steps_done/02-m2-process-wrapper.md`
+- `ai_docs/steps_done/03-m3-streaming-raw-retrieval.md`
