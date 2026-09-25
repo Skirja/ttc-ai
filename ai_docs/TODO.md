@@ -376,6 +376,15 @@ Bukti lokal M4 pada Linux x86_64 (`feat/m4-js-filter`):
   passing stdout bergantung jadwal reader. Perbaikan `e7f6758` memisahkan
   state confidence dan diagnostic per stream; tes interleaving serta run CI
   berikutnya lulus.
+- Tiga temuan review PR #3 ditangani pada commit
+  `a0c5b0561912ab7c69274df2e3e5ad8349d4acca`: selector workspace tetap
+  raw sampai resolusi M6, flag machine-readable dalam script manifest memaksa
+  raw, dan lokasi file tanpa ekstensi tetap retained. Tes classifier, safety,
+  dan E2E baru mereproduksi pemicunya. Kelima command M4, gate repository,
+  build release, reduction, dan smoke lulus lagi secara lokal. Keempat job
+  [CI run 36113907536](https://github.com/Skirja/ttc-ai/actions/runs/36113907536)
+  lulus untuk commit tersebut; artifact `m4-javascript-evidence` diunduh dan
+  isinya diperiksa. Review ulang formal setelah fix belum dijalankan.
 
 ---
 
