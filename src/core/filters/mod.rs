@@ -6,18 +6,18 @@ use super::streaming::{CompactKind, Filter};
 
 pub(crate) struct JsFilter {
     plan: Plan,
-    confidence: [u8; 6],
+    confidence: [[u8; 6]; 2],
     structured: bool,
-    diagnostic_block: bool,
+    diagnostic_block: [bool; 2],
 }
 
 impl JsFilter {
     pub(crate) fn new(plan: Plan) -> Self {
         Self {
             plan,
-            confidence: [0; 6],
+            confidence: [[0; 6]; 2],
             structured: false,
-            diagnostic_block: false,
+            diagnostic_block: [false; 2],
         }
     }
 }
@@ -27,45 +27,47 @@ impl Filter for JsFilter {
         !self.plan.raw && !self.plan.families.is_empty()
     }
 
-    fn decide(&mut self, _stream: Stream, line: &[u8]) -> Result<Option<CompactKind>, ()> {
+    fn decide(&mut self, stream: Stream, line: &[u8]) -> Result<Option<CompactKind>, ()> {
         if self.structured {
             return Ok(None);
         }
+        let stream_index = if stream == Stream::Stdout { 0 } else { 1 };
         let clean = strip_ansi(line).ok_or(())?;
         let clean = clean.trim_end_matches(['\r', '\n']);
         let trim = clean.trim();
         if structured_line(trim) {
             self.structured = true;
-            self.confidence.fill(0);
+            self.confidence[stream_index].fill(0);
             return Ok(None);
         }
         if trim.is_empty() {
-            self.diagnostic_block = false;
-            self.confidence.fill(0);
+            self.diagnostic_block[stream_index] = false;
+            self.confidence[stream_index].fill(0);
             return Ok(None);
         }
         if protected(trim) {
-            self.diagnostic_block = true;
-            self.confidence.fill(0);
+            self.diagnostic_block[stream_index] = true;
+            self.confidence[stream_index].fill(0);
             return Ok(None);
         }
-        if self.diagnostic_block {
-            self.confidence.fill(0);
+        if self.diagnostic_block[stream_index] {
+            self.confidence[stream_index].fill(0);
             return Ok(None);
         }
         for family in &self.plan.families {
             if let Some(kind) = recognize(*family, trim) {
                 let index = family_index(*family);
-                for (other, value) in self.confidence.iter_mut().enumerate() {
+                for (other, value) in self.confidence[stream_index].iter_mut().enumerate() {
                     if other != index {
                         *value = 0;
                     }
                 }
-                self.confidence[index] = self.confidence[index].saturating_add(1);
-                return Ok((self.confidence[index] > 3).then_some(kind));
+                self.confidence[stream_index][index] =
+                    self.confidence[stream_index][index].saturating_add(1);
+                return Ok((self.confidence[stream_index][index] > 3).then_some(kind));
             }
         }
-        self.confidence.fill(0);
+        self.confidence[stream_index].fill(0);
         Ok(None)
     }
 }
@@ -125,8 +127,19 @@ fn structured_line(text: &str) -> bool {
         || text.starts_with("[{")
         || text.starts_with("[\"")
         || text.split_once(": ").is_some_and(|(key, _)| {
-            !matches!(key, "Progress" | "Tests" | "Time")
-                && !key.is_empty()
+            !matches!(
+                key.to_ascii_lowercase().as_str(),
+                "progress"
+                    | "tests"
+                    | "time"
+                    | "warning"
+                    | "warn"
+                    | "error"
+                    | "failure"
+                    | "fatal"
+                    | "security"
+                    | "deprecated"
+            ) && !key.is_empty()
                 && key.len() <= 64
                 && key
                     .bytes()

@@ -63,6 +63,29 @@ fn unrelated_record_resets_output_signature_confidence() {
 }
 
 #[test]
+fn stderr_warning_does_not_block_stdout_passing_records() {
+    let mut filter = make_filter(Family::Test);
+    assert!(
+        filter
+            .decide(Stream::Stderr, b"warning: keep this\n")
+            .unwrap()
+            .is_none()
+    );
+    for _ in 0..3 {
+        assert!(
+            filter
+                .decide(Stream::Stdout, b"PASS tests/a.test.js\n")
+                .unwrap()
+                .is_none()
+        );
+    }
+    assert!(matches!(
+        filter.decide(Stream::Stdout, b"PASS tests/b.test.js\n"),
+        Ok(Some(CompactKind::Passing))
+    ));
+}
+
+#[test]
 fn warnings_failures_diffs_locations_and_summaries_are_retained() {
     for line in [
         "✓ warning about test\n",
