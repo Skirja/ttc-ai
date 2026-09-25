@@ -328,9 +328,9 @@ cargo test --test reduction
 
 ### Evidence
 
-- [ ] Commit implementasi dicatat.
+- [x] Commit implementasi dicatat.
 - [x] Tabel fixture/tool version dan hasil smoke test dicatat.
-- [ ] Laporan byte reduction per large fixture disimpan.
+- [x] Laporan byte reduction per large fixture disimpan.
 
 Bukti lokal M4 pada Linux x86_64 (`feat/m4-js-filter`):
 
@@ -363,6 +363,17 @@ Bukti lokal M4 pada Linux x86_64 (`feat/m4-js-filter`):
 - Full workspace traversal, alias lintas proyek, fallback signature untuk
   runner tersembunyi, dan mixed-language tetap mengikuti M6. Output tool yang
   tidak cocok recognizer spesifik tetap raw.
+- Implementasi `35d90f9bb40c6ab146cd0fa5fa2044b5fe6e810c` dan perbaikan state per-stream `e7f67586abc1d4b7c4de03c9cf2ed046bacc4a17`
+  diuji pada [PR #3](https://github.com/Skirja/ttc-ai/pull/3). Keempat job
+  [CI run 36094451943](https://github.com/Skirja/ttc-ai/actions/runs/36094451943)
+  lulus untuk commit `e7f67586abc1d4b7c4de03c9cf2ed046bacc4a17`.
+  Artifact `m4-javascript-evidence` memuat `reduction.txt` dan `report.txt`;
+  keduanya diunduh dan diperiksa. Di CI, Vitest verbose success berkurang dari
+  11.336 byte baseline menjadi 1.113 byte termasuk metadata TTC.
+- Run PR awal `36094153776` mengungkap state diagnostic stderr yang menahan
+  passing stdout bergantung jadwal reader. Perbaikan `e7f6758` memisahkan
+  state confidence dan diagnostic per stream; tes interleaving serta run CI
+  berikutnya lulus.
 
 ---
 
