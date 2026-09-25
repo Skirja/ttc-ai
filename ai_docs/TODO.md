@@ -283,38 +283,38 @@ safe-retain policy, capture, summary, dan output reduction end-to-end.
 
 ### Implementation checklist
 
-- [ ] Definisikan filter interface yang menerima original command, manifest
+- [x] Definisikan filter interface yang menerima original command, manifest
   hints, stream, dan record tanpa memiliki process execution.
-- [ ] Default seluruh record adalah retain; hanya recognizer ber-confidence
+- [x] Default seluruh record adalah retain; hanya recognizer ber-confidence
   cukup yang boleh compact.
-- [ ] Retain warning, error, failure, panic, fatal, assertion/diff, deprecation,
+- [x] Retain warning, error, failure, panic, fatal, assertion/diff, deprecation,
   vulnerability/security, stack trace, path+line/column, dan final summary.
-- [ ] Kenali ANSI untuk klasifikasi tetapi emit byte asli bagi record retained.
-- [ ] Implementasikan command classifier dan delayed output-signature confidence;
+- [x] Kenali ANSI untuk klasifikasi tetapi emit byte asli bagi record retained.
+- [x] Implementasikan command classifier dan delayed output-signature confidence;
   record sebelum confidence tetap raw.
-- [ ] Implementasikan machine-readable flags dan always-raw command policy dari
+- [x] Implementasikan machine-readable flags dan always-raw command policy dari
   SPEC.
-- [ ] Implementasikan npm, pnpm, yarn, bun, npx/pnpx/bunx, serta nested tool
+- [x] Implementasikan npm, pnpm, yarn, bun, npx/pnpx/bunx, serta nested tool
   dispatch yang tidak menjalankan command tambahan.
-- [ ] Implementasikan seluruh JS/TS test runner pada SPEC.
-- [ ] Implementasikan JS/TS lint, typecheck, build, dan format-check families.
-- [ ] Filter progress/passing/duplicate diagnostic yang terbukti aman; failed
+- [x] Implementasikan seluruh JS/TS test runner pada SPEC.
+- [x] Implementasikan JS/TS lint, typecheck, build, dan format-check families.
+- [x] Filter progress/passing/duplicate diagnostic yang terbukti aman; failed
   tests, diffs, stack traces, warnings, dan summaries tetap lengkap.
-- [ ] Tambahkan success, failure, warning, unknown-format, dan 1.000+ record
+- [x] Tambahkan success, failure, warning, unknown-format, dan 1.000+ record
   fixture untuk setiap output family.
-- [ ] Pin versi tool nyata yang dipakai smoke tests.
+- [x] Pin versi tool nyata yang dipakai smoke tests.
 
 ### Acceptance criteria
 
-- [ ] Setiap retained diagnostic byte-identical dengan fixture input.
-- [ ] Unknown format dan JSON/JSONL/XML/YAML/SARIF/TAP tetap raw kecuali parser
+- [x] Setiap retained diagnostic byte-identical dengan fixture input.
+- [x] Unknown format dan JSON/JSONL/XML/YAML/SARIF/TAP tetap raw kecuali parser
   lossless khusus tersedia.
-- [ ] Setiap large fixture mengurangi output minimum 80% secara byte.
-- [ ] Summary menghitung passing/progress records dengan benar dan hanya muncul
+- [x] Setiap large fixture mengurangi output minimum 80% secara byte.
+- [x] Summary menghitung passing/progress records dengan benar dan hanya muncul
   bila ada kompaksi.
-- [ ] Raw ID mengembalikan original output hingga batas capture; truncation di
+- [x] Raw ID mengembalikan original output hingga batas capture; truncation di
   atas batas selalu dinyatakan lewat metadata.
-- [ ] Minimal satu E2E nyata per JS/TS family lulus dengan exit status baseline.
+- [x] Minimal satu E2E nyata per JS/TS family lulus dengan exit status baseline.
 
 ### Verification commands
 
@@ -329,8 +329,40 @@ cargo test --test reduction
 ### Evidence
 
 - [ ] Commit implementasi dicatat.
-- [ ] Tabel fixture/tool version dan hasil smoke test dicatat.
+- [x] Tabel fixture/tool version dan hasil smoke test dicatat.
 - [ ] Laporan byte reduction per large fixture disimpan.
+
+Bukti lokal M4 pada Linux x86_64 (`feat/m4-js-filter`):
+
+- Lima verification command M4, `cargo fmt --all -- --check`,
+  `cargo clippy --all-targets --all-features -- -D warnings`,
+  `cargo test --all-targets --all-features`, dan `cargo build --release` lulus.
+- `tests/javascript_fixtures.rs` menguji success, failure, warning, unknown,
+  serta 1.001 record pada family test, lint, typecheck, build, format, dan
+  install. Byte retained diperiksa terhadap input asli. Duplikat diagnostic
+  yang mengandung warning/error/lokasi tetap dipertahankan sesuai SPEC.
+- `sh scripts/m4-reduction.sh target/m4-evidence/reduction.txt` mengukur byte
+  yang benar-benar diteruskan, termasuk summary dan raw hint:
+
+| Family | Input byte | Model-facing byte | Record dikompaksi |
+|---|---:|---:|---:|
+| Test | 27.027 | 185 | 998 |
+| Lint | 31.031 | 197 | 998 |
+| Typecheck | 28.028 | 188 | 998 |
+| Build | 18.018 | 158 | 998 |
+| Format | 33.033 | 203 | 998 |
+| Install | 45.045 | 239 | 998 |
+
+- `sh scripts/m4-smoke.sh target/release/ttc target/m4-evidence/report.txt`
+  lulus dengan Node 24.21.0, npm 11.19.0, pnpm 9.15.9, Yarn 1.22.22,
+  Bun 1.4.2, Vitest 5.0.1, Jest 30.5.2, ESLint 10.11.0, TypeScript 7.0.2,
+  Vite 8.3.1, dan Prettier 3.9.9. Seluruh exit status TTC sama dengan baseline;
+  case Vitest gagal tetap exit 1 dan diagnostic assertion terlihat.
+  Vitest verbose success: 6.916 byte baseline menjadi 559 byte termasuk
+  metadata TTC (reduksi 91,9%).
+- Full workspace traversal, alias lintas proyek, fallback signature untuk
+  runner tersembunyi, dan mixed-language tetap mengikuti M6. Output tool yang
+  tidak cocok recognizer spesifik tetap raw.
 
 ---
 

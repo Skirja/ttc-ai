@@ -12,7 +12,6 @@ const MAX_PENDING: usize = 1024 * 1024;
 pub(crate) type Event = (Stream, Vec<u8>);
 
 #[derive(Clone, Copy)]
-#[allow(dead_code)] // M4 will construct these through production recognizers.
 pub(crate) enum CompactKind {
     Passing,
     Progress,
@@ -23,8 +22,11 @@ pub(crate) trait Filter {
     fn decide(&mut self, stream: Stream, line: &[u8]) -> Result<Option<CompactKind>, ()>;
 }
 
+#[cfg(test)]
+#[allow(dead_code)] // The integration tests exercise the raw filter boundary.
 pub(crate) struct Retain;
 
+#[cfg(test)]
 impl Filter for Retain {
     fn can_compact(&self) -> bool {
         false
