@@ -178,19 +178,12 @@ fn protected(text: &str) -> bool {
     {
         return true;
     }
-    // Preserve file:line[:column] diagnostics even when the message has no keyword.
+    // Conservatively retain any location-like :line[:column], including
+    // extensionless file names such as Makefile:42.
     let bytes = text.as_bytes();
     for (index, byte) in bytes.iter().enumerate() {
         if *byte == b':' && index > 0 && bytes.get(index + 1).is_some_and(u8::is_ascii_digit) {
-            let preceding = &bytes[..index];
-            if preceding
-                .iter()
-                .rev()
-                .take(256)
-                .any(|x| matches!(x, b'/' | b'\\' | b'.'))
-            {
-                return true;
-            }
+            return true;
         }
     }
     false

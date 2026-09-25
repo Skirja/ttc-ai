@@ -362,7 +362,9 @@ Bukti lokal M4 pada Linux x86_64 (`feat/m4-js-filter`):
   metadata TTC (reduksi 91,9%).
 - Full workspace traversal, alias lintas proyek, fallback signature untuk
   runner tersembunyi, dan mixed-language tetap mengikuti M6. Output tool yang
-  tidak cocok recognizer spesifik tetap raw.
+  tidak cocok recognizer spesifik tetap raw. Selama M4, selector workspace
+  npm/pnpm/yarn yang belum di-resolve ke manifest package terpilih juga raw;
+  manifest root tidak dipakai sebagai hint untuk package lain.
 - Implementasi `35d90f9bb40c6ab146cd0fa5fa2044b5fe6e810c` dan perbaikan state per-stream `e7f67586abc1d4b7c4de03c9cf2ed046bacc4a17`
   diuji pada [PR #3](https://github.com/Skirja/ttc-ai/pull/3). Keempat job
   [CI run 36094451943](https://github.com/Skirja/ttc-ai/actions/runs/36094451943)

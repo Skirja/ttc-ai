@@ -77,25 +77,30 @@ fn package_managers_and_workspace_modifiers_supply_safe_candidates() {
         (&["pnpm", "typecheck"], Family::Typecheck),
         (&["yarn", "build"], Family::Build),
         (&["bun", "run", "test"], Family::Test),
-        (&["npm", "--workspace", "api", "test"], Family::Test),
-        (&["pnpm", "-r", "test"], Family::Test),
-        (&["pnpm", "--filter", "api", "test"], Family::Test),
-        (&["yarn", "workspace", "api", "test"], Family::Test),
-        (
-            &["yarn", "workspaces", "foreach", "run", "test"],
-            Family::Test,
-        ),
     ];
     for (args, family) in cases {
         let plan = classify(&words(args), dir.path(), None);
         assert_eq!(plan.families, vec![*family], "{args:?}");
+    }
+    for args in [
+        vec!["npm", "--workspace", "api", "test"],
+        vec!["npm", "--workspace=api", "test"],
+        vec!["npm", "-wapi", "test"],
+        vec!["npm", "run", "test", "--workspaces"],
+        vec!["pnpm", "-r", "test"],
+        vec!["pnpm", "--filter", "api", "test"],
+        vec!["pnpm", "--filter=api", "test"],
+        vec!["yarn", "workspace", "api", "test"],
+        vec!["yarn", "workspaces", "foreach", "run", "test"],
+    ] {
+        assert!(classify(&words(&args), dir.path(), None).raw, "{args:?}");
     }
 }
 
 #[test]
 fn scripts_are_read_statically_and_compound_check_combines_families() {
     let dir = TestDir::new();
-    fs::write(dir.path().join("package.json"), r#"{"scripts":{"check":"npx tsc --noEmit && npm run lint","lint":"eslint .","cycle":"npm run cycle"}}"#).unwrap();
+    fs::write(dir.path().join("package.json"), r#"{"scripts":{"check":"npx tsc --noEmit && npm run lint","lint":"eslint .","cycle":"npm run cycle","structured":"vitest run --reporter=verbose && vitest run --reporter=json","nested":"npm run structured"}}"#).unwrap();
     let hints = ManifestHints::load(dir.path()).unwrap();
     let plan = classify(&words(&["npm run check"]), dir.path(), Some(&hints));
     assert_eq!(plan.families, vec![Family::Typecheck, Family::Lint]);
@@ -104,6 +109,15 @@ fn scripts_are_read_statically_and_compound_check_combines_families() {
             .families
             .is_empty()
     );
+    assert!(
+        classify(
+            &words(&["npm", "run", "structured"]),
+            dir.path(),
+            Some(&hints)
+        )
+        .raw
+    );
+    assert!(classify(&words(&["npm", "run", "nested"]), dir.path(), Some(&hints)).raw);
 }
 
 #[test]

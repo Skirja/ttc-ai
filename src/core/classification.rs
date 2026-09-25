@@ -81,15 +81,7 @@ pub(crate) fn classify(arguments: &[OsString], cwd: &Path, hints: Option<&Manife
         words
     };
     let mut plan = Plan::default();
-    if words.iter().any(|word| machine_flag(word))
-        || words.windows(2).any(|pair| {
-            matches!(pair[0].as_str(), "--reporter" | "--format")
-                && matches!(
-                    pair[1].as_str(),
-                    "json" | "jsonl" | "xml" | "yaml" | "sarif" | "tap"
-                )
-        })
-    {
+    if machine_output(&words) {
         plan.raw = true;
         return plan;
     }
@@ -116,6 +108,17 @@ pub(crate) fn classify(arguments: &[OsString], cwd: &Path, hints: Option<&Manife
     plan
 }
 
+fn machine_output(words: &[String]) -> bool {
+    words.iter().any(|word| machine_flag(word))
+        || words.windows(2).any(|pair| {
+            matches!(pair[0].as_str(), "--reporter" | "--format")
+                && matches!(
+                    pair[1].as_str(),
+                    "json" | "jsonl" | "xml" | "yaml" | "sarif" | "tap"
+                )
+        })
+}
+
 fn machine_flag(word: &str) -> bool {
     matches!(
         word,
@@ -134,6 +137,16 @@ fn machine_flag(word: &str) -> bool {
     ]
     .iter()
     .any(|prefix| word.starts_with(prefix))
+}
+
+fn workspace_selector(word: &str) -> bool {
+    matches!(
+        word,
+        "--workspace" | "--workspaces" | "-w" | "--filter" | "-r" | "--recursive" | "foreach"
+    ) || word.starts_with("--workspace=")
+        || word.starts_with("--filter=")
+        || word.starts_with("--recursive=")
+        || (word.starts_with("-w") && word.len() > 2 && !word.starts_with("--"))
 }
 
 fn classify_segment(
@@ -206,18 +219,7 @@ fn classify_segment(
             plan.raw = true;
             return;
         }
-        let mut workspace = args.iter().any(|x| {
-            matches!(
-                x.as_str(),
-                "--workspace"
-                    | "--workspaces"
-                    | "-w"
-                    | "--filter"
-                    | "-r"
-                    | "--recursive"
-                    | "foreach"
-            )
-        });
+        let mut workspace = args.iter().any(|x| workspace_selector(x));
         let mut rest = args;
         while !rest.is_empty() {
             if matches!(
@@ -246,6 +248,12 @@ fn classify_segment(
             while rest.first().is_some_and(|x| x.starts_with('-')) {
                 rest = &rest[1..];
             }
+        }
+        if workspace {
+            // M6 resolves the scripts of selected and recursive workspaces.
+            // The root manifest cannot establish which tool will actually run.
+            plan.raw = true;
+            return;
         }
         if rest
             .first()
@@ -284,39 +292,37 @@ fn classify_segment(
             }
             seen.push(script.to_owned());
             if let Some(body_words) = split_shell(body) {
-                let mut part = Vec::new();
-                for word in body_words
-                    .into_iter()
-                    .chain(std::iter::once("&&".to_owned()))
-                {
-                    if matches!(word.as_str(), "&&" | ";") {
-                        classify_segment(
-                            &part,
-                            directory,
-                            root,
-                            selected_hints,
-                            plan,
-                            depth + 1,
-                            seen,
-                        );
-                        part.clear();
-                    } else if matches!(word.as_str(), "|" | "||" | ">" | "<" | "&") {
-                        plan.raw = true;
-                        break;
-                    } else {
-                        part.push(word);
+                if machine_output(&body_words) {
+                    plan.raw = true;
+                } else {
+                    let mut part = Vec::new();
+                    for word in body_words
+                        .into_iter()
+                        .chain(std::iter::once("&&".to_owned()))
+                    {
+                        if matches!(word.as_str(), "&&" | ";") {
+                            classify_segment(
+                                &part,
+                                directory,
+                                root,
+                                selected_hints,
+                                plan,
+                                depth + 1,
+                                seen,
+                            );
+                            part.clear();
+                        } else if matches!(word.as_str(), "|" | "||" | ">" | "<" | "&") {
+                            plan.raw = true;
+                            break;
+                        } else {
+                            part.push(word);
+                        }
                     }
                 }
             } else {
                 plan.raw = true;
             }
             seen.pop();
-        } else if workspace {
-            // M6 resolves workspace manifests. A known script name supplies a
-            // candidate here, still subject to exact output signatures.
-            if let Some(family) = script_family(script) {
-                plan.add(family);
-            }
         }
         return;
     }
@@ -332,17 +338,6 @@ fn is_assignment(word: &str) -> bool {
         .next()
         .is_some_and(|byte| byte.is_ascii_alphabetic() || byte == b'_')
         && bytes.all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
-}
-
-fn script_family(script: &str) -> Option<Family> {
-    match script {
-        "test" => Some(Family::Test),
-        "lint" => Some(Family::Lint),
-        "typecheck" | "type-check" => Some(Family::Typecheck),
-        "build" => Some(Family::Build),
-        "format" | "format:check" | "format-check" => Some(Family::Format),
-        _ => None,
-    }
 }
 
 fn classify_tool(name: &str, args: &[String], plan: &mut Plan) {

@@ -99,6 +99,8 @@ fn warnings_failures_diffs_locations_and_summaries_are_retained() {
         "✓ vulnerability security\n",
         "✓ snapshot diff\n",
         "✓ tests/a.test.ts:4:2\n",
+        "✓ Makefile:42\n",
+        "✓ README:3:1\n",
         "Tests: 5 passed\n",
         "✓ 5 tests passed\n",
         "    at function (file.js:2:4)\n",
