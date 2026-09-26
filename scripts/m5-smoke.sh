@@ -9,8 +9,10 @@ mkdir -p "$(dirname "$report")"
 scratch=$(mktemp -d)
 trap 'rm -rf "$scratch"' EXIT HUP INT TERM
 mkdir -p "$scratch/home" "$scratch/state" "$scratch/tmp" "$scratch/config" "$scratch/data" "$scratch/cache"
+rustup_home=${RUSTUP_HOME:-"$HOME/.rustup"}
 export HOME="$scratch/home" XDG_STATE_HOME="$scratch/state" XDG_CONFIG_HOME="$scratch/config"
 export XDG_DATA_HOME="$scratch/data" TMPDIR="$scratch/tmp" TTC_INTERNAL_TEST_TMP_ROOT="$scratch/tmp"
+export RUSTUP_HOME="$rustup_home" RUSTUP_TOOLCHAIN=1.98.1
 export CARGO_HOME="$scratch/home/.cargo" CARGO_TARGET_DIR="$scratch/cargo-target"
 export PIP_CACHE_DIR="$scratch/cache/pip" GOCACHE="$scratch/cache/go-build" GOMODCACHE="$scratch/cache/go-mod"
 
