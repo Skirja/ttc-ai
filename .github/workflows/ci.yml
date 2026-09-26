@@ -178,6 +178,7 @@ jobs:
 
       - name: Verify ecosystem fixtures and reduction
         run: |
+          set -o pipefail
           mkdir -p target/m5-evidence
           : > target/m5-evidence/fixtures.txt
           cargo test --test classifier 2>&1 | tee -a target/m5-evidence/fixtures.txt

@@ -506,12 +506,25 @@ fn classify_python_module(module: &str) -> Option<Family> {
 
 fn classify_coverage(args: &[String]) -> Option<Family> {
     match args.first()?.as_str() {
-        "run" => args
-            .iter()
-            .position(|arg| arg == "-m")
-            .and_then(|index| args.get(index + 1))
-            .and_then(|module| classify_python_module(module))
-            .or(Some(Family::PyCoverage)),
+        "run" => {
+            let mut options = &args[1..];
+            while let Some(option) = options.first() {
+                match option.as_str() {
+                    "-m" => {
+                        return options
+                            .get(1)
+                            .and_then(|module| classify_python_module(module));
+                    }
+                    "-a" | "-p" | "--append" | "--branch" | "--parallel-mode" => {
+                        options = &options[1..];
+                    }
+                    // The first script and all its arguments belong to the
+                    // application. Unknown options also stay raw.
+                    _ => return None,
+                }
+            }
+            None
+        }
         "report" => Some(Family::PyCoverage),
         _ => None,
     }
@@ -521,8 +534,40 @@ fn classify_uv(args: &[String]) -> Option<Family> {
     match args.first()?.as_str() {
         "run" => {
             let mut command = &args[1..];
-            while command.first().is_some_and(|arg| arg.starts_with('-')) {
-                command = &command[1..];
+            while let Some(option) = command.first() {
+                match option.as_str() {
+                    "--" => {
+                        command = &command[1..];
+                        break;
+                    }
+                    "--with" | "--with-editable" | "--project" | "--directory" | "--python"
+                    | "--env-file" => {
+                        if command.get(1).is_none_or(|value| value.starts_with('-')) {
+                            return None;
+                        }
+                        command = &command[2..];
+                    }
+                    "--no-project" | "--no-sync" | "--locked" | "--frozen" | "--offline"
+                    | "--isolated" => command = &command[1..],
+                    option
+                        if [
+                            "--with=",
+                            "--with-editable=",
+                            "--project=",
+                            "--directory=",
+                            "--python=",
+                            "--env-file=",
+                        ]
+                        .iter()
+                        .any(|prefix| {
+                            option.starts_with(prefix) && option.len() > prefix.len()
+                        }) =>
+                    {
+                        command = &command[1..];
+                    }
+                    option if option.starts_with('-') => return None,
+                    _ => break,
+                }
             }
             classify_python_command(command)
         }

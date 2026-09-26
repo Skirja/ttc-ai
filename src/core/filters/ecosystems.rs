@@ -67,10 +67,11 @@ impl Filter for EcosystemFilter {
         let text = text.trim_end_matches(['\r', '\n']);
         let record = text.trim();
         if record.is_empty() {
+            // Failure reports can separate diagnostics from captured output
+            // with blank lines, so only reset confidence here.
             for (index, is_active) in active.iter().copied().enumerate() {
                 if is_active {
                     self.confidence[stream_index][index] = 0;
-                    self.diagnostic_block[stream_index][index] = false;
                 }
             }
             return Ok(None);

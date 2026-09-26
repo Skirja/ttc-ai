@@ -180,6 +180,8 @@ fn rust_python_and_go_commands_select_tool_specific_parsers() {
         (&["python3.12", "-m", "unittest"], Family::PyUnittest),
         (&["pytest"], Family::PyTest),
         (&["uv", "run", "pytest"], Family::PyTest),
+        (&["uv", "run", "--with", "pytest", "pytest"], Family::PyTest),
+        (&["uv", "run", "--project=app", "pytest"], Family::PyTest),
         (&["poetry", "run", "ruff", "check"], Family::PyRuff),
         (&["pipenv", "run", "mypy"], Family::PyMypy),
         (&["tox"], Family::PyTox),
@@ -190,6 +192,10 @@ fn rust_python_and_go_commands_select_tool_specific_parsers() {
         (&["black", "--check", "."], Family::PyBlack),
         (&["coverage", "report"], Family::PyCoverage),
         (&["coverage", "run", "-m", "pytest"], Family::PyTest),
+        (
+            &["coverage", "run", "--branch", "-m", "pytest"],
+            Family::PyTest,
+        ),
         (
             &["python", "-m", "coverage", "run", "-m", "pytest"],
             Family::PyTest,
@@ -226,6 +232,11 @@ fn unsupported_generic_apps_and_compound_go_json_stay_raw() {
     let dir = TestDir::new();
     for args in [
         vec!["python", "app.py"],
+        vec!["uv", "run", "--with", "pytest", "python", "app.py"],
+        vec!["uv", "run", "--project", "pytest", "python", "app.py"],
+        vec!["uv", "run", "--unknown", "pytest"],
+        vec!["coverage", "run", "app.py", "-m", "pytest"],
+        vec!["python", "-m", "coverage", "run", "app.py", "-m", "pytest"],
         vec!["go", "test", "-json", "&&", "echo", "done"],
         vec!["go", "test", "--", "-json"],
         vec!["go", "test", "-json=false"],

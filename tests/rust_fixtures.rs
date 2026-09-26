@@ -126,6 +126,36 @@ fn rust_parser_uses_ansi_for_classification_and_keeps_summaries() {
 }
 
 #[test]
+fn failed_test_capture_remains_visible_after_blank_lines() {
+    let mut recognizer = filter(Family::RustTest);
+    for index in 0..4 {
+        let passing = format!("test passing::case_{index} ... ok\n");
+        let decision = recognizer
+            .decide(Stream::Stdout, passing.as_bytes())
+            .unwrap();
+        assert_eq!(decision.is_some(), index == 3);
+    }
+    for line in ["failures:\n", "\n", "---- broken stdout ----\n", "\n"] {
+        assert!(
+            recognizer
+                .decide(Stream::Stdout, line.as_bytes())
+                .unwrap()
+                .is_none()
+        );
+    }
+    for index in 0..4 {
+        let captured = format!("test captured::case_{index} ... ok\n");
+        assert!(
+            recognizer
+                .decide(Stream::Stdout, captured.as_bytes())
+                .unwrap()
+                .is_none(),
+            "captured failure output was compacted: {captured}"
+        );
+    }
+}
+
+#[test]
 fn parser_confidence_is_independent_when_plans_contain_multiple_ecosystems() {
     let mut recognizer = EcosystemFilter::new(Plan {
         families: vec![Family::RustTest, Family::PyTest],

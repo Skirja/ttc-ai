@@ -85,6 +85,26 @@ fn rust_python_and_go_commands_run_once_keep_status_and_retain_diagnostics() {
 }
 
 #[test]
+fn wrapped_generic_python_apps_keep_pass_like_output_byte_exact() {
+    let dir = TestDir::new();
+    let script = "#!/bin/sh\nprintf x >> \"$COUNT_FILE\"\ni=0\nwhile [ \"$i\" -lt 4 ]; do printf 'tests/test_app.py::test_event_%s PASSED\\n' \"$i\"; i=$((i+1)); done\nprintf 'generic application output\\n'\n";
+    let uv = make_tool(&dir, "uv", script);
+    let coverage = make_tool(&dir, "coverage", script);
+    compare_once(
+        &uv,
+        &["run", "--with", "pytest", "python", "app.py"],
+        "generic application output",
+        false,
+    );
+    compare_once(
+        &coverage,
+        &["run", "app.py", "-m", "pytest"],
+        "generic application output",
+        false,
+    );
+}
+
+#[test]
 fn filtered_go_command_preserves_signal_status() {
     let dir = TestDir::new();
     let tool = make_tool(
