@@ -452,7 +452,7 @@ sh scripts/m5-smoke.sh target/release/ttc target/m5-evidence/report.txt
 
 ### Evidence
 
-- [ ] Commit implementasi dicatat.
+- [x] Commit implementasi `2c66acf` dicatat.
 - [ ] Versi pinned tool dan baseline-versus-TTC real-project smoke output
   disimpan sebagai artifact `m5-core-ecosystem-evidence`.
 - [x] Laporan fixture, retention, raw replay, dan reduction per ecosystem
