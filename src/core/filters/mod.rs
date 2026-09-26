@@ -4,6 +4,8 @@ use super::classification::{Family, Plan};
 use super::raw_store::Stream;
 use super::streaming::{CompactKind, Filter};
 
+pub(crate) mod ecosystems;
+
 pub(crate) struct JsFilter {
     plan: Plan,
     confidence: [[u8; 6]; 2],
@@ -24,7 +26,7 @@ impl JsFilter {
 
 impl Filter for JsFilter {
     fn can_compact(&self) -> bool {
-        !self.plan.raw && !self.plan.families.is_empty()
+        !self.plan.raw && self.plan.families.iter().any(is_js_family)
     }
 
     fn decide(&mut self, stream: Stream, line: &[u8]) -> Result<Option<CompactKind>, ()> {
@@ -55,8 +57,10 @@ impl Filter for JsFilter {
             return Ok(None);
         }
         for family in &self.plan.families {
+            let Some(index) = family_index(*family) else {
+                continue;
+            };
             if let Some(kind) = recognize(*family, trim) {
-                let index = family_index(*family);
                 for (other, value) in self.confidence[stream_index].iter_mut().enumerate() {
                     if other != index {
                         *value = 0;
@@ -72,18 +76,31 @@ impl Filter for JsFilter {
     }
 }
 
-fn family_index(family: Family) -> usize {
+fn family_index(family: Family) -> Option<usize> {
     match family {
-        Family::Test => 0,
-        Family::Lint => 1,
-        Family::Typecheck => 2,
-        Family::Build => 3,
-        Family::Format => 4,
-        Family::Install => 5,
+        Family::Test => Some(0),
+        Family::Lint => Some(1),
+        Family::Typecheck => Some(2),
+        Family::Build => Some(3),
+        Family::Format => Some(4),
+        Family::Install => Some(5),
+        _ => None,
     }
 }
 
-fn strip_ansi(bytes: &[u8]) -> Option<String> {
+fn is_js_family(family: &Family) -> bool {
+    matches!(
+        family,
+        Family::Test
+            | Family::Lint
+            | Family::Typecheck
+            | Family::Build
+            | Family::Format
+            | Family::Install
+    )
+}
+
+pub(crate) fn strip_ansi(bytes: &[u8]) -> Option<String> {
     let input = std::str::from_utf8(bytes).ok()?;
     let mut result = String::with_capacity(input.len());
     let mut chars = input.chars();
@@ -147,7 +164,7 @@ fn structured_line(text: &str) -> bool {
         })
 }
 
-fn protected(text: &str) -> bool {
+pub(crate) fn protected(text: &str) -> bool {
     let lower = text.to_ascii_lowercase();
     if [
         "error",
@@ -168,7 +185,8 @@ fn protected(text: &str) -> bool {
         "traceback",
         "at ",
         "caused by",
-        " passed",
+        " test passed",
+        " tests passed",
         "test suites",
         "test files",
         "summary:",
@@ -187,6 +205,37 @@ fn protected(text: &str) -> bool {
         }
     }
     false
+}
+
+/// Routes each record to the ecosystem recognizer named by the static command
+/// classification. A generic test family can never activate another parser.
+pub(crate) struct DispatchFilter {
+    js: JsFilter,
+    ecosystems: ecosystems::EcosystemFilter,
+}
+
+impl DispatchFilter {
+    pub(crate) fn new(plan: Plan) -> Self {
+        Self {
+            js: JsFilter::new(plan.clone()),
+            ecosystems: ecosystems::EcosystemFilter::new(plan),
+        }
+    }
+}
+
+impl Filter for DispatchFilter {
+    fn can_compact(&self) -> bool {
+        self.js.can_compact() || self.ecosystems.can_compact()
+    }
+
+    fn decide(&mut self, stream: Stream, line: &[u8]) -> Result<Option<CompactKind>, ()> {
+        if self.js.can_compact()
+            && let Some(kind) = self.js.decide(stream, line)?
+        {
+            return Ok(Some(kind));
+        }
+        self.ecosystems.decide(stream, line)
+    }
 }
 
 fn recognize(family: Family, text: &str) -> Option<CompactKind> {
@@ -246,6 +295,7 @@ fn recognize(family: Family, text: &str) -> Option<CompactKind> {
                 &["[npm] fetching ", "[yarn] fetching ", "[bun] fetching "],
             ))
         .then_some(CompactKind::Progress),
+        _ => None,
     }
 }
 

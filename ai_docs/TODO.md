@@ -397,30 +397,41 @@ dan smoke test nyata.
 
 ### Implementation checklist
 
-- [ ] Implementasikan Cargo test/nextest/build/check/clippy/fmt/doc termasuk
+- [x] Implementasikan Cargo test/nextest/build/check/clippy/fmt/doc termasuk
   workspace dan package selection.
-- [ ] Compact passing tests serta Compiling/Checking progress; retain compiler
+- [x] Compact passing tests serta Compiling/Checking progress; retain compiler
   diagnostics, warnings, failure output, dan summary.
-- [ ] Implementasikan Python/python3, uv, Poetry, dan Pipenv wrapper detection.
-- [ ] Implementasikan pytest, unittest, tox/nox, Ruff, mypy, pyright, pylint,
+- [x] Implementasikan Python/python3, uv, Poetry, dan Pipenv wrapper detection.
+- [x] Implementasikan pytest, unittest, tox/nox, Ruff, mypy, pyright, pylint,
   Black, coverage, dan install families pada SPEC.
-- [ ] Generic Python application tetap raw bila signature tidak dikenali.
-- [ ] Implementasikan Go test/build/vet/generate, golangci-lint, dan staticcheck.
-- [ ] Implementasikan lossless-aware parser khusus `go test -json`; JSON generic
+- [x] Generic Python application tetap raw bila signature tidak dikenali.
+- [x] Implementasikan Go test/build/vet/generate, golangci-lint, dan staticcheck.
+- [x] Implementasikan lossless-aware parser khusus `go test -json`; JSON generic
   tetap raw.
-- [ ] Retain failed test output, panic, race detector, vet/build diagnostic, dan
+- [x] Pertahankan byte asli semua event Go JSON selain frame passing yang cocok
+  parser; lifecycle tidak pernah dikompaksi, sedangkan key duplikat, field/action
+  baru, tipe invalid, dan malformed JSON membuat sisa invocation raw.
+- [x] Retain failed test output, panic, race detector, vet/build diagnostic, dan
   package summary.
-- [ ] Tambahkan success/failure/warning/unknown/large fixtures dan pinned real
-  smoke project untuk ketiga ecosystem.
+- [x] Tambahkan success/failure/warning/unknown/large fixtures, raw replay, dan
+  baseline direct-versus-TTC untuk ketiga ecosystem.
+- [x] Tambahkan project smoke terisolasi untuk Cargo/libtest/nextest, pytest,
+  `go test`, dan `go test -json`; pin Rust 1.98.1, cargo-nextest 0.9.108,
+  Python 3.14.7, pytest 9.1.1, dan Go 1.27.1.
+- [x] Tambahkan CI Linux M5 dengan Actions ber-SHA dan upload report versi,
+  retention, reduction, serta real-tool smoke setelah semua gate lulus.
 
 ### Acceptance criteria
 
-- [ ] Seluruh command Rust, Python, dan Go pada SPEC terpetakan ke recognizer atau
+- [x] Seluruh command Rust, Python, dan Go pada SPEC terpetakan ke recognizer atau
   explicit raw behavior.
-- [ ] Generic app output tetap byte-exact.
-- [ ] Diagnostic dan exit/signal sama dengan baseline untuk success dan failure.
-- [ ] Large fixture tiap ecosystem mengurangi byte minimum 80%.
-- [ ] Cargo, pytest, dan Go real-tool smoke E2E lulus pada versi pin.
+- [x] Generic app output tetap byte-exact.
+- [x] Diagnostic dan exit/signal sama dengan baseline untuk success dan failure.
+- [x] Generic app dan Go JSON retained event byte-exact; seluruh lifecycle Go
+  JSON tetap ada dan passing frame cocok saja yang dapat dihapus.
+- [x] Large text fixture tiap ecosystem mengurangi byte minimum 80% termasuk
+  summary dan raw hint. Rasio tersebut tidak diterapkan ke fixture Go JSON.
+- [x] Cargo, pytest, dan Go real-tool smoke E2E lulus pada versi pin.
 
 ### Verification commands
 
@@ -430,13 +441,24 @@ cargo test --test python_fixtures
 cargo test --test go_fixtures
 cargo test --test core_ecosystem_e2e
 cargo test --test reduction
+cargo test --test classifier
+cargo test --test filter_safety
+cargo fmt --all -- --check
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test --all-targets --all-features
+cargo build --release
+sh scripts/m5-smoke.sh target/release/ttc target/m5-evidence/report.txt
 ```
 
 ### Evidence
 
 - [ ] Commit implementasi dicatat.
-- [ ] Versi tool dan real-project smoke output dicatat.
-- [ ] Laporan retention serta reduction per ecosystem disimpan.
+- [ ] Versi pinned tool dan baseline-versus-TTC real-project smoke output
+  disimpan sebagai artifact `m5-core-ecosystem-evidence`.
+- [x] Laporan fixture, retention, raw replay, dan reduction per ecosystem
+  disimpan pada artifact lokal `target/m5-evidence/` dan dikonfigurasi untuk
+  diunggah dari CI.
+- [ ] Commit branch dan CI run yang lulus dicatat.
 
 ---
 
