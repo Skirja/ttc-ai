@@ -453,12 +453,35 @@ sh scripts/m5-smoke.sh target/release/ttc target/m5-evidence/report.txt
 ### Evidence
 
 - [x] Commit implementasi `2c66acf` dicatat.
-- [ ] Versi pinned tool dan baseline-versus-TTC real-project smoke output
+- [x] Versi pinned tool dan baseline-versus-TTC real-project smoke output
   disimpan sebagai artifact `m5-core-ecosystem-evidence`.
 - [x] Laporan fixture, retention, raw replay, dan reduction per ecosystem
   disimpan pada artifact lokal `target/m5-evidence/` dan dikonfigurasi untuk
   diunggah dari CI.
-- [ ] Commit branch dan CI run yang lulus dicatat.
+- [x] Commit branch dan CI run yang lulus dicatat.
+
+Bukti M5 pada branch `feat/m5-core-ecosystems`, PR
+[#4](https://github.com/Skirja/ttc-ai/pull/4):
+
+- Commit `9228fb50dff7b22c32f2becc270de9d162a2f347` memuat implementasi M5,
+  dokumentasi, dan perbaikan isolasi toolchain untuk smoke. Seluruh 12 command
+  verification M5 serta gate repository lulus lokal.
+- Seluruh lima job pada [CI run 36216068862](https://github.com/Skirja/ttc-ai/actions/runs/36216068862)
+  lulus pada commit tersebut, termasuk Rust baseline dan M2–M5. PR masih
+  terbuka untuk review dan merge oleh pengguna.
+- Artifact `m5-core-ecosystem-evidence` diunduh dan diperiksa. SHA-256:
+  `fixtures.txt` `7e4fbbc9b884c119a0711ed2697a853c55fca2cbed58a2eda12e67a3ac8ad32b`,
+  `reduction.txt` `ea7d79252ed72f0be41002d35d7d6ce2a30d069fa75c190971af17fe6ebb7f66`,
+  `report.txt` `150cc3665bca0f778264f6fbbb6b9e20526b6d66277ca832ba0b75c99a4f33bb`.
+- Smoke CI memakai Rust 1.98.1, cargo-nextest 0.9.108, Python 3.14.7,
+  pytest 9.1.1, dan Go 1.27.1. Contoh baseline → TTC: Cargo/libtest
+  32.385 → 497 byte; nextest 77.411 → 669; pytest success 80.415 → 679;
+  `go test -v` 64.102 → 28.278. Failure mempertahankan exit status serta
+  diagnostic byte-for-byte; pada Go JSON lifecycle tetap utuh.
+- Run awal [36215736543](https://github.com/Skirja/ttc-ai/actions/runs/36215736543)
+  menemukan smoke kehilangan default rustup setelah `HOME` diisolasi. Script
+  kini mempertahankan lokasi toolchain CI dan memilih `1.98.1` eksplisit;
+  run sukses di atas memverifikasi perbaikannya.
 
 ---
 
