@@ -17,7 +17,7 @@ use signal_hook::low_level;
 
 use super::classification;
 use super::config::Config;
-use super::filters::JsFilter;
+use super::filters::DispatchFilter;
 use super::raw_store::{self, StorePaths, Stream};
 use super::streaming;
 
@@ -52,7 +52,7 @@ pub(crate) fn run(arguments: &[OsString]) -> ExitCode {
     let cwd = std::env::current_dir().unwrap_or_default();
     let hints = classification::ManifestHints::load(&cwd);
     let plan = classification::classify(arguments, &cwd, hints.as_ref());
-    stream_child(&mut command, config, JsFilter::new(plan))
+    stream_child(&mut command, config, DispatchFilter::new(plan))
 }
 
 fn may_start_background_shell_job(arguments: &[OsString]) -> bool {
@@ -134,7 +134,7 @@ fn is_known_raw_command(arguments: &[OsString]) -> bool {
     ) || (name == "tail" && words.contains(&"-f"))
 }
 
-fn stream_child(command: &mut Command, config: Config, mut filter: JsFilter) -> ExitCode {
+fn stream_child(command: &mut Command, config: Config, mut filter: DispatchFilter) -> ExitCode {
     // Installing signal handlers before spawn closes the gap in which a
     // signal could otherwise terminate the wrapper but leave the child alive.
     let mut signals = match Signals::new([SIGINT, SIGTERM]) {

@@ -397,30 +397,41 @@ dan smoke test nyata.
 
 ### Implementation checklist
 
-- [ ] Implementasikan Cargo test/nextest/build/check/clippy/fmt/doc termasuk
+- [x] Implementasikan Cargo test/nextest/build/check/clippy/fmt/doc termasuk
   workspace dan package selection.
-- [ ] Compact passing tests serta Compiling/Checking progress; retain compiler
+- [x] Compact passing tests serta Compiling/Checking progress; retain compiler
   diagnostics, warnings, failure output, dan summary.
-- [ ] Implementasikan Python/python3, uv, Poetry, dan Pipenv wrapper detection.
-- [ ] Implementasikan pytest, unittest, tox/nox, Ruff, mypy, pyright, pylint,
+- [x] Implementasikan Python/python3, uv, Poetry, dan Pipenv wrapper detection.
+- [x] Implementasikan pytest, unittest, tox/nox, Ruff, mypy, pyright, pylint,
   Black, coverage, dan install families pada SPEC.
-- [ ] Generic Python application tetap raw bila signature tidak dikenali.
-- [ ] Implementasikan Go test/build/vet/generate, golangci-lint, dan staticcheck.
-- [ ] Implementasikan lossless-aware parser khusus `go test -json`; JSON generic
+- [x] Generic Python application tetap raw bila signature tidak dikenali.
+- [x] Implementasikan Go test/build/vet/generate, golangci-lint, dan staticcheck.
+- [x] Implementasikan lossless-aware parser khusus `go test -json`; JSON generic
   tetap raw.
-- [ ] Retain failed test output, panic, race detector, vet/build diagnostic, dan
+- [x] Pertahankan byte asli semua event Go JSON selain frame passing yang cocok
+  parser; lifecycle tidak pernah dikompaksi, sedangkan key duplikat, field/action
+  baru, tipe invalid, dan malformed JSON membuat sisa invocation raw.
+- [x] Retain failed test output, panic, race detector, vet/build diagnostic, dan
   package summary.
-- [ ] Tambahkan success/failure/warning/unknown/large fixtures dan pinned real
-  smoke project untuk ketiga ecosystem.
+- [x] Tambahkan success/failure/warning/unknown/large fixtures, raw replay, dan
+  baseline direct-versus-TTC untuk ketiga ecosystem.
+- [x] Tambahkan project smoke terisolasi untuk Cargo/libtest/nextest, pytest,
+  `go test`, dan `go test -json`; pin Rust 1.98.1, cargo-nextest 0.9.108,
+  Python 3.14.7, pytest 9.1.1, dan Go 1.27.1.
+- [x] Tambahkan CI Linux M5 dengan Actions ber-SHA dan upload report versi,
+  retention, reduction, serta real-tool smoke setelah semua gate lulus.
 
 ### Acceptance criteria
 
-- [ ] Seluruh command Rust, Python, dan Go pada SPEC terpetakan ke recognizer atau
+- [x] Seluruh command Rust, Python, dan Go pada SPEC terpetakan ke recognizer atau
   explicit raw behavior.
-- [ ] Generic app output tetap byte-exact.
-- [ ] Diagnostic dan exit/signal sama dengan baseline untuk success dan failure.
-- [ ] Large fixture tiap ecosystem mengurangi byte minimum 80%.
-- [ ] Cargo, pytest, dan Go real-tool smoke E2E lulus pada versi pin.
+- [x] Generic app output tetap byte-exact.
+- [x] Diagnostic dan exit/signal sama dengan baseline untuk success dan failure.
+- [x] Generic app dan Go JSON retained event byte-exact; seluruh lifecycle Go
+  JSON tetap ada dan passing frame cocok saja yang dapat dihapus.
+- [x] Large text fixture tiap ecosystem mengurangi byte minimum 80% termasuk
+  summary dan raw hint. Rasio tersebut tidak diterapkan ke fixture Go JSON.
+- [x] Cargo, pytest, dan Go real-tool smoke E2E lulus pada versi pin.
 
 ### Verification commands
 
@@ -430,13 +441,62 @@ cargo test --test python_fixtures
 cargo test --test go_fixtures
 cargo test --test core_ecosystem_e2e
 cargo test --test reduction
+cargo test --test classifier
+cargo test --test filter_safety
+cargo fmt --all -- --check
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test --all-targets --all-features
+cargo build --release
+sh scripts/m5-smoke.sh target/release/ttc target/m5-evidence/report.txt
 ```
 
 ### Evidence
 
-- [ ] Commit implementasi dicatat.
-- [ ] Versi tool dan real-project smoke output dicatat.
-- [ ] Laporan retention serta reduction per ecosystem disimpan.
+- [x] Commit implementasi `2c66acf` dicatat.
+- [x] Versi pinned tool dan baseline-versus-TTC real-project smoke output
+  disimpan sebagai artifact `m5-core-ecosystem-evidence`.
+- [x] Laporan fixture, retention, raw replay, dan reduction per ecosystem
+  disimpan pada artifact lokal `target/m5-evidence/` dan dikonfigurasi untuk
+  diunggah dari CI.
+- [x] Commit branch dan CI run yang lulus dicatat.
+
+Bukti M5 pada branch `feat/m5-core-ecosystems`, PR
+[#4](https://github.com/Skirja/ttc-ai/pull/4):
+
+- Commit `9228fb50dff7b22c32f2becc270de9d162a2f347` memuat implementasi M5,
+  dokumentasi, dan perbaikan isolasi toolchain untuk smoke. Seluruh 12 command
+  verification M5 serta gate repository lulus lokal.
+- Seluruh lima job pada [CI run 36216068862](https://github.com/Skirja/ttc-ai/actions/runs/36216068862)
+  lulus pada commit tersebut, termasuk Rust baseline dan M2–M5. PR masih
+  terbuka untuk review dan merge oleh pengguna.
+- Artifact `m5-core-ecosystem-evidence` diunduh dan diperiksa. SHA-256:
+  `fixtures.txt` `7e4fbbc9b884c119a0711ed2697a853c55fca2cbed58a2eda12e67a3ac8ad32b`,
+  `reduction.txt` `ea7d79252ed72f0be41002d35d7d6ce2a30d069fa75c190971af17fe6ebb7f66`,
+  `report.txt` `150cc3665bca0f778264f6fbbb6b9e20526b6d66277ca832ba0b75c99a4f33bb`.
+- Smoke CI memakai Rust 1.98.1, cargo-nextest 0.9.108, Python 3.14.7,
+  pytest 9.1.1, dan Go 1.27.1. Contoh baseline → TTC: Cargo/libtest
+  32.385 → 497 byte; nextest 77.411 → 669; pytest success 80.415 → 679;
+  `go test -v` 64.102 → 28.278. Failure mempertahankan exit status serta
+  diagnostic byte-for-byte; pada Go JSON lifecycle tetap utuh.
+- Run awal [36215736543](https://github.com/Skirja/ttc-ai/actions/runs/36215736543)
+  menemukan smoke kehilangan default rustup setelah `HOME` diisolasi. Script
+  kini mempertahankan lokasi toolchain CI dan memilih `1.98.1` eksplisit;
+  run sukses di atas memverifikasi perbaikannya.
+- Empat temuan review M5 diperbaiki pada commit
+  `d582ea2a1f8fca7253ca2e82d1b2806467e8492a`: output failure tetap raw
+  setelah baris kosong, `uv run` membaca nilai opsi sebelum memilih tool,
+  `coverage run` berhenti membaca opsi saat mencapai script, dan pipeline test
+  CI memakai `pipefail`. Test regresi classifier, fixture Rust, dan E2E
+  generic application ditambahkan. Seluruh command verification M5, gate
+  repository, serta smoke binary release lulus lokal setelah perbaikan.
+- Semua lima job [CI run 36223832943](https://github.com/Skirja/ttc-ai/actions/runs/36223832943)
+  lulus pada commit tersebut. Artifact `m5-core-ecosystem-evidence` diunduh
+  dan diperiksa: SHA-256 `fixtures.txt`
+  `cf93f2d886bc4ca3030c9913c7b33501804d658b4a13a9f4f383a750123c62c0`,
+  `reduction.txt`
+  `185983e5c704fdf1c95b07f5e86d412ffcfd41d4453461add8c796a94037ce7d`,
+  dan `report.txt`
+  `b401132de6fd558ba8e44838751878d12847931cb39f48624bbd8e8da8ed07f0`.
 
 ---
 

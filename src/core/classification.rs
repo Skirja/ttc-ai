@@ -13,6 +13,31 @@ pub(crate) enum Family {
     Build,
     Format,
     Install,
+    RustTest,
+    RustNextest,
+    RustBuild,
+    RustCheck,
+    RustClippy,
+    RustFmt,
+    RustDoc,
+    PyTest,
+    PyUnittest,
+    PyTox,
+    PyNox,
+    PyRuff,
+    PyMypy,
+    PyPyright,
+    PyPylint,
+    PyBlack,
+    PyCoverage,
+    PyInstall,
+    GoTest,
+    GoJson,
+    GoBuild,
+    GoVet,
+    GoGenerate,
+    GoLint,
+    GoStaticcheck,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -81,6 +106,10 @@ pub(crate) fn classify(arguments: &[OsString], cwd: &Path, hints: Option<&Manife
         words
     };
     let mut plan = Plan::default();
+    if is_go_json_command(&words) {
+        plan.add(Family::GoJson);
+        return plan;
+    }
     if machine_output(&words) {
         plan.raw = true;
         return plan;
@@ -109,14 +138,46 @@ pub(crate) fn classify(arguments: &[OsString], cwd: &Path, hints: Option<&Manife
 }
 
 fn machine_output(words: &[String]) -> bool {
-    words.iter().any(|word| machine_flag(word))
+    words
+        .iter()
+        .any(|word| machine_flag(word) || word == "-json" || word.starts_with("-json="))
         || words.windows(2).any(|pair| {
-            matches!(pair[0].as_str(), "--reporter" | "--format")
-                && matches!(
-                    pair[1].as_str(),
-                    "json" | "jsonl" | "xml" | "yaml" | "sarif" | "tap"
-                )
+            matches!(
+                pair[0].as_str(),
+                "--reporter" | "--format" | "--message-format"
+            ) && matches!(
+                pair[1].as_str(),
+                "json" | "jsonl" | "json-render-diagnostics" | "xml" | "yaml" | "sarif" | "tap"
+            )
         })
+}
+
+fn is_go_json_command(words: &[String]) -> bool {
+    if words
+        .iter()
+        .any(|word| matches!(word.as_str(), "&&" | ";" | "|" | "||" | ">" | "<" | "&"))
+    {
+        return false;
+    }
+    let Some(program) = words.first() else {
+        return false;
+    };
+    if Path::new(program).file_name().and_then(|x| x.to_str()) != Some("go") {
+        return false;
+    }
+    let mut args = &words[1..];
+    if args.first().is_some_and(|word| word == "-C") {
+        if args.len() < 2 {
+            return false;
+        }
+        args = &args[2..];
+    }
+    let flags = args.split(|word| word == "--").next().unwrap_or(args);
+    flags.first().is_some_and(|word| word == "test")
+        && flags
+            .iter()
+            .any(|word| word == "-json" || word == "-json=true")
+        && !flags.iter().any(|word| word == "-json=false")
 }
 
 fn machine_flag(word: &str) -> bool {
@@ -131,6 +192,8 @@ fn machine_flag(word: &str) -> bool {
         "--sarif=",
         "--output=",
         "--format=",
+        "--message-format=json",
+        "--message-format=json-render-diagnostics",
         "--reporter=json",
         "--reporter=xml",
         "--reporter=tap",
@@ -345,6 +408,12 @@ fn classify_tool(name: &str, args: &[String], plan: &mut Plan) {
         plan.raw = true;
         return;
     }
+    if name == "python" || name == "python3" || name.starts_with("python3.") {
+        if let Some(family) = classify_python(args) {
+            plan.add(family);
+        }
+        return;
+    }
     let family = match name {
         "vitest" | "jest" | "mocha" | "ava" | "tap" => Some(Family::Test),
         "playwright" if args.first().is_some_and(|x| x == "test") => Some(Family::Test),
@@ -365,10 +434,195 @@ fn classify_tool(name: &str, args: &[String], plan: &mut Plan) {
         "webpack" | "rollup" | "esbuild" | "tsup" | "swc" => Some(Family::Build),
         "prettier" if args.iter().any(|x| x == "--check") => Some(Family::Format),
         "dprint" if args.first().is_some_and(|x| x == "check") => Some(Family::Format),
+        "cargo" => classify_cargo(args),
+        "rustfmt" if args.iter().any(|arg| arg == "--check") => Some(Family::RustFmt),
+        "pytest" | "py.test" => Some(Family::PyTest),
+        "tox" => Some(Family::PyTox),
+        "nox" => Some(Family::PyNox),
+        "ruff" if args.first().is_some_and(|arg| arg == "check") => Some(Family::PyRuff),
+        "mypy" => Some(Family::PyMypy),
+        "pyright" => Some(Family::PyPyright),
+        "pylint" => Some(Family::PyPylint),
+        "black" if args.iter().any(|arg| arg == "--check") => Some(Family::PyBlack),
+        "coverage" => classify_coverage(args),
+        "pip" if args.first().is_some_and(|arg| arg == "install") => Some(Family::PyInstall),
+        "uv" => classify_uv(args),
+        "poetry" => classify_poetry(args),
+        "pipenv" => classify_pipenv(args),
+        "go" => classify_go(args),
+        "golangci-lint" if args.first().is_some_and(|arg| arg == "run") => Some(Family::GoLint),
+        "staticcheck" => Some(Family::GoStaticcheck),
         _ => None,
     };
     if let Some(family) = family {
         plan.add(family);
+    }
+}
+
+fn classify_cargo(args: &[String]) -> Option<Family> {
+    let mut args = args;
+    while args.first().is_some_and(|arg| arg.starts_with('-')) {
+        if matches!(args[0].as_str(), "--manifest-path" | "--config" | "-Z") {
+            if args.len() < 2 {
+                return None;
+            }
+            args = &args[2..];
+        } else {
+            args = &args[1..];
+        }
+    }
+    match args.first()?.as_str() {
+        "test" => Some(Family::RustTest),
+        "nextest" if args.get(1).is_some_and(|arg| arg == "run") => Some(Family::RustNextest),
+        "build" => Some(Family::RustBuild),
+        "check" => Some(Family::RustCheck),
+        "clippy" => Some(Family::RustClippy),
+        "fmt" if args.iter().any(|arg| arg == "--check") => Some(Family::RustFmt),
+        "doc" => Some(Family::RustDoc),
+        _ => None,
+    }
+}
+
+fn classify_python(args: &[String]) -> Option<Family> {
+    if args.first().is_some_and(|arg| arg == "-m") {
+        let module = args.get(1)?.as_str();
+        if module == "coverage" {
+            return classify_coverage(&args[2..]);
+        }
+        return classify_python_module(module);
+    }
+    None
+}
+
+fn classify_python_module(module: &str) -> Option<Family> {
+    match module {
+        "pytest" => Some(Family::PyTest),
+        "unittest" => Some(Family::PyUnittest),
+        "coverage" => Some(Family::PyCoverage),
+        "pip" => Some(Family::PyInstall),
+        _ => None,
+    }
+}
+
+fn classify_coverage(args: &[String]) -> Option<Family> {
+    match args.first()?.as_str() {
+        "run" => {
+            let mut options = &args[1..];
+            while let Some(option) = options.first() {
+                match option.as_str() {
+                    "-m" => {
+                        return options
+                            .get(1)
+                            .and_then(|module| classify_python_module(module));
+                    }
+                    "-a" | "-p" | "--append" | "--branch" | "--parallel-mode" => {
+                        options = &options[1..];
+                    }
+                    // The first script and all its arguments belong to the
+                    // application. Unknown options also stay raw.
+                    _ => return None,
+                }
+            }
+            None
+        }
+        "report" => Some(Family::PyCoverage),
+        _ => None,
+    }
+}
+
+fn classify_uv(args: &[String]) -> Option<Family> {
+    match args.first()?.as_str() {
+        "run" => {
+            let mut command = &args[1..];
+            while let Some(option) = command.first() {
+                match option.as_str() {
+                    "--" => {
+                        command = &command[1..];
+                        break;
+                    }
+                    "--with" | "--with-editable" | "--project" | "--directory" | "--python"
+                    | "--env-file" => {
+                        if command.get(1).is_none_or(|value| value.starts_with('-')) {
+                            return None;
+                        }
+                        command = &command[2..];
+                    }
+                    "--no-project" | "--no-sync" | "--locked" | "--frozen" | "--offline"
+                    | "--isolated" => command = &command[1..],
+                    option
+                        if [
+                            "--with=",
+                            "--with-editable=",
+                            "--project=",
+                            "--directory=",
+                            "--python=",
+                            "--env-file=",
+                        ]
+                        .iter()
+                        .any(|prefix| {
+                            option.starts_with(prefix) && option.len() > prefix.len()
+                        }) =>
+                    {
+                        command = &command[1..];
+                    }
+                    option if option.starts_with('-') => return None,
+                    _ => break,
+                }
+            }
+            classify_python_command(command)
+        }
+        "pip" if args.get(1).is_some_and(|arg| arg == "install") => Some(Family::PyInstall),
+        _ => None,
+    }
+}
+
+fn classify_poetry(args: &[String]) -> Option<Family> {
+    match args.first()?.as_str() {
+        "run" => classify_python_command(&args[1..]),
+        "install" => Some(Family::PyInstall),
+        _ => None,
+    }
+}
+
+fn classify_pipenv(args: &[String]) -> Option<Family> {
+    match args.first()?.as_str() {
+        "run" => classify_python_command(&args[1..]),
+        "install" => Some(Family::PyInstall),
+        _ => None,
+    }
+}
+
+fn classify_python_command(args: &[String]) -> Option<Family> {
+    let name = args
+        .first()
+        .and_then(|arg| Path::new(arg).file_name())
+        .and_then(|arg| arg.to_str())?;
+    if name == "python" || name.starts_with("python3") {
+        return classify_python(&args[1..]);
+    }
+    let rest = &args[1..];
+    match name {
+        "pytest" | "py.test" => Some(Family::PyTest),
+        "tox" => Some(Family::PyTox),
+        "nox" => Some(Family::PyNox),
+        "ruff" if rest.first().is_some_and(|arg| arg == "check") => Some(Family::PyRuff),
+        "mypy" => Some(Family::PyMypy),
+        "pyright" => Some(Family::PyPyright),
+        "pylint" => Some(Family::PyPylint),
+        "black" if rest.iter().any(|arg| arg == "--check") => Some(Family::PyBlack),
+        "coverage" => classify_coverage(rest),
+        "pip" if rest.first().is_some_and(|arg| arg == "install") => Some(Family::PyInstall),
+        _ => None,
+    }
+}
+
+fn classify_go(args: &[String]) -> Option<Family> {
+    match args.first()?.as_str() {
+        "test" => Some(Family::GoTest),
+        "build" => Some(Family::GoBuild),
+        "vet" => Some(Family::GoVet),
+        "generate" => Some(Family::GoGenerate),
+        _ => None,
     }
 }
 

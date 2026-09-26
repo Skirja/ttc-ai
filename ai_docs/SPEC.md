@@ -298,6 +298,10 @@ Output unknown diteruskan penuh, termasuk:
 
 JSON, JSONL, XML, YAML, SARIF, TAP, dan output exact lain diteruskan penuh kecuali ada parser lossless khusus.
 
+`go test -json` adalah satu pengecualian dengan parser khusus pada §8.6.
+Lifecycle event dan seluruh event selain frame passing yang diidentifikasi parser
+tetap diteruskan byte-exact. JSON output lain tetap raw.
+
 Flags passthrough antara lain:
 
     --json
@@ -306,6 +310,7 @@ Flags passthrough antara lain:
     --yaml
     --sarif
     --output
+    --message-format=json
     -o
     --format
 
@@ -467,7 +472,12 @@ Supported:
 Filter:
 
 - compact passing tests;
+- dukung `--workspace` dan `-p PACKAGE` pada invocation Cargo asli;
+- compact hanya record libtest `test NAME ... ok` dan record PASS nextest yang
+  cocok grammar;
 - compact Compiling dan Checking progress;
+- `cargo doc` juga boleh compact record Documenting yang cocok grammar;
+- pertahankan tiga record aman pertama untuk membangun confidence;
 - retain compiler diagnostic lengkap;
 - retain failed-test output;
 - retain warning dan final summary.
@@ -501,7 +511,16 @@ Filtered tools:
     uv pip install
     poetry install
 
-Generic python app.py tetap dibungkus TTC. Jika output tidak dikenali, output diteruskan penuh.
+`python -m coverage run -m TOOL` meneruskan klasifikasi ke tool yang dijalankan.
+Filter compact record pytest verbose `PATH::TEST PASSED` (dengan atau tanpa
+persentase progress), unittest `test_NAME (...) ... ok`, dan progress download
+pip yang cocok grammar. Ruff, mypy, pyright, pylint, Black, tox, nox, coverage
+report, serta output install selain progress yang dikenal tetap mempertahankan
+diagnostic, tabel, dan summary. Tidak ada output yang dihapus jika tool tersebut
+hanya menghasilkan diagnostic atau summary.
+
+Generic `python app.py` tetap dibungkus TTC. Jika output tidak dikenali, output
+diteruskan penuh.
 
 ### 8.6 Go
 
@@ -523,7 +542,22 @@ Recognized files:
     go.sum
     go.work
 
-Filter mempertahankan failed test output, panic, race detector, vet diagnostic, build error, dan package summary.
+Untuk output teks `go test -v`, TTC hanya compact frame `--- PASS: TEST (N.NNs)`
+yang cocok grammar. Package summary, `=== RUN`, test failure, panic, race
+detector, vet/build diagnostic, serta output `go generate` dipertahankan.
+
+`go test -json` memakai parser newline-delimited event khusus dari struktur
+`TestEvent` resmi ([Go test2json](https://go.dev/cmd/test2json/)). Parser
+mempertahankan semua lifecycle action (`start`, `run`, `pause`, `cont`, `pass`,
+`bench`, `fail`, `skip`) dan seluruh event build/failure. Parser hanya boleh
+compact satu baris `Action: "output"` bila `OutputType` bernilai `frame`, `Test`
+sesuai nama pada satu-satunya baris `Output` `--- PASS: TEST (N.NNs)`, dan event
+memiliki field dengan tipe yang dikenal. Semua event lifecycle tetap byte-exact.
+Event dengan key duplikat, field/action/type baru, JSON malformed, atau payload
+ambigu membuat invocation selanjutnya raw tanpa mengubah byte event yang sudah
+diteruskan. Event yang dipertahankan ditulis dari byte input asli, bukan hasil
+serialisasi ulang. Parser hanya aktif untuk invocation `go test -json` tunggal;
+compound command yang memuat JSON tetap raw.
 
 ### 8.7 PHP
 

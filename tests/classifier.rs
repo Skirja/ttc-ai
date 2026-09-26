@@ -133,6 +133,13 @@ fn unknown_structured_or_ambiguous_command_stays_raw() {
         vec!["vitest", "--output", "result.txt"],
         vec!["vitest", "-o", "result.txt"],
         vec!["vitest", "--format", "json"],
+        vec!["cargo", "test", "--message-format=json"],
+        vec![
+            "cargo",
+            "test",
+            "--message-format",
+            "json-render-diagnostics",
+        ],
         vec!["vitest", "--reporter", "json"],
         vec!["vitest | cat"],
         vec!["vitest $(echo run)"],
@@ -154,4 +161,88 @@ fn unknown_structured_or_ambiguous_command_stays_raw() {
         )
         .raw
     );
+}
+
+#[test]
+fn rust_python_and_go_commands_select_tool_specific_parsers() {
+    let dir = TestDir::new();
+    let cases: &[(&[&str], Family)] = &[
+        (&["cargo", "test"], Family::RustTest),
+        (&["cargo", "test", "--workspace"], Family::RustTest),
+        (&["cargo", "test", "-p", "api"], Family::RustTest),
+        (&["cargo", "nextest", "run"], Family::RustNextest),
+        (&["cargo", "build", "--workspace"], Family::RustBuild),
+        (&["cargo", "check"], Family::RustCheck),
+        (&["cargo", "clippy"], Family::RustClippy),
+        (&["cargo", "fmt", "--check"], Family::RustFmt),
+        (&["cargo", "doc"], Family::RustDoc),
+        (&["python", "-m", "pytest"], Family::PyTest),
+        (&["python3.12", "-m", "unittest"], Family::PyUnittest),
+        (&["pytest"], Family::PyTest),
+        (&["uv", "run", "pytest"], Family::PyTest),
+        (&["uv", "run", "--with", "pytest", "pytest"], Family::PyTest),
+        (&["uv", "run", "--project=app", "pytest"], Family::PyTest),
+        (&["poetry", "run", "ruff", "check"], Family::PyRuff),
+        (&["pipenv", "run", "mypy"], Family::PyMypy),
+        (&["tox"], Family::PyTox),
+        (&["nox"], Family::PyNox),
+        (&["ruff", "check"], Family::PyRuff),
+        (&["pyright"], Family::PyPyright),
+        (&["pylint"], Family::PyPylint),
+        (&["black", "--check", "."], Family::PyBlack),
+        (&["coverage", "report"], Family::PyCoverage),
+        (&["coverage", "run", "-m", "pytest"], Family::PyTest),
+        (
+            &["coverage", "run", "--branch", "-m", "pytest"],
+            Family::PyTest,
+        ),
+        (
+            &["python", "-m", "coverage", "run", "-m", "pytest"],
+            Family::PyTest,
+        ),
+        (&["pip", "install", "sample"], Family::PyInstall),
+        (&["uv", "pip", "install", "sample"], Family::PyInstall),
+        (&["poetry", "install"], Family::PyInstall),
+        (&["pipenv", "install"], Family::PyInstall),
+        (&["go", "test", "./..."], Family::GoTest),
+        (&["go", "build", "./..."], Family::GoBuild),
+        (&["go", "vet", "./..."], Family::GoVet),
+        (&["go", "generate", "./..."], Family::GoGenerate),
+        (&["golangci-lint", "run"], Family::GoLint),
+        (&["staticcheck", "./..."], Family::GoStaticcheck),
+    ];
+    for (args, family) in cases {
+        let plan = classify(&words(args), dir.path(), None);
+        assert_eq!(plan.families, vec![*family], "{args:?}");
+        assert!(!plan.raw, "{args:?}");
+    }
+    for args in [
+        vec!["go", "test", "-json"],
+        vec!["go", "-C", "subdir", "test", "-json", "./..."],
+    ] {
+        assert_eq!(
+            classify(&words(&args), dir.path(), None).families,
+            vec![Family::GoJson]
+        );
+    }
+}
+
+#[test]
+fn unsupported_generic_apps_and_compound_go_json_stay_raw() {
+    let dir = TestDir::new();
+    for args in [
+        vec!["python", "app.py"],
+        vec!["uv", "run", "--with", "pytest", "python", "app.py"],
+        vec!["uv", "run", "--project", "pytest", "python", "app.py"],
+        vec!["uv", "run", "--unknown", "pytest"],
+        vec!["coverage", "run", "app.py", "-m", "pytest"],
+        vec!["python", "-m", "coverage", "run", "app.py", "-m", "pytest"],
+        vec!["go", "test", "-json", "&&", "echo", "done"],
+        vec!["go", "test", "--", "-json"],
+        vec!["go", "test", "-json=false"],
+        vec!["go", "test", "--json"],
+    ] {
+        let plan = classify(&words(&args), dir.path(), None);
+        assert!(plan.raw || plan.families.is_empty(), "{args:?}: {plan:?}");
+    }
 }
