@@ -40,6 +40,8 @@ pub fn ttc_command() -> Command {
     RUNTIME_DIR.with(|dir| {
         let mut command = Command::new(ttc());
         command.env("HOME", dir.path());
+        command.env("XDG_CONFIG_HOME", dir.path().join("config"));
+        command.env("XDG_DATA_HOME", dir.path().join("data"));
         command.env("XDG_STATE_HOME", dir.path().join("state"));
         command.env("TMPDIR", dir.path().join("tmp"));
         command.env("TTC_INTERNAL_TEST_TMP_ROOT", dir.path().join("tmp"));

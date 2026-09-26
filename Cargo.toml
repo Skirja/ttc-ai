@@ -11,6 +11,7 @@ repository = "https://github.com/skirja/ttc-ai"
 nix = { version = "=0.31.3", default-features = false, features = ["signal", "user"] }
 signal-hook = "=0.4.4"
 toml = "=0.9.7"
+serde_json = "=1.0.145"
 
 [dev-dependencies]
 nix = { version = "=0.31.3", default-features = false, features = ["signal", "term"] }

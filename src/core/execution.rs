@@ -15,9 +15,11 @@ use signal_hook::consts::signal::{SIGINT, SIGTERM};
 use signal_hook::iterator::Signals;
 use signal_hook::low_level;
 
+use super::classification;
 use super::config::Config;
+use super::filters::JsFilter;
 use super::raw_store::{self, StorePaths, Stream};
-use super::streaming::{self, Retain};
+use super::streaming;
 
 pub(crate) fn run(arguments: &[OsString]) -> ExitCode {
     let mut command = if arguments.len() == 1 {
@@ -47,7 +49,10 @@ pub(crate) fn run(arguments: &[OsString]) -> ExitCode {
         return report_start_error(error);
     }
 
-    stream_child(&mut command, config)
+    let cwd = std::env::current_dir().unwrap_or_default();
+    let hints = classification::ManifestHints::load(&cwd);
+    let plan = classification::classify(arguments, &cwd, hints.as_ref());
+    stream_child(&mut command, config, JsFilter::new(plan))
 }
 
 fn may_start_background_shell_job(arguments: &[OsString]) -> bool {
@@ -129,7 +134,7 @@ fn is_known_raw_command(arguments: &[OsString]) -> bool {
     ) || (name == "tail" && words.contains(&"-f"))
 }
 
-fn stream_child(command: &mut Command, config: Config) -> ExitCode {
+fn stream_child(command: &mut Command, config: Config, mut filter: JsFilter) -> ExitCode {
     // Installing signal handlers before spawn closes the gap in which a
     // signal could otherwise terminate the wrapper but leave the child alive.
     let mut signals = match Signals::new([SIGINT, SIGTERM]) {
@@ -166,7 +171,7 @@ fn stream_child(command: &mut Command, config: Config) -> ExitCode {
         thread::spawn(move || streaming::read_stream(stdout, Stream::Stdout, sender));
     let stderr_thread =
         thread::spawn(move || streaming::read_stream(stderr, Stream::Stderr, stderr_sender));
-    let report = streaming::process(receiver, config, StorePaths::from_env().ok(), &mut Retain);
+    let report = streaming::process(receiver, config, StorePaths::from_env().ok(), &mut filter);
     let status = child.wait();
     signal_handle.close();
     let _ = signal_thread.join();

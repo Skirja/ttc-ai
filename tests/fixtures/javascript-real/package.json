@@ -1,0 +1,22 @@
+{
+  "name": "ttc-m4-real-tools",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:vitest": "vitest run tests/vitest --reporter=verbose",
+    "test:jest": "jest tests/jest --runInBand",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
+    "build": "vite build",
+    "format:check": "prettier --check src"
+  },
+  "devDependencies": {
+    "eslint": "10.11.0",
+    "jest": "30.5.2",
+    "prettier": "3.9.9",
+    "typescript": "7.0.2",
+    "vite": "8.3.1",
+    "vitest": "5.0.1"
+  }
+}
