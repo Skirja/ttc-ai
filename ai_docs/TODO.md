@@ -482,6 +482,21 @@ Bukti M5 pada branch `feat/m5-core-ecosystems`, PR
   menemukan smoke kehilangan default rustup setelah `HOME` diisolasi. Script
   kini mempertahankan lokasi toolchain CI dan memilih `1.98.1` eksplisit;
   run sukses di atas memverifikasi perbaikannya.
+- Empat temuan review M5 diperbaiki pada commit
+  `d582ea2a1f8fca7253ca2e82d1b2806467e8492a`: output failure tetap raw
+  setelah baris kosong, `uv run` membaca nilai opsi sebelum memilih tool,
+  `coverage run` berhenti membaca opsi saat mencapai script, dan pipeline test
+  CI memakai `pipefail`. Test regresi classifier, fixture Rust, dan E2E
+  generic application ditambahkan. Seluruh command verification M5, gate
+  repository, serta smoke binary release lulus lokal setelah perbaikan.
+- Semua lima job [CI run 36223832943](https://github.com/Skirja/ttc-ai/actions/runs/36223832943)
+  lulus pada commit tersebut. Artifact `m5-core-ecosystem-evidence` diunduh
+  dan diperiksa: SHA-256 `fixtures.txt`
+  `cf93f2d886bc4ca3030c9913c7b33501804d658b4a13a9f4f383a750123c62c0`,
+  `reduction.txt`
+  `185983e5c704fdf1c95b07f5e86d412ffcfd41d4453461add8c796a94037ce7d`,
+  dan `report.txt`
+  `b401132de6fd558ba8e44838751878d12847931cb39f48624bbd8e8da8ed07f0`.
 
 ---
 
