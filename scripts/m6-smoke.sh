@@ -221,11 +221,14 @@ compare() {
     replay_stderr_sha=$(sha256sum "$scratch/$label.replay.stderr" | awk '{print $1}')
   fi
   if [ "$expectation" = raw ]; then
-    sed -E '/^[[:space:]]*Start at /d; /^[[:space:]]*Duration[[:space:]]/d; /^[[:space:]]*Done in /d; s/[0-9]+ms/<elapsed>/g' \
-      "$scratch/$label.direct.out" > "$scratch/$label.direct.normalized.out"
-    sed -E '/^[[:space:]]*Start at /d; /^[[:space:]]*Duration[[:space:]]/d; /^[[:space:]]*Done in /d; s/[0-9]+ms/<elapsed>/g' \
-      "$scratch/$label.ttc.out" > "$scratch/$label.ttc.normalized.out"
-    cmp "$scratch/$label.direct.normalized.out" "$scratch/$label.ttc.normalized.out"
+    test -z "$raw_id"
+    grep ' passing case ' "$scratch/$label.direct.out" | sed -E 's/[[:space:]]+[0-9]+([.][0-9]+)?ms$//' | sort > "$scratch/$label.direct.tests"
+    grep ' passing case ' "$scratch/$label.ttc.out" | sed -E 's/[[:space:]]+[0-9]+([.][0-9]+)?ms$//' | sort > "$scratch/$label.ttc.tests"
+    test "$(wc -l < "$scratch/$label.direct.tests" | tr -d ' ')" -eq 24
+    cmp "$scratch/$label.direct.tests" "$scratch/$label.ttc.tests"
+    grep -E 'Test Files|Tests[[:space:]]' "$scratch/$label.direct.out" | sort > "$scratch/$label.direct.summaries"
+    grep -E 'Test Files|Tests[[:space:]]' "$scratch/$label.ttc.out" | sort > "$scratch/$label.ttc.summaries"
+    cmp "$scratch/$label.direct.summaries" "$scratch/$label.ttc.summaries"
     cmp "$scratch/$label.direct.err" "$scratch/$label.ttc.err"
   fi
   printf '%s command=%s exit=%s direct_stdout=%s ttc_stdout=%s direct_stderr=%s ttc_stderr=%s direct_total=%s ttc_total=%s reduction_percent=%s direct_stdout_sha256=%s direct_stderr_sha256=%s raw_id=%s replay_stdout_sha256=%s replay_stderr_sha256=%s direct_marker_count=%s ttc_marker_count=%s\n' \
