@@ -15,6 +15,7 @@ fn filter(family: Family) -> EcosystemFilter {
     EcosystemFilter::new(Plan {
         families: vec![family],
         raw: false,
+        ..Plan::default()
     })
 }
 
@@ -160,6 +161,7 @@ fn parser_confidence_is_independent_when_plans_contain_multiple_ecosystems() {
     let mut recognizer = EcosystemFilter::new(Plan {
         families: vec![Family::RustTest, Family::PyTest],
         raw: false,
+        ..Plan::default()
     });
     for line in ["test rust::one ... ok\n", "test rust::two ... ok\n"] {
         assert!(

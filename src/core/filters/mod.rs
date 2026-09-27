@@ -1,5 +1,7 @@
 //! JS/TS recognizers. Every unmatched record is retained byte-for-byte.
 
+use std::collections::{HashMap, HashSet};
+
 use super::classification::{Family, Plan};
 use super::raw_store::Stream;
 use super::streaming::{CompactKind, Filter};
@@ -8,70 +10,106 @@ pub(crate) mod ecosystems;
 
 pub(crate) struct JsFilter {
     plan: Plan,
-    confidence: [[u8; 6]; 2],
+    fallback_only_prefixed: bool,
+    confidence: HashMap<(usize, String), [u8; 6]>,
     structured: bool,
-    diagnostic_block: [bool; 2],
+    diagnostic_block: HashMap<(usize, String), bool>,
+    disabled: bool,
 }
 
 impl JsFilter {
     pub(crate) fn new(plan: Plan) -> Self {
+        let fallback_only_prefixed = plan.fallback_only_prefixed;
         Self {
             plan,
-            confidence: [[0; 6]; 2],
+            fallback_only_prefixed,
+            confidence: HashMap::new(),
             structured: false,
-            diagnostic_block: [false; 2],
+            diagnostic_block: HashMap::new(),
+            disabled: false,
         }
+    }
+
+    fn disable(&mut self) {
+        self.disabled = true;
+        self.confidence.clear();
+        self.diagnostic_block.clear();
     }
 }
 
 impl Filter for JsFilter {
     fn can_compact(&self) -> bool {
-        !self.plan.raw && self.plan.families.iter().any(is_js_family)
+        !self.plan.raw && !self.disabled && self.plan.families.iter().any(is_js_family)
     }
 
     fn decide(&mut self, stream: Stream, line: &[u8]) -> Result<Option<CompactKind>, ()> {
-        if self.structured {
+        self.decide_for_source(stream, line, "")
+    }
+}
+
+impl JsFilter {
+    fn decide_for_source(
+        &mut self,
+        stream: Stream,
+        line: &[u8],
+        source: &str,
+    ) -> Result<Option<CompactKind>, ()> {
+        if self.structured || self.disabled {
             return Ok(None);
         }
         let stream_index = if stream == Stream::Stdout { 0 } else { 1 };
+        let key = (stream_index, source.to_owned());
+        if !self.confidence.contains_key(&key) && self.confidence.len() >= 4096 {
+            self.disabled = true;
+            return Ok(None);
+        }
         let clean = strip_ansi(line).ok_or(())?;
         let clean = clean.trim_end_matches(['\r', '\n']);
         let trim = clean.trim();
         if structured_line(trim) {
             self.structured = true;
-            self.confidence[stream_index].fill(0);
+            self.confidence.clear();
             return Ok(None);
         }
         if trim.is_empty() {
-            self.diagnostic_block[stream_index] = false;
-            self.confidence[stream_index].fill(0);
+            self.confidence.entry(key).or_insert([0; 6]).fill(0);
             return Ok(None);
         }
         if protected(trim) {
-            self.diagnostic_block[stream_index] = true;
-            self.confidence[stream_index].fill(0);
+            self.diagnostic_block.insert(key.clone(), true);
+            self.confidence.entry(key).or_insert([0; 6]).fill(0);
             return Ok(None);
         }
-        if self.diagnostic_block[stream_index] {
-            self.confidence[stream_index].fill(0);
+        if self.diagnostic_block.get(&key).copied().unwrap_or(false)
+            || self
+                .diagnostic_block
+                .get(&(stream_index, String::new()))
+                .copied()
+                .unwrap_or(false)
+        {
+            self.confidence.entry(key).or_insert([0; 6]).fill(0);
             return Ok(None);
         }
+        if self.fallback_only_prefixed && source.is_empty() {
+            self.confidence.entry(key).or_insert([0; 6]).fill(0);
+            return Ok(None);
+        }
+        let confidence = self.confidence.entry(key.clone()).or_insert([0; 6]);
         for family in &self.plan.families {
             let Some(index) = family_index(*family) else {
                 continue;
             };
             if let Some(kind) = recognize(*family, trim) {
-                for (other, value) in self.confidence[stream_index].iter_mut().enumerate() {
+                for (other, value) in confidence.iter_mut().enumerate() {
                     if other != index {
                         *value = 0;
                     }
                 }
-                self.confidence[stream_index][index] =
-                    self.confidence[stream_index][index].saturating_add(1);
-                return Ok((self.confidence[stream_index][index] > 3).then_some(kind));
+                confidence[index] = confidence[index].saturating_add(1);
+                return Ok((confidence[index] > 3).then_some(kind));
             }
         }
-        self.confidence[stream_index].fill(0);
+        confidence.fill(0);
         Ok(None)
     }
 }
@@ -147,6 +185,7 @@ fn structured_line(text: &str) -> bool {
             !matches!(
                 key.to_ascii_lowercase().as_str(),
                 "progress"
+                    | "scope"
                     | "tests"
                     | "time"
                     | "warning"
@@ -212,30 +251,157 @@ pub(crate) fn protected(text: &str) -> bool {
 pub(crate) struct DispatchFilter {
     js: JsFilter,
     ecosystems: ecosystems::EcosystemFilter,
+    sources: Vec<(String, String)>,
+    source_states: HashSet<(usize, String, u8)>,
+    source_limit_exceeded: bool,
 }
 
 impl DispatchFilter {
     pub(crate) fn new(plan: Plan) -> Self {
+        let sources = plan.source_aliases.clone();
         Self {
             js: JsFilter::new(plan.clone()),
             ecosystems: ecosystems::EcosystemFilter::new(plan),
+            sources,
+            source_states: HashSet::new(),
+            source_limit_exceeded: false,
         }
     }
 }
 
 impl Filter for DispatchFilter {
     fn can_compact(&self) -> bool {
-        self.js.can_compact() || self.ecosystems.can_compact()
+        !self.source_limit_exceeded && (self.js.can_compact() || self.ecosystems.can_compact())
     }
 
     fn decide(&mut self, stream: Stream, line: &[u8]) -> Result<Option<CompactKind>, ()> {
+        if self.source_limit_exceeded {
+            return Ok(None);
+        }
+        let (normalized, source) = unwrap_runner_prefix(line, &self.sources);
+        let stream_index = if stream == Stream::Stdout { 0 } else { 1 };
+        for (active, recognizer) in [
+            (self.js.can_compact(), 0),
+            (self.ecosystems.can_compact(), 1),
+        ] {
+            if active
+                && !self
+                    .source_states
+                    .contains(&(stream_index, source.clone(), recognizer))
+            {
+                if self.source_states.len() >= 4096 {
+                    self.source_limit_exceeded = true;
+                    self.js.disable();
+                    self.ecosystems.disable();
+                    return Ok(None);
+                }
+                self.source_states
+                    .insert((stream_index, source.clone(), recognizer));
+            }
+        }
         if self.js.can_compact()
-            && let Some(kind) = self.js.decide(stream, line)?
+            && let Some(kind) = self.js.decide_for_source(stream, &normalized, &source)?
         {
             return Ok(Some(kind));
         }
-        self.ecosystems.decide(stream, line)
+        self.ecosystems
+            .decide_for_source(stream, &normalized, &source)
     }
+}
+
+fn unwrap_runner_prefix(line: &[u8], sources: &[(String, String)]) -> (Vec<u8>, String) {
+    let Ok(text) = std::str::from_utf8(line) else {
+        return (line.to_vec(), String::new());
+    };
+    let ending_len = if text.ends_with("\r\n") {
+        2
+    } else if text.ends_with('\n') {
+        1
+    } else {
+        0
+    };
+    let body_end = text.len().saturating_sub(ending_len);
+    let body = &text[..body_end];
+    for (alias, source) in sources {
+        let prefixes = [
+            format!("[{alias}] "),
+            format!("[{alias}]: "),
+            format!("{alias} | "),
+        ];
+        if let Some(prefix) = prefixes
+            .iter()
+            .find(|prefix| body.starts_with(prefix.as_str()))
+        {
+            let mut normalized = body.as_bytes()[prefix.len()..].to_vec();
+            normalized.extend_from_slice(&line[body_end..]);
+            return (normalized, source.clone());
+        }
+        if let Some(rest) = body
+            .strip_prefix(alias)
+            .and_then(|rest| rest.strip_prefix('#'))
+            && let Some((task, payload)) = rest.split_once(": ")
+            && matches!(
+                task,
+                "test" | "e2e" | "lint" | "typecheck" | "build" | "format"
+            )
+        {
+            let payload = payload.trim_start_matches([' ', '\t']);
+            let mut normalized = payload.as_bytes().to_vec();
+            normalized.extend_from_slice(&line[body_end..]);
+            return (normalized, format!("{source}\0{task}"));
+        }
+        if let Some(rest) = body
+            .strip_prefix(alias)
+            .and_then(|rest| rest.strip_prefix(':'))
+        {
+            if let Some((task, payload)) = rest.split_once(" | ")
+                && matches!(
+                    task,
+                    "test"
+                        | "e2e"
+                        | "lint"
+                        | "typecheck"
+                        | "type-check"
+                        | "build"
+                        | "format"
+                        | "fmt"
+                )
+            {
+                let payload = payload.trim_start_matches([' ', '\t']);
+                let mut normalized = payload.as_bytes().to_vec();
+                normalized.extend_from_slice(&line[body_end..]);
+                return (normalized, format!("{source}\0{task}"));
+            }
+            if let Some((task, payload)) = rest.split_once(": ") {
+                let mut normalized = payload.as_bytes().to_vec();
+                normalized.extend_from_slice(&line[body_end..]);
+                return (normalized, format!("{source}\0{task}"));
+            }
+            if let Some(payload) = rest.strip_prefix([' ', '\t']) {
+                let payload = payload.trim_start_matches([' ', '\t']);
+                let mut normalized = payload.as_bytes().to_vec();
+                normalized.extend_from_slice(&line[body_end..]);
+                return (normalized, source.clone());
+            }
+        }
+        if let Some(rest) = body
+            .strip_prefix(alias)
+            .and_then(|rest| rest.strip_prefix(' '))
+            && let Some((task, payload)) = rest.split_once(": ")
+        {
+            let task = task.trim();
+            if matches!(
+                task,
+                "test" | "e2e" | "lint" | "typecheck" | "type-check" | "build" | "format" | "fmt"
+            ) {
+                let payload = payload.trim_start_matches([' ', '\t']);
+                let mut normalized = payload.as_bytes().to_vec();
+                normalized.extend_from_slice(&line[body_end..]);
+                return (normalized, format!("{source}\0{task}"));
+            }
+        }
+    }
+    (line.to_vec(), String::new())
 }
 
 fn recognize(family: Family, text: &str) -> Option<CompactKind> {

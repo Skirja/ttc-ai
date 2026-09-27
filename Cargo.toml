@@ -12,6 +12,9 @@ nix = { version = "=0.31.3", default-features = false, features = ["signal", "us
 signal-hook = "=0.4.4"
 toml = "=0.9.7"
 serde_json = "=1.0.145"
+serde = "=1.0.229"
+globset = "=0.4.20"
+yaml-rust2 = "=0.13.0"
 
 [dev-dependencies]
 nix = { version = "=0.31.3", default-features = false, features = ["signal", "term"] }

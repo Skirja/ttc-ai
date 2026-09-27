@@ -509,33 +509,67 @@ runner, memecah execution, atau kehilangan output mixed-language.
 
 ### Implementation checklist
 
-- [ ] Parse package scripts npm/pnpm/yarn/bun secara statis tanpa mengeksekusi
-  discovery command.
-- [ ] Resolve lifecycle, nested alias, compound script, dan nested tool family
-  dengan recursion depth maksimum 16 serta cycle detection.
-- [ ] Parsing manifest gagal berarti raw.
-- [ ] Honor npm workspace, pnpm recursive/filter/dir, Yarn workspace/foreach,
-  dan Bun script behavior pada SPEC.
-- [ ] Implementasikan Turbo, Nx, Lerna, Lage, dan Moon command recognition.
-- [ ] Baca package/workspace/Turbo/Nx/Lerna manifests hanya sebagai hints;
-  original root command tetap authoritative.
-- [ ] Tambahkan Cargo workspace dan Go workspace discovery adapters tanpa
-  mengubah execution graph runner.
-- [ ] Gabungkan beberapa filter family untuk compound/mixed-language root script.
-- [ ] Pastikan output-signature fallback dapat mengaktifkan family yang child
-  command-nya tidak terlihat.
-- [ ] Buat seluruh required monorepo fixture di SPEC, termasuk nested script ke
-  Python/Rust dan mixed JavaScript-Go.
+- [x] Tambahkan bounded lazy manifest discovery untuk package JSON, pnpm YAML,
+  Cargo TOML, go.work, Turbo/Nx/Lerna JSON, dan Moon YAML; reject duplicate JSON
+  keys, duplicate YAML keys, alias/tag, malformed content, symlink escape, dan
+  resource overflow sebagai raw.
+- [x] Enforce batas SPEC: 1 MiB/manifest, 16 MiB total, 4.096 project, 16.384
+  directory entries, 64 traversal levels, dan 16 nested aliases/targets.
+- [x] Parse shell expression hanya untuk token/command boundaries yang aman;
+  support quote, escape, assignment, `cd`, `&&`, `;`, newline; fail raw untuk
+  pipeline, background, substitution, redirection, dan control flow.
+- [x] Resolve npm/pnpm/Yarn/Bun script, manager-specific lifecycle, nested
+  aliases, wrapper flags, forwarded machine/watch options, selected workspace,
+  recursive workspace, dan selector dependency/path/name.
+- [x] Bedakan command `bun test` dari package script `bun run test`; script
+  custom yang command body-nya unknown membuat seluruh invocation raw.
+- [x] Implementasikan adapters Turbo, Nx `project.json`/package targets,
+  run-many/affected, Lerna, Lage, dan Moon tanpa mengeksekusi discovery command.
+- [x] Tambahkan Cargo members/excludes/globs dan go.work `use` discovery tanpa
+  mengganti atau memecah command runner asli.
+- [x] Satukan family dari compound/mixed-language root scripts dan parse runner
+  prefix hanya untuk project yang ditemukan; pertahankan byte asli dan diagnostic.
+- [x] Pisahkan confidence per stream, source, dan parser; batasi 4.096 source.
+  Fallback untuk target tersembunyi hanya memakai family yang diketahui serta
+  prefix project yang terdaftar.
+- [x] Tambahkan fixture success/failure/warning/unknown/large, baseline-versus-
+  TTC, invocation counter, cache, selection, cwd, ordering/concurrency, serta
+  mixed JS-Go dan nested Python/Rust.
+- [x] Tambahkan pinned real-tool smoke untuk npm, pnpm, Yarn Classic/modern, Bun,
+  Turbo, Nx, Lerna, Lage, Moon, Cargo workspace, Go workspace, root mixed
+  JavaScript-Go, dan nested Python-Rust; integrasikan job M6 Linux CI dan upload
+  evidence hanya setelah semua gate lulus. Script mendukung group
+  `package-managers`, `runners`, dan `systems`, serta `all` sebagai default.
+- [x] Pin smoke M6 pada Rust 1.98.1, Node 24.21.0/npm 11.19.0, pnpm 9.15.9,
+  Yarn Classic 1.22.22, Yarn modern 4.18.1, Bun 1.4.2, Turbo 2.11.4,
+  Nx 23.2.1, Lerna 10.0.1, Lage 2.17.0, Moon 2.5.5, Vitest 5.0.1,
+  Vite 8.3.1, Python 3.14.7/pytest 9.1.1, dan Go 1.27.1.
+- [x] Catat alasan dependency `serde`, `globset`, dan `yaml-rust2`; commit
+  Cargo.lock yang mengunci resolusi mereka.
+
+Alasan dependency M6: `serde` dipakai langsung untuk visitor JSON yang menolak
+duplicate key sebelum nilai masuk ke `serde_json`; `globset` menyediakan
+pencocokan workspace glob yang tervalidasi tanpa evaluasi shell; `yaml-rust2`
+menyediakan event parser agar alias/tag YAML dapat ditolak sebelum manifest
+Moon/pnpm dibaca sebagai hint statis. Ketiganya dipin dan resolusinya dicatat di
+`Cargo.lock` demi hasil discovery dan CI yang dapat direproduksi.
 
 ### Acceptance criteria
 
-- [ ] Root command dan setiap expected package berjalan tepat satu kali.
-- [ ] Dependency graph, concurrency, cache, cwd, dan environment tetap milik
-  runner asli.
-- [ ] Passing/progress berkurang minimum 80% pada large monorepo success fixture.
-- [ ] Error dari package atau ecosystem mana pun terlihat lengkap.
-- [ ] Exit code sama dengan baseline.
-- [ ] Depth overflow, cycle, missing manifest, dan malformed manifest aman raw.
+- [x] Root command berjalan sekali dan setiap package terpilih berjalan sebanyak
+  baseline; package yang tidak terpilih tidak dijalankan TTC.
+- [x] Dependency graph/order, concurrency, cache, cwd, stdin, dan environment
+  tetap milik runner asli.
+- [x] Large deterministic monorepo success fixture dengan ≥1.000
+  passing/progress records berkurang ≥80% total stdout+stderr termasuk metadata.
+- [x] Warning, diagnostic, assertion diff, stack trace, summary, stream bytes
+  gagal, dan exit status sama dengan baseline; no rerun saat parsing gagal.
+- [x] Cycle, depth 17, missing/malformed/duplicate manifest, prefix unknown,
+  unsupported option, dan overflow fail open raw.
+- [x] Custom app, machine-readable, generic runner output, watch/dev, unknown
+  workspace/task, dan unprefixed hidden-target record tetap retained.
+- [x] Semua manager/runner smoke memakai versi pin; tidak ada tool yang hilang
+  atau job yang diskip.
 
 ### Verification commands
 
@@ -544,13 +578,43 @@ cargo test --test manifests
 cargo test --test package_scripts
 cargo test --test monorepo
 cargo test --test mixed_monorepo
+cargo test --test classifier
+cargo test --test filter_safety
+cargo test --test javascript_e2e
+cargo fmt --all -- --check
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test --all-targets --all-features
+cargo build --release
+sh scripts/m6-smoke.sh target/release/ttc target/m6-evidence
 ```
 
 ### Evidence
 
-- [ ] Commit implementasi dicatat.
-- [ ] Invocation-count report tiap fixture dicatat.
-- [ ] Baseline/filter comparison dan reduction report disimpan.
+- [ ] Commit implementasi, commit evidence, dan seluruh verification commands
+  dicatat.
+- [ ] Pinned tool versions serta invocation count root/package/task tiap fixture
+  dicatat.
+- [ ] Baseline/filter comparison, exit/signal, diagnostic retention, replay
+  checksum, dan reduction report disimpan pada artifact CI.
+- [ ] CI M6 pada PR lulus seluruh job; artifact `m6-monorepo-evidence` diunduh
+  dan diperiksa, lalu URL run dan checksum artifact dicatat.
+
+Bukti lokal M6 pada branch `feat/m6-package-monorepo`:
+
+- Tujuh command `cargo test --test` yang tercantum di atas, format check,
+  Clippy dengan warnings denied, semua target/feature test, dan release build
+  lulus setelah perbaikan review lokal.
+- `cargo test --test monorepo -- --nocapture` mencatat 2.000 record, satu
+  invocation root, dua invocation package, serta 95.780 → 381 byte total
+  (99,6% berkurang, termasuk metadata TTC).
+- `sh scripts/m6-smoke.sh target/release/ttc target/m6-evidence` lulus 19 kasus
+  pada tool pin yang tercatat di report lokal. Marker package sama dengan
+  baseline; Turbo mempertahankan overlap concurrency dan dependency order.
+  Failure Turbo exit 1 serta diagnostic tetap terlihat; lima kasus
+  memiliki ID dan checksum raw replay. npm/Yarn multi-workspace tanpa prefix
+  dibiarkan raw sesuai SPEC.
+- Report lokal berada di `target/m6-evidence/report.txt`; bukti final menunggu
+  commit dan artifact CI dari PR.
 
 ---
 

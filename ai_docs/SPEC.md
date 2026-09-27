@@ -710,6 +710,74 @@ Batas:
 - parsing gagal berarti raw;
 - discovery tidak menjalankan script.
 
+Discovery bersifat lazy dan statis. Direktori pencarian berhenti pada root
+workspace terdekat yang ditemukan dari cwd. Batas per invocation adalah 1 MiB
+per manifest, 16 MiB total manifest, 4.096 project, 16.384 entri direktori,
+64 tingkat traversal, dan 16 tingkat resolusi alias script/target. Kedalaman
+pertama bernilai 1; tingkat ke-16 masih diterima. Overflow, path ambigu, cycle,
+manifest wajib yang tidak dapat dibaca, atau parse gagal membuat invocation
+raw sebelum output dikompaksi. Cache discovery hanya hidup selama invocation.
+
+Traversal tidak memasuki `.git`, `node_modules`, atau `target` kecuali path
+referensi eksplisit menunjuk langsung ke sana. Symlink dikanonisasi untuk
+mencegah loop dan penghitungan project ganda; traversal otomatis tidak membaca
+target symlink yang keluar dari root workspace.
+
+Analisis shell package script hanya mendukung command literal, assignment
+environment, `cd` literal, `&&`, `;`, dan newline. Quoting dan escaping
+mempertahankan argument operator literal. Pipeline, background job, redirection,
+command substitution, ekspansi, atau control flow yang tidak dapat dibuktikan
+statis berjalan raw. Lexer hanya memengaruhi klasifikasi; TTC tetap menjalankan
+argv atau string command asli sekali.
+
+Resolver membedakan alias menurut manager, project canonical, dan nama script.
+Cycle aktif membuat seluruh invocation raw, sedangkan pemanggilan alias yang
+selesai sebelumnya bukan cycle. Ketika manager menjalankan lifecycle `pre*`/
+`post*`, discovery mengikuti perilaku manager dari metadata proyek: npm dan Bun
+mengurai lifecycle yang diketahui; pnpm hanya jika `enablePrePostScripts` aktif
+di manifest workspace; Yarn Classic hanya jika versi 1 diketahui. Yarn modern
+tidak menjalankan arbitrary pre/post script. Jika perilaku Yarn tidak diketahui
+dan lifecycle kandidat ada, output raw.
+
+### 9.2.1 Workspace dan runner hints
+
+Workspace hints dibaca dari manifest npm/pnpm/Yarn/Bun, konfigurasi Turbo/Nx/
+Lerna/Lage/Moon, Cargo workspace, dan `go.work`. Adapter hanya menentukan
+candidate filter family. Runner asli tetap menentukan package terpilih,
+dependency graph, urutan, concurrency, cache, cwd, dan environment.
+
+Selector statis yang didukung meliputi workspace bernama/path npm, pnpm
+recursive/filter/path dan relasi dependency/dependent lokal, Yarn workspace/
+foreach, Bun script/filter, Turbo task, Nx target/run-many/affected, Lerna run,
+Lage task, Moon target, Cargo workspace/package, serta Go workspace. Selector
+Git/query/plugin atau konfigurasi executable tidak dijalankan oleh TTC. Hints
+statis menjadi kandidat; filtering fallback hanya berlaku untuk recognizer
+family yang sudah diketahui dan prefix project yang terdaftar. Prefix dibuang
+hanya untuk pengenalan; record yang dipertahankan tetap byte asli. Prefix
+ambigu, task banner, cache summary, unknown record, dan diagnostic tetap raw.
+
+Prefix runner hanya boleh di-unwrapping jika grammar dan identitas project
+terdaftar cocok. Bentuk yang didukung meliputi `packages/path task: ` dari
+pnpm, `project#task: ` dari Turbo, `project:  ` dan `project:task: ` dari Nx/
+Lerna, `project task : ` dari Lage, serta `project:task | ` dari Moon. ID
+project yang dideklarasikan Moon menjadi alias sumber tambahan walau project
+yang sama sudah ditemukan melalui workspace `package.json`. Alias yang sama
+menunjuk lebih dari satu project menjadikan invocation raw. TTC selalu
+mempertahankan prefix byte asli saat emission.
+
+Jika manager menjalankan beberapa package tanpa prefix sumber per record,
+record tak berprefix tetap raw. Ini mencakup bentuk standar npm `--workspaces`,
+Yarn Classic `workspaces run`, dan Yarn modern `workspaces foreach`. Prefix
+yang dikenal masih dapat difilter dalam invocation itu. Banner teks runner
+seperti `Scope: 2 of 3 workspace projects` bukan bukti structured output dan
+tidak mematikan recognizer untuk record package yang datang sesudahnya.
+
+Sumber confidence dipisahkan menurut stream, project/task yang teridentifikasi,
+dan recognizer. Batas state sumber adalah 4.096; overflow menonaktifkan filter
+selebihnya. Fallback tanpa target script statis wajib mengenali prefix project
+yang terdaftar. Diagnostic tanpa identitas sumber yang dapat dibuktikan membuat
+sisa physical stream terkait raw, termasuk setelah baris kosong.
+
 ### 9.3 Mixed-language monorepo
 
 Contoh root package.json:

@@ -11,6 +11,7 @@ fn make_filter(family: Family) -> JsFilter {
     JsFilter::new(Plan {
         families: vec![family],
         raw: false,
+        ..Plan::default()
     })
 }
 

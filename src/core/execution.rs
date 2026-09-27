@@ -2,7 +2,6 @@
 
 use std::ffi::{OsStr, OsString};
 use std::io::{self, IsTerminal};
-use std::os::unix::ffi::OsStrExt;
 use std::os::unix::process::{CommandExt, ExitStatusExt};
 use std::path::Path;
 use std::process::{Command, ExitCode, ExitStatus, Stdio};
@@ -42,7 +41,7 @@ pub(crate) fn run(arguments: &[OsString]) -> ExitCode {
     raw_store::cleanup(config);
 
     if has_terminal()
-        || may_start_background_shell_job(arguments)
+        || classification::has_background_shell_job(arguments)
         || is_known_raw_command(arguments)
     {
         let error = command.exec();
@@ -50,19 +49,20 @@ pub(crate) fn run(arguments: &[OsString]) -> ExitCode {
     }
 
     let cwd = std::env::current_dir().unwrap_or_default();
-    let hints = classification::ManifestHints::load(&cwd);
-    let plan = classification::classify(arguments, &cwd, hints.as_ref());
+    let discovery = if classification::needs_manifest_discovery(arguments) {
+        classification::ManifestHints::discover(&cwd)
+    } else {
+        Ok(None)
+    };
+    let mut plan = classification::classify(
+        arguments,
+        &cwd,
+        discovery.as_ref().ok().and_then(Option::as_ref),
+    );
+    if discovery.is_err() {
+        plan.raw = true;
+    }
     stream_child(&mut command, config, DispatchFilter::new(plan))
-}
-
-fn may_start_background_shell_job(arguments: &[OsString]) -> bool {
-    // The shell expression may be nested under bash, env, or another wrapper.
-    // A background job can retain output descriptors after its parent exits,
-    // so conservatively preserve the original descriptors when any argument
-    // contains an ampersand. No filtering is active in M2.
-    arguments
-        .iter()
-        .any(|argument| argument.as_bytes().contains(&b'&'))
 }
 
 fn has_terminal() -> bool {

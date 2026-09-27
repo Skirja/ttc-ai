@@ -7,5 +7,6 @@ pub(crate) mod classification;
 pub(crate) mod config;
 pub(crate) mod execution;
 pub(crate) mod filters;
+pub(crate) mod manifests;
 pub(crate) mod raw_store;
 pub(crate) mod streaming;

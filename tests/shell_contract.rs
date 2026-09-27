@@ -134,6 +134,7 @@ fn background_shell_job_does_not_delay_wrapper_exit() {
         &[SCRIPT][..],
         &["bash", "-c", SCRIPT][..],
         &["/usr/bin/env", "bash", "-c", SCRIPT][..],
+        &["sleep 30 & P=$(printf x); printf '%s' \"$!\" > \"$BG_PID\""][..],
     ] {
         let dir = TestDir::new();
         let pidfile = dir.path().join("background-pid");

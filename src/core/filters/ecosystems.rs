@@ -1,6 +1,6 @@
 //! Conservative Rust, Python, and Go output recognizers.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use serde_json::Value;
 
@@ -14,19 +14,27 @@ const GO_TEST_PARSER: usize = 6;
 
 pub(crate) struct EcosystemFilter {
     plan: Plan,
-    confidence: [[u8; TEXT_PARSER_COUNT]; 2],
+    confidence: HashMap<(usize, String), [u8; TEXT_PARSER_COUNT]>,
     json_confidence: u8,
-    diagnostic_block: [[bool; TEXT_PARSER_COUNT]; 2],
+    diagnostic_block: HashSet<(usize, String, usize)>,
+    disabled: bool,
 }
 
 impl EcosystemFilter {
     pub(crate) fn new(plan: Plan) -> Self {
         Self {
             plan,
-            confidence: [[0; TEXT_PARSER_COUNT]; 2],
+            confidence: HashMap::new(),
             json_confidence: 0,
-            diagnostic_block: [[false; TEXT_PARSER_COUNT]; 2],
+            diagnostic_block: HashSet::new(),
+            disabled: false,
         }
+    }
+
+    pub(super) fn disable(&mut self) {
+        self.disabled = true;
+        self.confidence.clear();
+        self.diagnostic_block.clear();
     }
 
     fn has_json_parser(&self) -> bool {
@@ -45,18 +53,41 @@ impl EcosystemFilter {
 
 impl Filter for EcosystemFilter {
     fn can_compact(&self) -> bool {
-        self.has_json_parser() || self.has_text_parser()
+        !self.disabled && (self.has_json_parser() || self.has_text_parser())
     }
 
     fn decide(&mut self, stream: Stream, line: &[u8]) -> Result<Option<CompactKind>, ()> {
+        self.decide_for_source(stream, line, "")
+    }
+}
+
+impl EcosystemFilter {
+    pub(super) fn decide_for_source(
+        &mut self,
+        stream: Stream,
+        line: &[u8],
+        source: &str,
+    ) -> Result<Option<CompactKind>, ()> {
         if self.has_json_parser() {
             if stream == Stream::Stderr {
                 return Ok(None);
             }
             return self.decide_go_json(line);
         }
+        if self.disabled {
+            return Ok(None);
+        }
 
         let stream_index = if stream == Stream::Stdout { 0 } else { 1 };
+        let key = (stream_index, source.to_owned());
+        if !self.confidence.contains_key(&key) && self.confidence.len() >= 4096 {
+            self.disabled = true;
+            return Ok(None);
+        }
+        let confidence = self
+            .confidence
+            .entry(key.clone())
+            .or_insert([0; TEXT_PARSER_COUNT]);
         let mut active = [false; TEXT_PARSER_COUNT];
         for family in &self.plan.families {
             if let Some(index) = text_parser_index(*family) {
@@ -71,7 +102,7 @@ impl Filter for EcosystemFilter {
             // with blank lines, so only reset confidence here.
             for (index, is_active) in active.iter().copied().enumerate() {
                 if is_active {
-                    self.confidence[stream_index][index] = 0;
+                    confidence[index] = 0;
                 }
             }
             return Ok(None);
@@ -79,8 +110,9 @@ impl Filter for EcosystemFilter {
         if protected(record) {
             for (index, is_active) in active.iter().copied().enumerate() {
                 if is_active {
-                    self.confidence[stream_index][index] = 0;
-                    self.diagnostic_block[stream_index][index] = true;
+                    confidence[index] = 0;
+                    self.diagnostic_block
+                        .insert((stream_index, source.to_owned(), index));
                 }
             }
             return Ok(None);
@@ -89,20 +121,32 @@ impl Filter for EcosystemFilter {
             .iter()
             .copied()
             .enumerate()
-            .any(|(index, is_active)| is_active && self.diagnostic_block[stream_index][index])
+            .any(|(index, is_active)| {
+                is_active
+                    && (self
+                        .diagnostic_block
+                        .contains(&(stream_index, source.to_owned(), index))
+                        || self
+                            .diagnostic_block
+                            .contains(&(stream_index, String::new(), index)))
+            })
         {
             for (index, is_active) in active.iter().copied().enumerate() {
                 if is_active {
-                    self.confidence[stream_index][index] = 0;
+                    confidence[index] = 0;
                 }
             }
+            return Ok(None);
+        }
+        if self.plan.fallback_only_prefixed && source.is_empty() {
+            confidence.fill(0);
             return Ok(None);
         }
 
         if self.plan.families.contains(&Family::GoTest) && go_test_lifecycle(record) {
             for (index, is_active) in active.iter().copied().enumerate() {
                 if is_active && index != GO_TEST_PARSER {
-                    self.confidence[stream_index][index] = 0;
+                    confidence[index] = 0;
                 }
             }
             return Ok(None);
@@ -129,17 +173,16 @@ impl Filter for EcosystemFilter {
             if let Some(kind) = kind {
                 for (index, is_active) in active.iter().copied().enumerate() {
                     if is_active && index != parser_index {
-                        self.confidence[stream_index][index] = 0;
+                        confidence[index] = 0;
                     }
                 }
-                self.confidence[stream_index][parser_index] =
-                    self.confidence[stream_index][parser_index].saturating_add(1);
-                return Ok((self.confidence[stream_index][parser_index] > 3).then_some(kind));
+                confidence[parser_index] = confidence[parser_index].saturating_add(1);
+                return Ok((confidence[parser_index] > 3).then_some(kind));
             }
         }
         for (index, is_active) in active.iter().copied().enumerate() {
             if is_active {
-                self.confidence[stream_index][index] = 0;
+                confidence[index] = 0;
             }
         }
         Ok(None)
