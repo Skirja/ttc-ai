@@ -244,13 +244,14 @@ raw_replay_checksums() {
   label=$1
   error_file=$2
   raw_id=$(sed -n 's/^raw: ttc raw //p' "$error_file" | sed -n '1p')
-  test -n "$raw_id"
-  "$binary" raw "$raw_id" --stdout > "$scratch/$label.replay.stdout"
-  "$binary" raw "$raw_id" --stderr > "$scratch/$label.replay.stderr"
-  stdout_sha=$(sha256sum "$scratch/$label.replay.stdout" | awk '{print $1}')
-  stderr_sha=$(sha256sum "$scratch/$label.replay.stderr" | awk '{print $1}')
-  test -n "$stdout_sha"
-  test -n "$stderr_sha"
+  stdout_sha=none
+  stderr_sha=none
+  if [ -n "$raw_id" ]; then
+    "$binary" raw "$raw_id" --stdout > "$scratch/$label.replay.stdout"
+    "$binary" raw "$raw_id" --stderr > "$scratch/$label.replay.stderr"
+    stdout_sha=$(sha256sum "$scratch/$label.replay.stdout" | awk '{print $1}')
+    stderr_sha=$(sha256sum "$scratch/$label.replay.stderr" | awk '{print $1}')
+  fi
   printf 'raw-replay label=%s id=%s stdout_sha256=%s stderr_sha256=%s\n' \
     "$label" "${raw_id:-none}" "$stdout_sha" "$stderr_sha" >> "$report"
 }
@@ -619,4 +620,8 @@ printf 'nested-python-rust marker_count=2\n' >> "$report"
 report_bytes nested-python-rust 'npm run check' "$ttc_status" \
   "$scratch/nested.direct.out" "$scratch/nested.direct.err" "$scratch/nested.ttc.out" "$scratch/nested.ttc.err"
 raw_replay_checksums nested-python-rust "$scratch/nested.ttc.err"
+fi
+
+if [ "$group" = all ]; then
+  grep -Eq '^raw-replay label=.*stdout_sha256=[0-9a-f]{64} stderr_sha256=[0-9a-f]{64}$' "$report"
 fi
