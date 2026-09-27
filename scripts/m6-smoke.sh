@@ -131,7 +131,7 @@ cat > "$work/.yarnrc.yml" <<'YAML'
 nodeLinker: node-modules
 enableTelemetry: false
 YAML
-(cd "$work" && "$modern/node_modules/.bin/yarn" install --mode=skip-build) > "$scratch/install-yarn-workspace.log" 2>&1
+(cd "$work" && YARN_ENABLE_IMMUTABLE_INSTALLS=false "$modern/node_modules/.bin/yarn" install --mode=skip-build) > "$scratch/install-yarn-workspace.log" 2>&1
 mkdir -p "$work/node_modules"
 ln -s "$tools/node_modules/nx" "$work/node_modules/nx"
 export PATH="$modern/node_modules/.bin:$classic/node_modules/.bin:$tools/node_modules/.bin:$PATH"
