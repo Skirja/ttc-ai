@@ -222,8 +222,8 @@ compare() {
   fi
   if [ "$expectation" = raw ]; then
     test -z "$raw_id"
-    grep ' passing case ' "$scratch/$label.direct.out" | sed -E 's/[[:space:]]+[0-9]+([.][0-9]+)?ms$//' | sort > "$scratch/$label.direct.tests"
-    grep ' passing case ' "$scratch/$label.ttc.out" | sed -E 's/[[:space:]]+[0-9]+([.][0-9]+)?ms$//' | sort > "$scratch/$label.ttc.tests"
+    grep ' passing case ' "$scratch/$label.direct.out" | normalize_case_records | sort > "$scratch/$label.direct.tests"
+    grep ' passing case ' "$scratch/$label.ttc.out" | normalize_case_records | sort > "$scratch/$label.ttc.tests"
     test "$(wc -l < "$scratch/$label.direct.tests" | tr -d ' ')" -eq 24
     cmp "$scratch/$label.direct.tests" "$scratch/$label.ttc.tests"
     grep -E 'Test Files|Tests[[:space:]]' "$scratch/$label.direct.out" | sort > "$scratch/$label.direct.summaries"
@@ -260,6 +260,18 @@ assert_reduced() {
   direct_total=$(($(wc -c < "$1") + $(wc -c < "$2")))
   ttc_total=$(($(wc -c < "$3") + $(wc -c < "$4")))
   test "$ttc_total" -lt "$direct_total"
+}
+
+normalize_case_records() {
+  node -e '
+let input = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", chunk => input += chunk);
+process.stdin.on("end", () => {
+  input = input.replace(/\x1b\[[0-9;]*m/g, "");
+  input = input.replace(/[ \t]+[0-9]+(?:\.[0-9]+)?ms\r?$/gm, "");
+  process.stdout.write(input);
+});'
 }
 
 report_bytes() {
