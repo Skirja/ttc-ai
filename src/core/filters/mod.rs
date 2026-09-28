@@ -372,7 +372,19 @@ fn unwrap_runner_prefix(line: &[u8], sources: &[(String, String)]) -> (Vec<u8>, 
                 normalized.extend_from_slice(&line[body_end..]);
                 return (normalized, format!("{source}\0{task}"));
             }
-            if let Some((task, payload)) = rest.split_once(": ") {
+            if let Some((task, payload)) = rest.split_once(": ")
+                && matches!(
+                    task,
+                    "test"
+                        | "e2e"
+                        | "lint"
+                        | "typecheck"
+                        | "type-check"
+                        | "build"
+                        | "format"
+                        | "fmt"
+                )
+            {
                 let mut normalized = payload.as_bytes().to_vec();
                 normalized.extend_from_slice(&line[body_end..]);
                 return (normalized, format!("{source}\0{task}"));

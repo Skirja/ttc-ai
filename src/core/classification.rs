@@ -261,24 +261,20 @@ pub(crate) fn has_background_shell_job(arguments: &[OsString]) -> bool {
             .and_then(|command| command.to_str())
     };
     command.is_some_and(|command| {
-        if let Some(words) = split_shell(command) {
-            return words.iter().any(|word| word == "&");
-        }
-        let mut quote = None;
-        let mut chars = command.chars().peekable();
-        while let Some(ch) = chars.next() {
-            match (quote, ch) {
-                (Some(q), c) if c == q => quote = None,
-                (None, '\'' | '"') => quote = Some(ch),
-                (Some('"') | None, '\\') => {
-                    chars.next();
+        let bytes = command.as_bytes();
+        let mut index = 0;
+        while index < bytes.len() {
+            if bytes[index] == b'&' {
+                if bytes.get(index + 1) == Some(&b'&') {
+                    index += 2;
+                    continue;
                 }
-                (None, '&') if chars.peek() == Some(&'&') => {
-                    chars.next();
-                }
-                (None, '&') => return true,
-                _ => {}
+                // Quoted ampersands may become shell operators in a nested
+                // `sh -c` invocation. Treat them as background syntax and
+                // preserve the native shell's inherited stdio behavior.
+                return true;
             }
+            index += 1;
         }
         false
     })
@@ -492,19 +488,37 @@ fn classify_segment(
         let Some(script) = invocation.script.as_deref() else {
             return;
         };
-        let local_hints = if hints.is_none() {
-            match local_discovery.discover(directory) {
-                Ok(hints) => Some(hints),
-                Err(()) => {
+        let effective_directory = if let Some(prefix) = invocation.prefix.as_deref() {
+            let prefix = Path::new(prefix);
+            let prefix = if prefix.is_absolute() {
+                prefix.to_path_buf()
+            } else {
+                directory.join(prefix)
+            };
+            match std::fs::canonicalize(prefix) {
+                Ok(path) if path.is_dir() => path,
+                _ => {
                     plan.raw = true;
                     return;
                 }
             }
         } else {
-            None
+            directory.to_path_buf()
         };
+        let local_hints =
+            if hints.is_none_or(|h| h.workspace.project_at(&effective_directory).is_none()) {
+                match local_discovery.discover(&effective_directory) {
+                    Ok(hints) => Some(hints),
+                    Err(()) => {
+                        plan.raw = true;
+                        return;
+                    }
+                }
+            } else {
+                None
+            };
         let selected_hints = hints
-            .filter(|h| h.workspace.project_at(directory).is_some())
+            .filter(|h| h.workspace.project_at(&effective_directory).is_some())
             .or(local_hints.as_deref());
         let Some(selected_hints) = selected_hints else {
             plan.raw = true;
@@ -529,7 +543,7 @@ fn classify_segment(
         } else {
             selected_hints
                 .workspace
-                .project_at(directory)
+                .project_at(&effective_directory)
                 .into_iter()
                 .collect()
         };
@@ -565,7 +579,7 @@ fn classify_segment(
                             &lifecycle,
                             lifecycle_body,
                             selected_hints,
-                            root,
+                            &selected_hints.workspace.root,
                             plan,
                             depth,
                             seen,
@@ -587,7 +601,7 @@ fn classify_segment(
                 script,
                 body,
                 selected_hints,
-                root,
+                &selected_hints.workspace.root,
                 plan,
                 depth,
                 seen,
@@ -709,6 +723,7 @@ struct PackageManagerInvocation {
     bun_test: bool,
     dev_or_watch: bool,
     ignore_scripts: bool,
+    prefix: Option<String>,
 }
 
 fn parse_package_manager(manager: &str, args: &[String]) -> Option<PackageManagerInvocation> {
@@ -745,10 +760,21 @@ fn parse_package_manager(manager: &str, args: &[String]) -> Option<PackageManage
         }
         if matches!(
             arg.as_str(),
-            "--workspace" | "-w" | "--filter" | "-F" | "--dir" | "-C" | "--from" | "--since"
+            "--workspace"
+                | "-w"
+                | "--filter"
+                | "-F"
+                | "--dir"
+                | "-C"
+                | "--prefix"
+                | "--from"
+                | "--since"
         ) {
             let value = args.get(index + 1)?;
             match arg.as_str() {
+                "--prefix" if manager == "npm" => {
+                    result.prefix = Some(value.clone());
+                }
                 "--workspace" | "-w" | "--filter" | "-F" => {
                     result.workspace = true;
                     result.selectors.push(value.clone());
@@ -774,15 +800,18 @@ fn parse_package_manager(manager: &str, args: &[String]) -> Option<PackageManage
             continue;
         }
         if let Some((flag, value)) = arg.split_once('=')
-            && matches!(
+            && (matches!(
                 flag,
                 "--workspace" | "-w" | "--filter" | "-F" | "--dir" | "--from" | "--since"
-            )
+            ) || flag == "--prefix" && manager == "npm")
         {
-            result.workspace = true;
-            if flag == "--since" {
+            if flag == "--prefix" {
+                result.prefix = Some(value.to_owned());
+            } else if flag == "--since" {
+                result.workspace = true;
                 result.dynamic_selection = true;
             } else {
+                result.workspace = true;
                 result.selectors.push(value.to_owned());
             }
             index += 1;
@@ -827,6 +856,9 @@ fn parse_package_manager(manager: &str, args: &[String]) -> Option<PackageManage
                     index += 1;
                     continue;
                 }
+                if arg == "--prefix" && manager == "npm" {
+                    result.prefix = args.get(index + 1).cloned();
+                }
                 index += 2;
                 continue;
             }
@@ -868,14 +900,18 @@ fn parse_package_manager(manager: &str, args: &[String]) -> Option<PackageManage
         if matches!(arg.as_str(), "dev" | "watch") {
             result.dev_or_watch = true;
         }
-        if matches!(arg.as_str(), "ci" | "install") && !result.workspace {
-            result.install = true;
-        }
         if matches!(arg.as_str(), "workspace" | "foreach") && manager == "yarn" {
             result.workspace = true;
         }
         command.push((index, arg.clone()));
         index += 1;
+    }
+    if command
+        .first()
+        .is_some_and(|(_, value)| matches!(value.as_str(), "ci" | "install"))
+        && !result.workspace
+    {
+        result.install = true;
     }
     if manager == "bun"
         && command.iter().any(|(_, value)| value == "test")
@@ -1024,6 +1060,8 @@ fn classify_monorepo_runner(
         .filter(|project| {
             if name == "moon" {
                 project.moon_tasks.contains_key(task)
+            } else if name == "nx" {
+                project.nx_targets.contains_key(task) || project.scripts.contains_key(task)
             } else {
                 project.scripts.contains_key(task)
             }
@@ -1099,6 +1137,11 @@ fn classify_monorepo_runner(
         push_project_source(plan, &hints.workspace, project);
         let body = if name == "moon" {
             project.moon_tasks.get(task)
+        } else if name == "nx" {
+            project
+                .nx_targets
+                .get(task)
+                .or_else(|| project.scripts.get(task))
         } else {
             project.scripts.get(task)
         };

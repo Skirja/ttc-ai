@@ -199,6 +199,50 @@ fn nx_project_json_targets_are_discovered_statically() {
 }
 
 #[test]
+fn nx_targets_do_not_replace_package_manager_scripts() {
+    let dir = TestDir::new();
+    fs::create_dir_all(dir.path().join("packages/api")).unwrap();
+    fs::write(
+        dir.path().join("package.json"),
+        r#"{"name":"root","workspaces":["packages/*"]}"#,
+    )
+    .unwrap();
+    fs::write(dir.path().join("nx.json"), r#"{"targetDefaults":{}}"#).unwrap();
+    fs::write(
+        dir.path().join("packages/api/package.json"),
+        r#"{"name":"api","scripts":{"test":"node app.js"}}"#,
+    )
+    .unwrap();
+    fs::write(
+        dir.path().join("packages/api/project.json"),
+        r#"{"name":"api","root":"packages/api","targets":{"test":{"executor":"@nx/jest:jest"}}}"#,
+    )
+    .unwrap();
+
+    let hints = ManifestHints::discover(dir.path()).unwrap().unwrap();
+    let npm = classify(
+        &[OsString::from("npm --workspace api run test")],
+        dir.path(),
+        Some(&hints),
+    );
+    assert!(
+        npm.raw,
+        "a custom npm script must not inherit the Nx target: {npm:?}"
+    );
+
+    let nx = classify(
+        &[OsString::from("nx run api:test")],
+        dir.path(),
+        Some(&hints),
+    );
+    assert!(nx.families.contains(&Family::Test));
+    assert!(
+        !nx.raw,
+        "the Nx command should still use its own target: {nx:?}"
+    );
+}
+
+#[test]
 fn hidden_turbo_target_uses_known_prefixed_families_and_keeps_unprefixed_records() {
     let dir = TestDir::new();
     fs::create_dir_all(dir.path().join("packages/api")).unwrap();

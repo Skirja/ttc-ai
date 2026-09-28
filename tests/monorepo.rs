@@ -212,6 +212,29 @@ fn multi_project_runner_requires_a_registered_prefix() {
 }
 
 #[test]
+fn warning_text_after_a_project_prefix_is_never_parsed_as_a_task() {
+    let dir = TestDir::new();
+    fs::write(
+        dir.path().join("package.json"),
+        r#"{"name":"api","scripts":{"test":"vitest run"}}"#,
+    )
+    .unwrap();
+    let hints = ManifestHints::discover(dir.path()).unwrap().unwrap();
+    let plan = classify(&["npm run test".into()], dir.path(), Some(&hints));
+    let mut filter = DispatchFilter::new(plan);
+
+    for index in 0..8 {
+        let warning = format!("api: warning: PASS tests/case-{index}.test.js\n");
+        assert!(
+            filter
+                .decide(Stream::Stdout, warning.as_bytes())
+                .unwrap()
+                .is_none()
+        );
+    }
+}
+
+#[test]
 fn turbo_prefixed_records_compact_per_package_and_root_command_runs_once() {
     let dir = TestDir::new();
     let root = dir.path();

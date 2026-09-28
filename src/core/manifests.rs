@@ -20,6 +20,7 @@ pub(crate) struct Project {
     pub name: Option<String>,
     pub aliases: Vec<String>,
     pub scripts: BTreeMap<String, String>,
+    pub nx_targets: BTreeMap<String, String>,
     pub dependencies: HashSet<String>,
     pub moon_tasks: BTreeMap<String, String>,
 }
@@ -179,6 +180,7 @@ impl WorkspaceHints {
                 .as_ref()
                 .map(|p| p.scripts.clone())
                 .unwrap_or_default(),
+            nx_targets: BTreeMap::new(),
             dependencies: root_package
                 .as_ref()
                 .map(|p| p.dependencies.clone())
@@ -788,6 +790,7 @@ fn add_project_path(
             .as_ref()
             .map(|p| p.scripts.clone())
             .unwrap_or_default(),
+        nx_targets: BTreeMap::new(),
         dependencies,
         moon_tasks: BTreeMap::new(),
     };
@@ -892,12 +895,12 @@ fn discover_nx_projects(
                 }
                 let name = object.get("name").map(parse_string).transpose()?;
                 let targets = object.get("targets").and_then(serde_json::Value::as_object);
-                let mut scripts = BTreeMap::new();
+                let mut nx_targets = BTreeMap::new();
                 if let Some(targets) = targets {
                     for (target_name, target) in targets {
                         let command = nx_target_command(target)
                             .unwrap_or_else(|| "__ttc_unknown_nx_target__".to_owned());
-                        scripts.insert(target_name.clone(), command);
+                        nx_targets.insert(target_name.clone(), command);
                     }
                 }
                 if let Some(existing) = hints
@@ -913,7 +916,7 @@ fn discover_nx_projects(
                     if existing.name.is_none() {
                         existing.name = name;
                     }
-                    existing.scripts.extend(scripts);
+                    existing.nx_targets.extend(nx_targets);
                 } else {
                     if hints.projects.len() >= MAX_PROJECTS {
                         return Err(DiscoveryError::Limit);
@@ -922,7 +925,8 @@ fn discover_nx_projects(
                         path: project_path,
                         name,
                         aliases: Vec::new(),
-                        scripts,
+                        scripts: BTreeMap::new(),
+                        nx_targets,
                         dependencies: HashSet::new(),
                         moon_tasks: BTreeMap::new(),
                     });
@@ -1127,6 +1131,7 @@ fn add_moon_project(
         name,
         aliases: Vec::new(),
         scripts: BTreeMap::new(),
+        nx_targets: BTreeMap::new(),
         dependencies: HashSet::new(),
         moon_tasks: tasks,
     });
