@@ -162,8 +162,8 @@ run_case() {
   shift
   case "$mode" in
     npm) npm "$@" ;;
-    yarn-classic) "$classic/node_modules/.bin/yarn" "$@" ;;
-    yarn-modern) "$modern/node_modules/.bin/yarn" "$@" ;;
+    yarn-classic) CI= "$classic/node_modules/.bin/yarn" "$@" ;;
+    yarn-modern) CI= "$modern/node_modules/.bin/yarn" "$@" ;;
     *) "$tools/node_modules/.bin/$mode" "$@" ;;
   esac
 }
@@ -185,8 +185,8 @@ compare() {
   fi
   direct_status=$?
   case "$mode" in
-    yarn-classic) (cd "$work" && PATH="$classic/node_modules/.bin:$PATH" M6_MARKER="$scratch/ttc-marker" "$binary" "$command_text") > "$scratch/$label.ttc.out" 2> "$scratch/$label.ttc.err" ;;
-    yarn-modern) (cd "$work" && PATH="$modern/node_modules/.bin:$PATH" M6_MARKER="$scratch/ttc-marker" "$binary" "$command_text") > "$scratch/$label.ttc.out" 2> "$scratch/$label.ttc.err" ;;
+    yarn-classic) (cd "$work" && CI= PATH="$classic/node_modules/.bin:$PATH" M6_MARKER="$scratch/ttc-marker" "$binary" "$command_text") > "$scratch/$label.ttc.out" 2> "$scratch/$label.ttc.err" ;;
+    yarn-modern) (cd "$work" && CI= PATH="$modern/node_modules/.bin:$PATH" M6_MARKER="$scratch/ttc-marker" "$binary" "$command_text") > "$scratch/$label.ttc.out" 2> "$scratch/$label.ttc.err" ;;
     moon) if [ "$expectation" = cached ]; then (cd "$work" && M6_MARKER="$scratch/ttc-marker" "$binary" "$command_text") > "$scratch/$label.ttc.out" 2> "$scratch/$label.ttc.err"; else (cd "$work" && MOON_CACHE=off M6_MARKER="$scratch/ttc-marker" "$binary" "$command_text") > "$scratch/$label.ttc.out" 2> "$scratch/$label.ttc.err"; fi ;;
     *) (cd "$work" && M6_MARKER="$scratch/ttc-marker" "$binary" "$command_text") > "$scratch/$label.ttc.out" 2> "$scratch/$label.ttc.err" ;;
   esac
