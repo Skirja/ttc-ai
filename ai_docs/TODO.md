@@ -653,6 +653,21 @@ Bukti tindak lanjut review pada 2026-09-28:
   `fixtures.txt` `186941afe2a112258f618ae3381c0d33d4a031c35bc91eac4226be1780a2c7f4`,
   `report.txt` `057b5f180c816ae377b5668249eb15dfdae4b1797f1844a108c0da8f7cf92e12`,
   `SHA256SUMS` `aea99a5176611ed0b602900d8cd28fb003d9a0fcfaa0eadf6a7d1aa6cc79d3ef`.
+- Commit `332d8cdbaab31231c5639a4c98016ee836b0befa` menormalisasi ANSI SGR
+  pada pembandingan record smoke, karena output berwarna di CI menyisipkan
+  kode ANSI pada durasi test. Full smoke lokal lulus dengan
+  `CI=true FORCE_COLOR=1 sh scripts/m6-smoke.sh target/release/ttc
+  target/m6-evidence/report.txt`; report bersih mencatat commit `332d8cd` dan
+  SHA-256 `045244863845e3ba459a2a24f9525948e9ddf8a1b12d3f4be4d54c88909f52e3`.
+- Pada PR head `332d8cdbaab31231c5639a4c98016ee836b0befa`, job M6 lulus pada
+  [CI run 36366060564](https://github.com/Skirja/ttc-ai/actions/runs/36366060564).
+  Artifact `m6-monorepo-evidence` diunduh; checksum terverifikasi:
+  `fixtures.txt` `8d8facdde79d8b58f3a9e0e7241645423724a14a41edae649c8f1d6ef575ed3a`,
+  `report.txt` `ce8b156408099020432887072313b34dbc83054f0e45593697105df2f8815b29`,
+  `SHA256SUMS` `c2c7c0e58f6dec1ba84753923607ac34feac56aca4b964bdd9d2fce06891e74f`.
+  Report mencatat merge checkout `698854d7bab01bfe9515d39a7810333c7b9eba12`.
+  Saat sesi dihentikan, baseline Rust dan job M2–M4 serta M6 lulus, sedangkan
+  M5 masih `in_progress`; hasil akhirnya belum dikonfirmasi.
 
 ---
 
