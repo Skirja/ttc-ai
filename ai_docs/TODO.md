@@ -590,13 +590,13 @@ sh scripts/m6-smoke.sh target/release/ttc target/m6-evidence
 
 ### Evidence
 
-- [ ] Commit implementasi, commit evidence, dan seluruh verification commands
-  dicatat.
-- [ ] Pinned tool versions serta invocation count root/package/task tiap fixture
-  dicatat.
-- [ ] Baseline/filter comparison, exit/signal, diagnostic retention, replay
+- [x] Commit implementasi dan seluruh verification commands dicatat;
+  dokumentasi evidence disimpan pada commit evidence sesi ini.
+- [x] Pinned tool versions serta invocation count root/package/task tiap fixture
+  dicatat di report smoke.
+- [x] Baseline/filter comparison, exit/signal, diagnostic retention, replay
   checksum, dan reduction report disimpan pada artifact CI.
-- [ ] CI M6 pada PR lulus seluruh job; artifact `m6-monorepo-evidence` diunduh
+- [x] CI M6 pada PR lulus seluruh job; artifact `m6-monorepo-evidence` diunduh
   dan diperiksa, lalu URL run dan checksum artifact dicatat.
 
 Bukti lokal M6 pada branch `feat/m6-package-monorepo`:
@@ -613,8 +613,18 @@ Bukti lokal M6 pada branch `feat/m6-package-monorepo`:
   Failure Turbo exit 1 serta diagnostic tetap terlihat; lima kasus
   memiliki ID dan checksum raw replay. npm/Yarn multi-workspace tanpa prefix
   dibiarkan raw sesuai SPEC.
-- Report lokal berada di `target/m6-evidence/report.txt`; bukti final menunggu
-  commit dan artifact CI dari PR.
+- Report lokal berada di `target/m6-evidence/report.txt`; artifact CI final
+  berasal dari PR [#5](https://github.com/Skirja/ttc-ai/pull/5), run
+  [36336219189](https://github.com/Skirja/ttc-ai/actions/runs/36336219189).
+  Seluruh enam job lulus pada PR head `7dec9ae626a7b7976550e20314f59425d4c68bc8`;
+  report mencatat merge checkout `bd255cecbcd3a5b54218416bef460750d8b9c6fb`.
+- SHA-256 artifact: `fixtures.txt`
+  `76711862989824be71738e6f02e06884b33ad03c59543d37f0556e38ac143dd5`,
+  `report.txt`
+  `64d49a4637cfd46d4d172f781c85f6c504a87d3f5195d56a933b27308d321a92`,
+  `SHA256SUMS`
+  `f54b2f299d1afe783d89435b880234a665156c7d752062f23b2cf1725b802a42`.
+  Checksum kedua report cocok dengan nilai pada `SHA256SUMS` yang diunduh.
 
 ---
 
