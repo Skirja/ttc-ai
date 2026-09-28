@@ -626,6 +626,34 @@ Bukti lokal M6 pada branch `feat/m6-package-monorepo`:
   `f54b2f299d1afe783d89435b880234a665156c7d752062f23b2cf1725b802a42`.
   Checksum kedua report cocok dengan nilai pada `SHA256SUMS` yang diunduh.
 
+Bukti tindak lanjut review pada 2026-09-28:
+
+- Commit `bad9830fb69dde7b09c547edaadd8eb36bb5beda` memperbaiki lima temuan
+  review: prefix warning tidak lagi dianggap task, target Nx dipisahkan dari
+  package scripts, `npm --prefix` memilih project efektif, `npm run install`
+  tetap di-resolve sebagai script, dan ampersand pada nested shell memakai
+  passthrough. Regresi ditambahkan ke `monorepo`, `mixed_monorepo`,
+  `package_scripts`, dan `shell_contract`.
+- Commit `8e11a870adf41a967c8f3971028573d030a4b60e` membuat smoke Yarn
+  deterministik saat GitHub Actions menetapkan `CI=true`; smoke tetap menguji
+  output multi-package tanpa prefix, sedangkan fixture monorepo menguji prefix
+  project yang terdaftar.
+- Seluruh tujuh test target M6, `cargo fmt --all -- --check`,
+  `cargo clippy --all-targets --all-features -- -D warnings`,
+  `cargo test --all-targets --all-features`, dan `cargo build --release` lulus
+  secara lokal. `CI=true sh scripts/m6-smoke.sh target/release/ttc
+  target/m6-evidence/report.txt` lulus seluruh group pada commit `8e11a87`;
+  SHA-256 report lokal:
+  `1a05f655a5808449f7bf5463ed254286a98a6e592e40ad41be2d030698e01a4f`.
+- PR #5 head `8e11a870adf41a967c8f3971028573d030a4b60e` lulus keenam required
+  job pada [CI run 36364865946](https://github.com/Skirja/ttc-ai/actions/runs/36364865946).
+  Report smoke CI mencatat merge checkout
+  `457d554bbaaa911d9b2f3e558de4eee3fe79a7e2` dan tool pin M6. Artifact
+  `m6-monorepo-evidence` diunduh dan checksum diverifikasi:
+  `fixtures.txt` `186941afe2a112258f618ae3381c0d33d4a031c35bc91eac4226be1780a2c7f4`,
+  `report.txt` `057b5f180c816ae377b5668249eb15dfdae4b1797f1844a108c0da8f7cf92e12`,
+  `SHA256SUMS` `aea99a5176611ed0b602900d8cd28fb003d9a0fcfaa0eadf6a7d1aa6cc79d3ef`.
+
 ---
 
 ## M7 — PHP, JVM, dan .NET
