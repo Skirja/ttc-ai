@@ -509,33 +509,67 @@ runner, memecah execution, atau kehilangan output mixed-language.
 
 ### Implementation checklist
 
-- [ ] Parse package scripts npm/pnpm/yarn/bun secara statis tanpa mengeksekusi
-  discovery command.
-- [ ] Resolve lifecycle, nested alias, compound script, dan nested tool family
-  dengan recursion depth maksimum 16 serta cycle detection.
-- [ ] Parsing manifest gagal berarti raw.
-- [ ] Honor npm workspace, pnpm recursive/filter/dir, Yarn workspace/foreach,
-  dan Bun script behavior pada SPEC.
-- [ ] Implementasikan Turbo, Nx, Lerna, Lage, dan Moon command recognition.
-- [ ] Baca package/workspace/Turbo/Nx/Lerna manifests hanya sebagai hints;
-  original root command tetap authoritative.
-- [ ] Tambahkan Cargo workspace dan Go workspace discovery adapters tanpa
-  mengubah execution graph runner.
-- [ ] Gabungkan beberapa filter family untuk compound/mixed-language root script.
-- [ ] Pastikan output-signature fallback dapat mengaktifkan family yang child
-  command-nya tidak terlihat.
-- [ ] Buat seluruh required monorepo fixture di SPEC, termasuk nested script ke
-  Python/Rust dan mixed JavaScript-Go.
+- [x] Tambahkan bounded lazy manifest discovery untuk package JSON, pnpm YAML,
+  Cargo TOML, go.work, Turbo/Nx/Lerna JSON, dan Moon YAML; reject duplicate JSON
+  keys, duplicate YAML keys, alias/tag, malformed content, symlink escape, dan
+  resource overflow sebagai raw.
+- [x] Enforce batas SPEC: 1 MiB/manifest, 16 MiB total, 4.096 project, 16.384
+  directory entries, 64 traversal levels, dan 16 nested aliases/targets.
+- [x] Parse shell expression hanya untuk token/command boundaries yang aman;
+  support quote, escape, assignment, `cd`, `&&`, `;`, newline; fail raw untuk
+  pipeline, background, substitution, redirection, dan control flow.
+- [x] Resolve npm/pnpm/Yarn/Bun script, manager-specific lifecycle, nested
+  aliases, wrapper flags, forwarded machine/watch options, selected workspace,
+  recursive workspace, dan selector dependency/path/name.
+- [x] Bedakan command `bun test` dari package script `bun run test`; script
+  custom yang command body-nya unknown membuat seluruh invocation raw.
+- [x] Implementasikan adapters Turbo, Nx `project.json`/package targets,
+  run-many/affected, Lerna, Lage, dan Moon tanpa mengeksekusi discovery command.
+- [x] Tambahkan Cargo members/excludes/globs dan go.work `use` discovery tanpa
+  mengganti atau memecah command runner asli.
+- [x] Satukan family dari compound/mixed-language root scripts dan parse runner
+  prefix hanya untuk project yang ditemukan; pertahankan byte asli dan diagnostic.
+- [x] Pisahkan confidence per stream, source, dan parser; batasi 4.096 source.
+  Fallback untuk target tersembunyi hanya memakai family yang diketahui serta
+  prefix project yang terdaftar.
+- [x] Tambahkan fixture success/failure/warning/unknown/large, baseline-versus-
+  TTC, invocation counter, cache, selection, cwd, ordering/concurrency, serta
+  mixed JS-Go dan nested Python/Rust.
+- [x] Tambahkan pinned real-tool smoke untuk npm, pnpm, Yarn Classic/modern, Bun,
+  Turbo, Nx, Lerna, Lage, Moon, Cargo workspace, Go workspace, root mixed
+  JavaScript-Go, dan nested Python-Rust; integrasikan job M6 Linux CI dan upload
+  evidence hanya setelah semua gate lulus. Script mendukung group
+  `package-managers`, `runners`, dan `systems`, serta `all` sebagai default.
+- [x] Pin smoke M6 pada Rust 1.98.1, Node 24.21.0/npm 11.19.0, pnpm 9.15.9,
+  Yarn Classic 1.22.22, Yarn modern 4.18.1, Bun 1.4.2, Turbo 2.11.4,
+  Nx 23.2.1, Lerna 10.0.1, Lage 2.17.0, Moon 2.5.5, Vitest 5.0.1,
+  Vite 8.3.1, Python 3.14.7/pytest 9.1.1, dan Go 1.27.1.
+- [x] Catat alasan dependency `serde`, `globset`, dan `yaml-rust2`; commit
+  Cargo.lock yang mengunci resolusi mereka.
+
+Alasan dependency M6: `serde` dipakai langsung untuk visitor JSON yang menolak
+duplicate key sebelum nilai masuk ke `serde_json`; `globset` menyediakan
+pencocokan workspace glob yang tervalidasi tanpa evaluasi shell; `yaml-rust2`
+menyediakan event parser agar alias/tag YAML dapat ditolak sebelum manifest
+Moon/pnpm dibaca sebagai hint statis. Ketiganya dipin dan resolusinya dicatat di
+`Cargo.lock` demi hasil discovery dan CI yang dapat direproduksi.
 
 ### Acceptance criteria
 
-- [ ] Root command dan setiap expected package berjalan tepat satu kali.
-- [ ] Dependency graph, concurrency, cache, cwd, dan environment tetap milik
-  runner asli.
-- [ ] Passing/progress berkurang minimum 80% pada large monorepo success fixture.
-- [ ] Error dari package atau ecosystem mana pun terlihat lengkap.
-- [ ] Exit code sama dengan baseline.
-- [ ] Depth overflow, cycle, missing manifest, dan malformed manifest aman raw.
+- [x] Root command berjalan sekali dan setiap package terpilih berjalan sebanyak
+  baseline; package yang tidak terpilih tidak dijalankan TTC.
+- [x] Dependency graph/order, concurrency, cache, cwd, stdin, dan environment
+  tetap milik runner asli.
+- [x] Large deterministic monorepo success fixture dengan ≥1.000
+  passing/progress records berkurang ≥80% total stdout+stderr termasuk metadata.
+- [x] Warning, diagnostic, assertion diff, stack trace, summary, stream bytes
+  gagal, dan exit status sama dengan baseline; no rerun saat parsing gagal.
+- [x] Cycle, depth 17, missing/malformed/duplicate manifest, prefix unknown,
+  unsupported option, dan overflow fail open raw.
+- [x] Custom app, machine-readable, generic runner output, watch/dev, unknown
+  workspace/task, dan unprefixed hidden-target record tetap retained.
+- [x] Semua manager/runner smoke memakai versi pin; tidak ada tool yang hilang
+  atau job yang diskip.
 
 ### Verification commands
 
@@ -544,13 +578,96 @@ cargo test --test manifests
 cargo test --test package_scripts
 cargo test --test monorepo
 cargo test --test mixed_monorepo
+cargo test --test classifier
+cargo test --test filter_safety
+cargo test --test javascript_e2e
+cargo fmt --all -- --check
+cargo clippy --all-targets --all-features -- -D warnings
+cargo test --all-targets --all-features
+cargo build --release
+sh scripts/m6-smoke.sh target/release/ttc target/m6-evidence
 ```
 
 ### Evidence
 
-- [ ] Commit implementasi dicatat.
-- [ ] Invocation-count report tiap fixture dicatat.
-- [ ] Baseline/filter comparison dan reduction report disimpan.
+- [x] Commit implementasi dan seluruh verification commands dicatat;
+  dokumentasi evidence disimpan pada commit evidence sesi ini.
+- [x] Pinned tool versions serta invocation count root/package/task tiap fixture
+  dicatat di report smoke.
+- [x] Baseline/filter comparison, exit/signal, diagnostic retention, replay
+  checksum, dan reduction report disimpan pada artifact CI.
+- [x] CI M6 pada PR lulus seluruh job; artifact `m6-monorepo-evidence` diunduh
+  dan diperiksa, lalu URL run dan checksum artifact dicatat.
+
+Bukti lokal M6 pada branch `feat/m6-package-monorepo`:
+
+- Tujuh command `cargo test --test` yang tercantum di atas, format check,
+  Clippy dengan warnings denied, semua target/feature test, dan release build
+  lulus setelah perbaikan review lokal.
+- `cargo test --test monorepo -- --nocapture` mencatat 2.000 record, satu
+  invocation root, dua invocation package, serta 95.780 → 381 byte total
+  (99,6% berkurang, termasuk metadata TTC).
+- `sh scripts/m6-smoke.sh target/release/ttc target/m6-evidence` lulus 19 kasus
+  pada tool pin yang tercatat di report lokal. Marker package sama dengan
+  baseline; Turbo mempertahankan overlap concurrency dan dependency order.
+  Failure Turbo exit 1 serta diagnostic tetap terlihat; lima kasus
+  memiliki ID dan checksum raw replay. npm/Yarn multi-workspace tanpa prefix
+  dibiarkan raw sesuai SPEC.
+- Report lokal berada di `target/m6-evidence/report.txt`; artifact CI final
+  berasal dari PR [#5](https://github.com/Skirja/ttc-ai/pull/5), run
+  [36336219189](https://github.com/Skirja/ttc-ai/actions/runs/36336219189).
+  Seluruh enam job lulus pada PR head `7dec9ae626a7b7976550e20314f59425d4c68bc8`;
+  report mencatat merge checkout `bd255cecbcd3a5b54218416bef460750d8b9c6fb`.
+- SHA-256 artifact: `fixtures.txt`
+  `76711862989824be71738e6f02e06884b33ad03c59543d37f0556e38ac143dd5`,
+  `report.txt`
+  `64d49a4637cfd46d4d172f781c85f6c504a87d3f5195d56a933b27308d321a92`,
+  `SHA256SUMS`
+  `f54b2f299d1afe783d89435b880234a665156c7d752062f23b2cf1725b802a42`.
+  Checksum kedua report cocok dengan nilai pada `SHA256SUMS` yang diunduh.
+
+Bukti tindak lanjut review pada 2026-09-28:
+
+- Commit `bad9830fb69dde7b09c547edaadd8eb36bb5beda` memperbaiki lima temuan
+  review: prefix warning tidak lagi dianggap task, target Nx dipisahkan dari
+  package scripts, `npm --prefix` memilih project efektif, `npm run install`
+  tetap di-resolve sebagai script, dan ampersand pada nested shell memakai
+  passthrough. Regresi ditambahkan ke `monorepo`, `mixed_monorepo`,
+  `package_scripts`, dan `shell_contract`.
+- Commit `8e11a870adf41a967c8f3971028573d030a4b60e` membuat smoke Yarn
+  deterministik saat GitHub Actions menetapkan `CI=true`; smoke tetap menguji
+  output multi-package tanpa prefix, sedangkan fixture monorepo menguji prefix
+  project yang terdaftar.
+- Seluruh tujuh test target M6, `cargo fmt --all -- --check`,
+  `cargo clippy --all-targets --all-features -- -D warnings`,
+  `cargo test --all-targets --all-features`, dan `cargo build --release` lulus
+  secara lokal. `CI=true sh scripts/m6-smoke.sh target/release/ttc
+  target/m6-evidence/report.txt` lulus seluruh group pada commit `8e11a87`;
+  SHA-256 report lokal:
+  `1a05f655a5808449f7bf5463ed254286a98a6e592e40ad41be2d030698e01a4f`.
+- PR #5 head `8e11a870adf41a967c8f3971028573d030a4b60e` lulus keenam required
+  job pada [CI run 36364865946](https://github.com/Skirja/ttc-ai/actions/runs/36364865946).
+  Report smoke CI mencatat merge checkout
+  `457d554bbaaa911d9b2f3e558de4eee3fe79a7e2` dan tool pin M6. Artifact
+  `m6-monorepo-evidence` diunduh dan checksum diverifikasi:
+  `fixtures.txt` `186941afe2a112258f618ae3381c0d33d4a031c35bc91eac4226be1780a2c7f4`,
+  `report.txt` `057b5f180c816ae377b5668249eb15dfdae4b1797f1844a108c0da8f7cf92e12`,
+  `SHA256SUMS` `aea99a5176611ed0b602900d8cd28fb003d9a0fcfaa0eadf6a7d1aa6cc79d3ef`.
+- Commit `332d8cdbaab31231c5639a4c98016ee836b0befa` menormalisasi ANSI SGR
+  pada pembandingan record smoke, karena output berwarna di CI menyisipkan
+  kode ANSI pada durasi test. Full smoke lokal lulus dengan
+  `CI=true FORCE_COLOR=1 sh scripts/m6-smoke.sh target/release/ttc
+  target/m6-evidence/report.txt`; report bersih mencatat commit `332d8cd` dan
+  SHA-256 `045244863845e3ba459a2a24f9525948e9ddf8a1b12d3f4be4d54c88909f52e3`.
+- Pada PR head `332d8cdbaab31231c5639a4c98016ee836b0befa`, job M6 lulus pada
+  [CI run 36366060564](https://github.com/Skirja/ttc-ai/actions/runs/36366060564).
+  Artifact `m6-monorepo-evidence` diunduh; checksum terverifikasi:
+  `fixtures.txt` `8d8facdde79d8b58f3a9e0e7241645423724a14a41edae649c8f1d6ef575ed3a`,
+  `report.txt` `ce8b156408099020432887072313b34dbc83054f0e45593697105df2f8815b29`,
+  `SHA256SUMS` `c2c7c0e58f6dec1ba84753923607ac34feac56aca4b964bdd9d2fce06891e74f`.
+  Report mencatat merge checkout `698854d7bab01bfe9515d39a7810333c7b9eba12`.
+  Saat sesi dihentikan, baseline Rust dan job M2–M4 serta M6 lulus, sedangkan
+  M5 masih `in_progress`; hasil akhirnya belum dikonfirmasi.
 
 ---
 

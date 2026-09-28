@@ -130,10 +130,13 @@ fn terminal_is_inherited_by_the_command() {
 #[test]
 fn background_shell_job_does_not_delay_wrapper_exit() {
     const SCRIPT: &str = "sleep 30 & printf '%s' \"$!\" > \"$BG_PID\"";
+    const NESTED_SHELL: &str = "sh -c 'sleep 30 & printf \"%s\" \"$!\" > \"$BG_PID\"'";
     for arguments in [
         &[SCRIPT][..],
+        &[NESTED_SHELL][..],
         &["bash", "-c", SCRIPT][..],
         &["/usr/bin/env", "bash", "-c", SCRIPT][..],
+        &["sleep 30 & P=$(printf x); printf '%s' \"$!\" > \"$BG_PID\""][..],
     ] {
         let dir = TestDir::new();
         let pidfile = dir.path().join("background-pid");

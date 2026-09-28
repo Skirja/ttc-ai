@@ -1,65 +1,61 @@
 # Current State
 
-**Diperbarui:** 2026-09-26 WIB
+**Diperbarui:** 2026-09-28 WIB
 
 ## Sedang dikerjakan
 
-- M5 — Filter Rust, Python, dan Go: implementasi serta perbaikan review selesai
-  pada branch `feat/m5-core-ecosystems`; [PR #4](https://github.com/Skirja/ttc-ai/pull/4)
-  terbuka. Kode terakhir `d582ea2`; dokumentasi bukti `dc0f885`. Semua lima job
-  CI lulus pada run `36224167272`.
+- M6 — partial untuk verifikasi branch terbaru. Lima temuan review sudah
+  diperbaiki; local gate dan full pinned smoke lulus. Branch
+  `feat/m6-package-monorepo`, PR #5 masih terbuka. Head terakhir:
+  `332d8cdbaab31231c5639a4c98016ee836b0befa`.
+- Pada CI run `36366060564`, baseline Rust dan job M2–M4/M6 lulus. M5 masih
+  `in_progress` ketika sesi dihentikan, sehingga seluruh required CI pada head
+  terakhir belum terkonfirmasi.
 
 ## Terakhir selesai
 
-- Classifier dan filter khusus Cargo/Rust, Python, dan Go; parser `go test -json`
-  mempertahankan lifecycle byte-exact dan hanya mengompaksi frame PASS yang
-  cocok. Empat temuan review diperbaiki dan test regresi ditambahkan.
-- Kode tersentuh pada sesi terakhir: `src/core/classification.rs`,
-  `src/core/filters/ecosystems.rs`, `.github/workflows/ci.yml`,
-  `tests/classifier.rs`, `tests/rust_fixtures.rs`,
-  `tests/core_ecosystem_e2e.rs`, dan `ai_docs/TODO.md`.
-- Artifact `m5-core-ecosystem-evidence` dari CI run `36223832943` diunduh dan
-  diperiksa; versi tool serta SHA-256 tercatat di `ai_docs/TODO.md`.
+- Memperbaiki lima finding branch review dan menambah regresi untuk prefix
+  warning, konflik Nx/package scripts, `npm --prefix`, `npm run install`, dan
+  nested shell background.
+- Menstabilkan smoke Yarn pada CI dan membetulkan normalisasi ANSI pada
+  pembanding record.
+- Gate Rust lengkap dan full smoke lokal lulus. Artifact M6 dari run
+  `36366060564` diunduh dan checksum-nya diverifikasi; detail ada di
+  `ai_docs/TODO.md`.
+- Kode tersentuh: `src/core/classification.rs`, `src/core/manifests.rs`,
+  `src/core/filters/mod.rs`, `scripts/m6-smoke.sh`, serta regresi di `tests/`.
 
 ## Keputusan yang dikunci
 
-- TTC tetap satu Rust binary crate; command asli dijalankan tepat sekali.
-- Output default dipertahankan. Kompaksi hanya memakai recognizer spesifik yang
-  dikenal; parsing ambigu, machine-readable tanpa parser lossless, dan generic
-  application berjalan raw. Diagnostic yang membuka blok retensi membuat sisa
-  stream terkait tetap raw, termasuk melewati baris kosong.
-- `go test -json` mempertahankan seluruh event lifecycle byte-exact. Hanya
-  event output frame PASS dengan identitas test yang cocok boleh dikompaksi;
-  event ambiguous/malformed membuat sisa invocation raw.
-- Classifier wrapper `uv run` hanya melewati opsi yang dikenal beserta
-  argumennya; opsi ambigu berjalan raw. `coverage run` hanya memilih parser
-  module sebelum target script.
-- Config hanya memperkecil batas capture 32 MiB/24 jam; config invalid berjalan
-  raw. Capture fallback stabil di `/tmp/ttc-<uid>/runs` dan raw replay memakai
-  capture invocation TTC sendiri.
-- Manifest dibaca statis dengan batas 1 MiB. Resolusi workspace penuh, alias
-  lintas proyek, fallback runner tersembunyi, dan mixed-language mengikuti M6.
-- Implementasi memakai branch `feat/<topik>` dan PR ke `master`; pengguna
-  melakukan merge. Codex integration M10 menunggu M1–M9 dan evidence CI M9.
+- TTC tetap satu Rust binary crate; command asli dijalankan tepat satu kali.
+- Output default dipertahankan. Output ambigu, machine-readable tanpa parser
+  lossless, custom app, dan record multi-package tanpa prefix terdaftar raw.
+- Discovery manifest statis dan bounded; kegagalan parse, cycle, ambiguity,
+  atau overflow membuat invocation raw.
+- Runner asli mengatur selection, dependency order, concurrency, cache, cwd,
+  stdin, dan environment.
+- Jangan mulai Codex integration M10 sebelum M1–M9 dan evidence CI M9 lengkap.
+- Branch kerja `feat/m6-package-monorepo`; target PR `master`; pengguna yang
+  melakukan merge.
 
 ## Temuan / blocker terbuka
 
-- Tidak ada blocker kode atau CI yang diketahui. Empat temuan review pada
-  `dc0f885` diperbaiki di `d582ea2` dan gate lokal/CI lulus.
-- Review formal ulang atas diff setelah perbaikan belum dilakukan.
+- Hasil akhir job M5 pada run `36366060564` belum diperiksa setelah interupsi.
+- Review formal awal branch mendapat `NEEDS CHANGES · 5 blocking`; semua lima
+  finding sudah diperbaiki, tetapi final diff belum direview ulang.
 
 ## Batasan yang diketahui
 
-- Resolusi monorepo/workspace dan fallback runner tersembunyi belum termasuk
-  M5; ikuti urutan milestone di `ai_docs/TODO.md`.
-- Artifact smoke dan evidence CI yang diunduh berada di `target/` dan tidak
-  di-commit.
-- PR #4 masih terbuka; pengguna yang melakukan merge.
+- PR #5 masih terbuka dan belum di-merge.
+- Artifact smoke dan CI berada di `target/`, bukan di-commit.
+- Smoke lokal dengan `CI=true FORCE_COLOR=1` lulus pada commit `332d8cd`; report
+  SHA-256 `045244863845e3ba459a2a24f9525948e9ddf8a1b12d3f4be4d54c88909f52e3`.
 
 ## Next action
 
-- Jalankan review-code ulang pada diff terbaru PR #4 sebelum merge.
+- Periksa penyelesaian M5 pada run `36366060564`; setelah semua CI hijau,
+  lakukan review ulang final diff dan sinkronkan status M6. Pengguna merge PR #5.
 
 ## Arsip terakhir
 
-- `ai_docs/steps_done/05-m5-review-fixes.md`
+- `ai_docs/steps_done/06-m6-review-fixes-and-smoke.md`

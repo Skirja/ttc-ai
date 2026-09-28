@@ -15,6 +15,7 @@ fn filter(family: Family) -> EcosystemFilter {
     EcosystemFilter::new(Plan {
         families: vec![family],
         raw: false,
+        ..Plan::default()
     })
 }
 

@@ -201,3 +201,59 @@ jobs:
           name: m5-core-ecosystem-evidence
           path: target/m5-evidence/
           if-no-files-found: error
+
+  m6-package-monorepo:
+    name: M6 package scripts and monorepo support
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt,clippy
+
+      - name: Install pinned Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.21.0
+
+      - name: Install pinned Python
+        uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
+        with:
+          python-version: 3.14.7
+
+      - name: Install pinned Go
+        uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
+        with:
+          go-version: 1.27.1
+
+      - name: Verify package, workspace, runner, and mixed-language fixtures
+        run: |
+          set -o pipefail
+          mkdir -p target/m6-evidence
+          : > target/m6-evidence/fixtures.txt
+          cargo test --test manifests 2>&1 | tee -a target/m6-evidence/fixtures.txt
+          cargo test --test package_scripts 2>&1 | tee -a target/m6-evidence/fixtures.txt
+          cargo test --test monorepo -- --nocapture 2>&1 | tee -a target/m6-evidence/fixtures.txt
+          cargo test --test mixed_monorepo 2>&1 | tee -a target/m6-evidence/fixtures.txt
+          cargo test --test classifier 2>&1 | tee -a target/m6-evidence/fixtures.txt
+          cargo test --test javascript_e2e 2>&1 | tee -a target/m6-evidence/fixtures.txt
+          cargo test --test filter_safety 2>&1 | tee -a target/m6-evidence/fixtures.txt
+
+      - name: Build production binary
+        run: cargo build --release
+
+      - name: Run pinned manager and monorepo runner smoke tests
+        run: sh scripts/m6-smoke.sh target/release/ttc target/m6-evidence/report.txt
+
+      - name: Record evidence checksums
+        run: sha256sum target/m6-evidence/fixtures.txt target/m6-evidence/report.txt > target/m6-evidence/SHA256SUMS
+
+      - name: Upload passing M6 evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: m6-monorepo-evidence
+          path: target/m6-evidence/
+          if-no-files-found: error
