@@ -715,7 +715,7 @@ cargo test --test additional_ecosystem_e2e
 
 ### Evidence
 
-- [x] Commit implementasi `71462d4c271092c26d975b28128d6699082c080e` dicatat.
+- [x] Commit implementasi `a8eba611fe9488c3097cc264102ce8c09d70384c` dicatat.
 - [x] Tool version matrix dan smoke logs lokal dicatat.
 - [x] Retention/reduction report lokal disimpan.
 - [ ] Required PR CI lulus dan artifact `m7-php-jvm-dotnet-evidence` tersedia.
@@ -723,11 +723,11 @@ cargo test --test additional_ecosystem_e2e
 Bukti lokal pada branch `feat/m7-php-jvm-dotnet`, PR
 [#6](https://github.com/Skirja/ttc-ai/pull/6):
 
-- `cargo test --test classifier --test manifests --test filter_safety --test php_fixtures --test jvm_fixtures --test dotnet_fixtures --test additional_ecosystem_e2e --test reduction`, `cargo fmt --all -- --check`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo test --all-targets --all-features`, dan `cargo build --release` lulus pada commit `71462d4c271092c26d975b28128d6699082c080e`.
+- `cargo test --test classifier --test manifests --test filter_safety --test php_fixtures --test jvm_fixtures --test dotnet_fixtures --test additional_ecosystem_e2e --test reduction`, `cargo fmt --all -- --check`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo test --all-targets --all-features`, dan `cargo build --release` lulus pada commit `a8eba611fe9488c3097cc264102ce8c09d70384c`.
 - Pinned smoke nyata lulus pada lingkungan terisolasi. Versi ada di
   `scripts/m7-tool-versions.txt`; log dan report lokal berada di
   `target/m7-evidence/smoke.log` dan `target/m7-evidence/report.txt`.
-  SHA-256 report: `e314572467670f803c5243619450bf1844b0a865f327fafc6e7a75a15d732bd9`.
+  SHA-256 report: `76a150affbc59c04a4355d9638d46878bb7611b225c20e439e570488a097c335`.
 - Byte direct/TTC dari large real-tool smoke, termasuk metadata TTC:
 
 | Family | Direct byte | TTC byte | Reduksi |
@@ -745,6 +745,12 @@ Bukti lokal pada branch `feat/m7-php-jvm-dotnet`, PR
   karena billing/account spending limit; semua job memiliki 0 step. Run ini
   bukan hasil CI hijau dan belum menghasilkan artifact M7. Required CI tetap
   pending sampai runner GitHub dapat dialokasikan lalu workflow di-rerun.
+- Push dokumentasi memicu [CI run 36550562994](https://github.com/Skirja/ttc-ai/actions/runs/36550562994)
+  pada PR head `5eeef81598d4fc43849608821cef3f1d80fc192e`; semua job kembali
+  berhenti sebelum step dengan alasan billing yang sama.
+- Setelah grammar Gradle diperketat, [CI run 36551949796](https://github.com/Skirja/ttc-ai/actions/runs/36551949796)
+  dibuat untuk commit kode `a8eba611fe9488c3097cc264102ce8c09d70384c`; semua job
+  kembali berhenti sebelum step akibat billing yang sama.
 
 ---
 

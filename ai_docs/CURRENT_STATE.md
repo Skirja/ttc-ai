@@ -5,11 +5,12 @@
 ## Sedang dikerjakan
 
 - M7 — partial. Implementasi lengkap dan local verification lulus pada commit
-  `71462d4c271092c26d975b28128d6699082c080e`; branch
+  `a8eba611fe9488c3097cc264102ce8c09d70384c`; branch
   `feat/m7-php-jvm-dotnet`, PR #6 terbuka ke `master`.
-- Required GitHub CI belum berjalan: run `36550214966` gagal sebelum runner
-  dialokasikan karena notifikasi billing/spending limit akun. Tidak ada job
-  step atau artifact; jangan menandai M7 selesai sampai workflow berhasil.
+- Required GitHub CI belum berjalan: run `36550214966` pada commit awal, `36550562994` pada docs head `5eeef81`,
+  serta `36551949796` pada commit kode `a8eba61` gagal sebelum runner dialokasikan
+  karena notifikasi billing/spending limit akun. Tidak ada job step atau
+  artifact; jangan menandai M7 selesai sampai workflow berhasil.
 
 ## Terakhir selesai
 
@@ -18,7 +19,7 @@
   static manifest hints, fixtures, pinned isolated smoke project, dan job CI.
 - Format, Clippy, seluruh Rust test target/fitur, release build, serta pinned
   smoke nyata M7 lulus lokal. Smoke report SHA-256:
-  `e314572467670f803c5243619450bf1844b0a865f327fafc6e7a75a15d732bd9`.
+  `76a150affbc59c04a4355d9638d46878bb7611b225c20e439e570488a097c335`.
 - Kode tersentuh: `src/core/classification.rs`, `src/core/filters/`,
   `src/core/manifests.rs`, `tests/`, `scripts/m7-*`, `.github/workflows/ci.yml`,
   dan `ai_docs/SPEC.md`.
@@ -45,7 +46,8 @@
 
 ## Batasan yang diketahui
 
-- PR #6 masih terbuka; commit `71462d4` sudah dipush.
+- PR #6 masih terbuka; commit implementasi `71462d4`, perbaikan `a8eba61`, dan dokumentasi `5eeef81`
+  sudah dipush. Head: `a8eba611fe9488c3097cc264102ce8c09d70384c`.
 - M7 belum lengkap sampai required CI hijau dan artifact CI diperiksa.
 - Local M7 smoke report/log berada pada direktori ignored `target/`.
 
