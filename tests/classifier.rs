@@ -246,3 +246,209 @@ fn unsupported_generic_apps_and_compound_go_json_stay_raw() {
         assert!(plan.raw || plan.families.is_empty(), "{args:?}: {plan:?}");
     }
 }
+
+#[test]
+fn php_jvm_and_dotnet_commands_select_only_their_specific_families() {
+    let dir = TestDir::new();
+    let cases: &[(&[&str], &[Family])] = &[
+        (&["phpunit"], &[Family::PhpTest]),
+        (&["vendor/bin/phpunit"], &[Family::PhpTest]),
+        (&["pest"], &[Family::PhpTest]),
+        (&["vendor/bin/pest"], &[Family::PhpTest]),
+        (&["php", "artisan", "test"], &[Family::PhpTest]),
+        (
+            &["php", "vendor/bin/phpunit", "--testdox"],
+            &[Family::PhpTest],
+        ),
+        (
+            &["php", "-d", "memory_limit=-1", "vendor/bin/pest"],
+            &[Family::PhpTest],
+        ),
+        (&["phpstan", "analyse"], &[Family::PhpLint]),
+        (&["psalm"], &[Family::PhpTypecheck]),
+        (&["phpcs"], &[Family::PhpLint]),
+        (&["php-cs-fixer", "fix", "--dry-run"], &[Family::PhpFormat]),
+        (
+            &["mvn", "test"],
+            &[Family::JvmBuild, Family::JvmProgress, Family::JvmTest],
+        ),
+        (
+            &["./mvnw", "verify", "-B"],
+            &[Family::JvmBuild, Family::JvmProgress, Family::JvmTest],
+        ),
+        (
+            &["gradle", "test"],
+            &[Family::JvmBuild, Family::JvmProgress, Family::JvmTest],
+        ),
+        (
+            &["./gradlew", "build"],
+            &[Family::JvmBuild, Family::JvmProgress, Family::JvmTest],
+        ),
+        (&["javac", "Main.java"], &[Family::JvmCompile]),
+        (
+            &[
+                "java",
+                "-jar",
+                "junit-platform-console-standalone.jar",
+                "execute",
+            ],
+            &[Family::JvmTest],
+        ),
+        (
+            &["dotnet", "test"],
+            &[
+                Family::DotnetTest,
+                Family::DotnetBuild,
+                Family::DotnetRestore,
+            ],
+        ),
+        (
+            &["dotnet", "test", "sample.sln"],
+            &[
+                Family::DotnetTest,
+                Family::DotnetBuild,
+                Family::DotnetRestore,
+            ],
+        ),
+        (
+            &["dotnet", "build"],
+            &[Family::DotnetBuild, Family::DotnetRestore],
+        ),
+        (&["dotnet", "restore"], &[Family::DotnetRestore]),
+        (
+            &["dotnet", "publish"],
+            &[Family::DotnetBuild, Family::DotnetRestore],
+        ),
+        (
+            &["dotnet", "format", "--verify-no-changes"],
+            &[Family::DotnetFormat],
+        ),
+    ];
+    for (args, families) in cases {
+        let plan = classify(&words(args), dir.path(), None);
+        assert_eq!(&plan.families, families, "{args:?}: {plan:?}");
+        assert!(!plan.raw, "{args:?}: {plan:?}");
+    }
+}
+
+#[test]
+fn php_applications_and_unrecognized_reporters_remain_raw() {
+    let dir = TestDir::new();
+    for args in [
+        vec!["php", "app.php"],
+        vec!["php", "artisan", "serve"],
+        vec!["phpunit", "--log-junit", "results.xml"],
+        vec!["phpunit", "--reporter", "verbose"],
+        vec!["pest", "--compact"],
+        vec!["phpcs", "--report=json"],
+        vec!["mvn", "-X", "test"],
+        vec!["gradle", "test", "--console=rich"],
+        vec![
+            "java",
+            "-jar",
+            "junit-platform-console-standalone.jar",
+            "--details=flat",
+        ],
+        vec!["dotnet", "test", "--logger", "trx"],
+        vec!["dotnet", "test", "--logger:trx"],
+        vec!["dotnet", "format", "."],
+        vec!["vitest", "--reporter", "custom"],
+    ] {
+        let plan = classify(&words(&args), dir.path(), None);
+        assert!(plan.raw || plan.families.is_empty(), "{args:?}: {plan:?}");
+    }
+}
+
+#[test]
+fn composer_scripts_resolve_static_aliases_and_fail_closed_on_cycles() {
+    let dir = TestDir::new();
+    fs::write(
+        dir.path().join("composer.json"),
+        r#"{"scripts":{"test":"@php vendor/bin/phpunit --testdox tests/CalculatorTest.php","check":["@test"],"analyse":"@php vendor/bin/phpstan analyse --no-progress","cycle":"@cycle","dynamic":"php app.php"}}"#,
+    ).unwrap();
+    let hints = ManifestHints::load(dir.path()).unwrap();
+    let test_plan = classify(&words(&["composer", "test"]), dir.path(), Some(&hints));
+    assert_eq!(test_plan.families, vec![Family::PhpTest]);
+    assert!(!test_plan.raw, "{test_plan:?}");
+    assert_eq!(
+        classify(
+            &words(&["composer", "run-script", "check"]),
+            dir.path(),
+            Some(&hints)
+        )
+        .families,
+        vec![Family::PhpTest]
+    );
+    assert_eq!(
+        classify(&words(&["composer", "analyse"]), dir.path(), Some(&hints)).families,
+        vec![Family::PhpLint]
+    );
+    assert!(classify(&words(&["composer", "cycle"]), dir.path(), Some(&hints)).raw);
+    assert!(
+        classify(&words(&["composer", "dynamic"]), dir.path(), Some(&hints))
+            .families
+            .is_empty()
+    );
+}
+
+#[test]
+fn composer_lifecycle_callbacks_and_dynamic_build_targets_stay_raw() {
+    let composer = TestDir::new();
+    fs::write(
+        composer.path().join("composer.json"),
+        r#"{"scripts":{"post-install-cmd":"php scripts/setup.php","test":"@php vendor/bin/phpunit"}}"#,
+    )
+    .unwrap();
+    let hints = ManifestHints::load(composer.path()).unwrap();
+    assert!(
+        classify(
+            &words(&["composer", "install"]),
+            composer.path(),
+            Some(&hints)
+        )
+        .raw
+    );
+
+    let maven = TestDir::new();
+    fs::write(
+        maven.path().join("pom.xml"),
+        "<project><modules><module>api</module></modules></project>",
+    )
+    .unwrap();
+    let hints = ManifestHints::load(maven.path()).unwrap();
+    assert!(
+        !classify(
+            &words(&["mvn", "-pl", "api", "test"]),
+            maven.path(),
+            Some(&hints),
+        )
+        .raw
+    );
+    assert!(
+        classify(
+            &words(&["mvn", "-pl", "unknown", "test"]),
+            maven.path(),
+            Some(&hints),
+        )
+        .raw
+    );
+
+    let gradle = TestDir::new();
+    fs::write(gradle.path().join("settings.gradle"), "include ':api'\n").unwrap();
+    let hints = ManifestHints::load(gradle.path()).unwrap();
+    assert!(
+        !classify(
+            &words(&["gradle", ":api:test"]),
+            gradle.path(),
+            Some(&hints),
+        )
+        .raw
+    );
+    fs::write(
+        gradle.path().join("settings.gradle"),
+        "if (providers.gradleProperty(\"ci\").isPresent) include(\":api\")\n",
+    )
+    .unwrap();
+    let hints = ManifestHints::load(gradle.path()).unwrap();
+    assert!(classify(&words(&["gradle", "test"]), gradle.path(), Some(&hints)).raw);
+}

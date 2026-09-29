@@ -1,0 +1,35 @@
+{
+  "name": "ttc/m7-php-smoke",
+  "description": "Pinned PHP ecosystem smoke project for TTC M7",
+  "type": "project",
+  "require": {
+    "php": "8.4.25"
+  },
+  "autoload": {
+    "psr-4": {
+      "TtcM7\\": "src/"
+    }
+  },
+  "require-dev": {
+    "friendsofphp/php-cs-fixer": "3.95.27",
+    "phpstan/phpstan": "2.2.16",
+    "pestphp/pest": "5.2.1",
+    "phpunit/phpunit": "13.3.4",
+    "squizlabs/php_codesniffer": "4.0.4",
+    "vimeo/psalm": "6.18.1"
+  },
+  "scripts": {
+    "test": "@php vendor/bin/phpunit --testdox tests/CalculatorTest.php",
+    "test-pest": "@php vendor/bin/pest tests/PestTest.php",
+    "analyse": "@php vendor/bin/phpstan analyse --no-progress src",
+    "psalm": "@php vendor/bin/psalm --no-cache",
+    "sniff": "@php vendor/bin/phpcs --standard=PSR12 src",
+    "format-check": "@php vendor/bin/php-cs-fixer fix --dry-run --diff --rules=@PSR12 src"
+  },
+  "config": {
+    "allow-plugins": {
+      "pestphp/pest-plugin": true
+    },
+    "sort-packages": true
+  }
+}

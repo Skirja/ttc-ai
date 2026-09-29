@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit cacheDirectory="build/phpunit-cache" colors="false">
+  <testsuites>
+    <testsuite name="M7 smoke">
+      <file>tests/CalculatorTest.php</file>
+    </testsuite>
+  </testsuites>
+</phpunit>

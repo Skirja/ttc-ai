@@ -40,6 +40,19 @@ pub(crate) enum Family {
     GoGenerate,
     GoLint,
     GoStaticcheck,
+    PhpTest,
+    PhpLint,
+    PhpTypecheck,
+    PhpFormat,
+    PhpInstall,
+    JvmTest,
+    JvmBuild,
+    JvmProgress,
+    JvmCompile,
+    DotnetTest,
+    DotnetBuild,
+    DotnetRestore,
+    DotnetFormat,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -75,7 +88,13 @@ impl LocalDiscovery {
         }
         self.hints
             .as_ref()
-            .filter(|hints| hints.workspace.project_at(directory).is_some())
+            .filter(|hints| {
+                hints
+                    .workspace
+                    .projects
+                    .iter()
+                    .any(|project| directory.starts_with(&project.path))
+            })
             .cloned()
             .ok_or(())
     }
@@ -226,6 +245,12 @@ pub(crate) fn needs_manifest_discovery(arguments: &[OsString]) -> bool {
                         | "moon"
                         | "cargo"
                         | "go"
+                        | "composer"
+                        | "mvn"
+                        | "mvnw"
+                        | "gradle"
+                        | "gradlew"
+                        | "dotnet"
                 ) {
                     return true;
                 }
@@ -281,9 +306,17 @@ pub(crate) fn has_background_shell_job(arguments: &[OsString]) -> bool {
 }
 
 fn machine_output(words: &[String]) -> bool {
-    words
-        .iter()
-        .any(|word| machine_flag(word) || word == "-json" || word.starts_with("-json="))
+    words.iter().any(|word| {
+        machine_flag(word)
+            || word == "-json"
+            || word.starts_with("-json=")
+            || word == "--teamcity"
+            || word.starts_with("--logger:")
+            || word.starts_with("--testdox-text")
+            || word.starts_with("--testdox-html")
+            || word.starts_with("--log-events")
+            || matches!(word.as_str(), "--compact" | "--debug" | "--no-results")
+    }) || unsupported_reporter(words)
         || words.windows(2).any(|pair| {
             matches!(
                 pair[0].as_str(),
@@ -327,22 +360,45 @@ fn machine_flag(word: &str) -> bool {
     matches!(
         word,
         "--json" | "--jsonl" | "--xml" | "--yaml" | "--sarif" | "--output" | "-o" | "--format"
-    ) || [
-        "--json=",
-        "--jsonl=",
-        "--xml=",
-        "--yaml=",
-        "--sarif=",
-        "--output=",
-        "--format=",
-        "--message-format=json",
-        "--message-format=json-render-diagnostics",
-        "--reporter=json",
-        "--reporter=xml",
-        "--reporter=tap",
-    ]
-    .iter()
-    .any(|prefix| word.starts_with(prefix))
+    ) || matches!(word, "--logger" | "--report" | "--log-junit")
+        || [
+            "--json=",
+            "--jsonl=",
+            "--xml=",
+            "--yaml=",
+            "--sarif=",
+            "--output=",
+            "--format=",
+            "--message-format=json",
+            "--message-format=json-render-diagnostics",
+            "--reporter=json",
+            "--reporter=xml",
+            "--reporter=tap",
+            "--logger=",
+            "--report=",
+            "--log-junit",
+            "--output-format=json",
+            "--error-format=json",
+        ]
+        .iter()
+        .any(|prefix| word.starts_with(prefix))
+}
+
+fn unsupported_reporter(words: &[String]) -> bool {
+    for (index, word) in words.iter().enumerate() {
+        if word == "--reporter" {
+            if words.get(index + 1).is_none_or(|value| value != "verbose") {
+                return true;
+            }
+        } else if let Some(value) = word.strip_prefix("--reporter=") {
+            if value != "verbose" {
+                return true;
+            }
+        } else if word.starts_with("--reporter") {
+            return true;
+        }
+    }
+    false
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -613,6 +669,10 @@ fn classify_segment(
         }
         return;
     }
+    if name == "composer" {
+        classify_composer(args, directory, hints, plan, depth, local_discovery);
+        return;
+    }
     if classify_monorepo_runner(
         name,
         args,
@@ -626,7 +686,7 @@ fn classify_segment(
     ) {
         return;
     }
-    classify_tool(name, args, plan);
+    classify_tool(name, args, plan, hints);
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -660,7 +720,7 @@ fn resolve_script(
         return;
     }
     seen.push(id);
-    let mut segment = Vec::new();
+    let mut segment: Vec<String> = Vec::new();
     let mut current = directory.to_path_buf();
     for word in body_words
         .into_iter()
@@ -1414,6 +1474,267 @@ fn task_family(task: &str) -> Option<Family> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
+fn classify_composer(
+    args: &[String],
+    directory: &Path,
+    hints: Option<&ManifestHints>,
+    plan: &mut Plan,
+    depth: usize,
+    local_discovery: &mut LocalDiscovery,
+) {
+    let mut args = args;
+    loop {
+        let Some(option) = args.first() else {
+            plan.raw = true;
+            return;
+        };
+        match option.as_str() {
+            "--no-interaction"
+            | "-n"
+            | "--quiet"
+            | "-q"
+            | "--no-ansi"
+            | "--ansi"
+            | "--no-progress"
+            | "--no-scripts"
+            | "--no-plugins"
+            | "--no-dev"
+            | "--prefer-dist"
+            | "--prefer-source"
+            | "--classmap-authoritative"
+            | "--optimize-autoloader" => {
+                args = &args[1..];
+            }
+            "--working-dir" | "-d" => {
+                let Some(path) = args.get(1) else {
+                    plan.raw = true;
+                    return;
+                };
+                let path = if Path::new(path).is_absolute() {
+                    PathBuf::from(path)
+                } else {
+                    directory.join(path)
+                };
+                let Ok(path) = std::fs::canonicalize(path) else {
+                    plan.raw = true;
+                    return;
+                };
+                if !path.is_dir() {
+                    plan.raw = true;
+                    return;
+                }
+                // Composer's working directory affects only this tool's static hints.
+                return classify_composer(&args[2..], &path, hints, plan, depth, local_discovery);
+            }
+            option if option.starts_with('-') => {
+                plan.raw = true;
+                return;
+            }
+            _ => break,
+        }
+    }
+    let (command, script) = match args.first().map(String::as_str) {
+        Some("install") => ("install", None),
+        Some("update") => ("update", None),
+        Some("run" | "run-script") => ("run", args.get(1).map(String::as_str)),
+        Some(script)
+            if !matches!(
+                script,
+                "list"
+                    | "show"
+                    | "validate"
+                    | "about"
+                    | "help"
+                    | "config"
+                    | "require"
+                    | "remove"
+                    | "create-project"
+                    | "dump-autoload"
+            ) =>
+        {
+            ("run", Some(script))
+        }
+        _ => {
+            plan.raw = true;
+            return;
+        }
+    };
+    let local_hints;
+    let selected_hints =
+        if let Some(hints) = hints.filter(|hints| directory.starts_with(&hints.workspace.root)) {
+            hints
+        } else {
+            match local_discovery.discover(directory) {
+                Ok(discovered) => {
+                    local_hints = discovered;
+                    local_hints.as_ref()
+                }
+                Err(()) => {
+                    plan.raw = true;
+                    return;
+                }
+            }
+        };
+    let workspace = &selected_hints.workspace;
+    if !workspace.has_composer_manifest {
+        plan.raw = true;
+        return;
+    }
+    if command == "install" || command == "update" {
+        plan.add(Family::PhpInstall);
+        let lifecycle = if command == "install" {
+            [
+                "pre-install-cmd",
+                "post-install-cmd",
+                "pre-autoload-dump",
+                "post-autoload-dump",
+            ]
+        } else {
+            [
+                "pre-update-cmd",
+                "post-update-cmd",
+                "pre-autoload-dump",
+                "post-autoload-dump",
+            ]
+        };
+        if lifecycle
+            .iter()
+            .any(|event| workspace.composer_scripts.contains_key(*event))
+        {
+            plan.raw = true;
+        }
+        return;
+    }
+    let Some(script) = script else {
+        plan.raw = true;
+        return;
+    };
+    if script.starts_with('-') || script.len() > 128 {
+        plan.raw = true;
+        return;
+    }
+    resolve_composer_script(
+        script,
+        &workspace.root,
+        &workspace.root,
+        selected_hints,
+        plan,
+        depth,
+        &mut Vec::new(),
+        local_discovery,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn resolve_composer_script(
+    script: &str,
+    directory: &Path,
+    root: &Path,
+    hints: &ManifestHints,
+    plan: &mut Plan,
+    depth: usize,
+    seen: &mut Vec<String>,
+    local_discovery: &mut LocalDiscovery,
+) {
+    if depth > 16 || seen.iter().any(|previous| previous == script) {
+        plan.raw = true;
+        return;
+    }
+    let Some(body) = hints.workspace.composer_scripts.get(script) else {
+        plan.raw = true;
+        return;
+    };
+    seen.push(script.to_owned());
+    let Some(words) = split_shell(body) else {
+        plan.raw = true;
+        seen.pop();
+        return;
+    };
+    let mut segment: Vec<String> = Vec::new();
+    for word in words.into_iter().chain(std::iter::once(";".to_owned())) {
+        if matches!(word.as_str(), ";" | "&&") {
+            if segment.is_empty() {
+                continue;
+            }
+            let mut command = segment.clone();
+            segment.clear();
+            if command
+                .iter()
+                .any(|word| matches!(word.as_str(), "|" | "||" | ">" | "<" | "&" | ">>" | "2>"))
+            {
+                plan.raw = true;
+                continue;
+            }
+            if command.len() == 1
+                && command[0].starts_with('@')
+                && command[0] != "@php"
+                && command[0] != "@composer"
+            {
+                resolve_composer_script(
+                    &command[0][1..],
+                    directory,
+                    root,
+                    hints,
+                    plan,
+                    depth + 1,
+                    seen,
+                    local_discovery,
+                );
+                continue;
+            }
+            if command.first().is_some_and(|word| word == "@php") {
+                command.remove(0);
+            } else if command.first().is_some_and(|word| word == "@composer") {
+                command.remove(0);
+                let target = if command
+                    .first()
+                    .is_some_and(|word| word == "run" || word == "run-script")
+                {
+                    command.get(1).map(String::as_str)
+                } else {
+                    command.first().map(String::as_str)
+                };
+                if let Some(target) = target {
+                    resolve_composer_script(
+                        target,
+                        directory,
+                        root,
+                        hints,
+                        plan,
+                        depth + 1,
+                        seen,
+                        local_discovery,
+                    );
+                } else {
+                    plan.raw = true;
+                }
+                continue;
+            } else if command.first().is_some_and(|word| word.starts_with('@')) {
+                plan.raw = true;
+                continue;
+            }
+            if command.is_empty() {
+                plan.raw = true;
+                continue;
+            }
+            classify_segment(
+                &command,
+                &mut directory.to_path_buf(),
+                root,
+                Some(hints),
+                plan,
+                depth + 1,
+                &mut Vec::new(),
+                local_discovery,
+            );
+        } else {
+            segment.push(word);
+        }
+    }
+    seen.pop();
+}
+
 fn is_assignment(word: &str) -> bool {
     let Some((name, _)) = word.split_once('=') else {
         return false;
@@ -1425,7 +1746,7 @@ fn is_assignment(word: &str) -> bool {
         && bytes.all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
 }
 
-fn classify_tool(name: &str, args: &[String], plan: &mut Plan) {
+fn classify_tool(name: &str, args: &[String], plan: &mut Plan, hints: Option<&ManifestHints>) {
     if args.iter().any(|x| x == "dev" || x == "watch") {
         plan.raw = true;
         return;
@@ -1434,6 +1755,119 @@ fn classify_tool(name: &str, args: &[String], plan: &mut Plan) {
         if let Some(family) = classify_python(args) {
             plan.add(family);
         }
+        return;
+    }
+    let base = Path::new(name)
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or(name);
+    if matches!(base, "phpunit" | "pest")
+        && args
+            .iter()
+            .any(|arg| arg == "--reporter" || arg.starts_with("--reporter="))
+    {
+        plan.raw = true;
+        return;
+    }
+    if base == "pest"
+        && args
+            .iter()
+            .any(|arg| matches!(arg.as_str(), "--testdox" | "--compact" | "--debug"))
+    {
+        plan.raw = true;
+        return;
+    }
+    if matches!(base, "phpunit" | "pest") {
+        plan.add(Family::PhpTest);
+        return;
+    }
+    if base == "php" {
+        let mut script = args;
+        while let Some(option) = script.first() {
+            match option.as_str() {
+                "-d" | "-c" | "-f" => {
+                    if script.get(1).is_none_or(|value| value.starts_with('-')) {
+                        plan.raw = true;
+                        return;
+                    }
+                    script = &script[2..];
+                }
+                "-n" | "-q" | "-s" => script = &script[1..],
+                option
+                    if option.starts_with("-d")
+                        || option.starts_with("--define=")
+                        || option.starts_with("--php-ini=") =>
+                {
+                    script = &script[1..]
+                }
+                option if option.starts_with('-') => return,
+                _ => break,
+            }
+        }
+        if script.first().is_some_and(|arg| arg == "artisan") {
+            if script.get(1).is_some_and(|arg| arg == "test") {
+                plan.add(Family::PhpTest);
+            }
+            return;
+        }
+        if let Some(script_name) = script.first().and_then(|arg| Path::new(arg).file_name())
+            && let Some(script_name) = script_name.to_str()
+            && matches!(
+                script_name,
+                "phpunit"
+                    | "phpunit.phar"
+                    | "pest"
+                    | "phpstan"
+                    | "psalm"
+                    | "phpcs"
+                    | "php-cs-fixer"
+            )
+        {
+            classify_tool(script_name, &script[1..], plan, hints);
+        }
+        return;
+    }
+    if base == "phpstan"
+        && args
+            .first()
+            .is_some_and(|arg| arg == "analyse" || arg == "analyze")
+    {
+        plan.add(Family::PhpLint);
+        return;
+    }
+    if base == "psalm" {
+        plan.add(Family::PhpTypecheck);
+        return;
+    }
+    if base == "phpcs" {
+        plan.add(Family::PhpLint);
+        return;
+    }
+    if base == "php-cs-fixer"
+        && args.first().is_some_and(|arg| arg == "fix")
+        && args.iter().any(|arg| arg == "--dry-run")
+    {
+        plan.add(Family::PhpFormat);
+        return;
+    }
+    if matches!(base, "mvn" | "mvnw") {
+        classify_maven(args, plan, hints);
+        return;
+    }
+    if matches!(base, "gradle" | "gradlew") {
+        classify_gradle(args, plan, hints);
+        return;
+    }
+    if base == "javac" {
+        plan.add(Family::JvmCompile);
+        return;
+    }
+    if base == "java" && is_junit_console(args) {
+        plan.add(Family::JvmTest);
+        return;
+    }
+    if base == "dotnet" {
+        classify_dotnet(args, plan);
         return;
     }
     let family = match name {
@@ -1478,6 +1912,200 @@ fn classify_tool(name: &str, args: &[String], plan: &mut Plan) {
     };
     if let Some(family) = family {
         plan.add(family);
+    }
+}
+
+fn classify_maven(args: &[String], plan: &mut Plan, hints: Option<&ManifestHints>) {
+    if args
+        .iter()
+        .any(|arg| matches!(arg.as_str(), "-o" | "--offline"))
+    {
+        // Offline mode changes no output grammar, so it remains eligible.
+    }
+    if args
+        .iter()
+        .any(|arg| matches!(arg.as_str(), "-X" | "--debug" | "-e" | "--errors"))
+    {
+        plan.raw = true;
+        return;
+    }
+    let mut goals = Vec::new();
+    let mut selectors = Vec::new();
+    let mut args = args.iter();
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "-pl" | "--projects" => {
+                let Some(value) = args.next() else {
+                    plan.raw = true;
+                    return;
+                };
+                selectors.extend(value.split(',').map(str::to_owned));
+            }
+            "-s" | "--settings" | "-P" | "--activate-profiles" => {
+                if args.next().is_none() {
+                    plan.raw = true;
+                    return;
+                }
+            }
+            "-D" => {
+                plan.raw = true;
+                return;
+            }
+            value if value.starts_with("-pl=") || value.starts_with("--projects=") => {
+                selectors.extend(
+                    value
+                        .split_once('=')
+                        .unwrap()
+                        .1
+                        .split(',')
+                        .map(str::to_owned),
+                );
+            }
+            value
+                if value.starts_with("-D") || value.starts_with("-P") || value.starts_with('-') => {
+            }
+            value => goals.push(value.to_owned()),
+        }
+    }
+    if !selectors.is_empty()
+        && (hints.is_none()
+            || !selectors.iter().all(|selector| {
+                hints
+                    .unwrap()
+                    .workspace
+                    .maven_modules
+                    .iter()
+                    .any(|module| module == selector || format!("./{module}") == *selector)
+            }))
+    {
+        plan.raw = true;
+        return;
+    }
+    if goals.is_empty()
+        || goals
+            .iter()
+            .any(|goal| !matches!(goal.as_str(), "test" | "verify" | "package" | "install"))
+    {
+        plan.raw = true;
+        return;
+    }
+    plan.add(Family::JvmBuild);
+    plan.add(Family::JvmProgress);
+    if goals
+        .iter()
+        .any(|goal| matches!(goal.as_str(), "test" | "verify" | "package" | "install"))
+    {
+        plan.add(Family::JvmTest);
+    }
+}
+
+fn classify_gradle(args: &[String], plan: &mut Plan, hints: Option<&ManifestHints>) {
+    if hints.is_some_and(|hints| hints.workspace.gradle_dynamic) {
+        plan.raw = true;
+        return;
+    }
+    if args
+        .iter()
+        .any(|arg| arg == "--console=rich" || arg == "--console=verbose")
+    {
+        plan.raw = true;
+        return;
+    }
+    let mut tasks = Vec::new();
+    let mut args = args.iter();
+    while let Some(arg) = args.next() {
+        if matches!(
+            arg.as_str(),
+            "-p" | "--project-dir"
+                | "-c"
+                | "--settings-file"
+                | "-I"
+                | "--init-script"
+                | "--include-build"
+                | "-D"
+                | "-P"
+        ) {
+            if args.next().is_none() {
+                plan.raw = true;
+                return;
+            }
+            continue;
+        }
+        if arg.starts_with('-') {
+            continue;
+        }
+        if let Some((project, _)) = arg.rsplit_once(':') {
+            let project = project.trim_start_matches(':').replace(':', "/");
+            if !project.is_empty()
+                && (hints.is_none()
+                    || !hints
+                        .unwrap()
+                        .workspace
+                        .gradle_modules
+                        .iter()
+                        .any(|module| module == &project))
+            {
+                plan.raw = true;
+                return;
+            }
+        }
+        tasks.push(arg.rsplit(':').next().unwrap_or(arg));
+    }
+    if tasks.is_empty()
+        || tasks
+            .iter()
+            .any(|task| !matches!(*task, "test" | "build" | "check"))
+    {
+        plan.raw = true;
+        return;
+    }
+    plan.add(Family::JvmBuild);
+    plan.add(Family::JvmProgress);
+    if tasks.contains(&"test") || tasks.contains(&"check") || tasks.contains(&"build") {
+        plan.add(Family::JvmTest);
+    }
+}
+
+fn is_junit_console(args: &[String]) -> bool {
+    let is_console = args.iter().any(|arg| {
+        arg.contains("junit-platform-console")
+            || arg == "org.junit.platform.console.ConsoleLauncher"
+    });
+    is_console
+        && !args.iter().any(|arg| {
+            arg.starts_with("--reports-dir")
+                || arg.starts_with("--details=") && arg != "--details=tree"
+                || arg == "--details"
+        })
+}
+
+fn classify_dotnet(args: &[String], plan: &mut Plan) {
+    let Some(command) = args.first().map(String::as_str) else {
+        plan.raw = true;
+        return;
+    };
+    if args
+        .iter()
+        .any(|arg| matches!(arg.as_str(), "--logger" | "-l" | "--diag" | "--blame"))
+    {
+        plan.raw = true;
+        return;
+    }
+    match command {
+        "test" => {
+            plan.add(Family::DotnetTest);
+            plan.add(Family::DotnetBuild);
+            plan.add(Family::DotnetRestore);
+        }
+        "build" | "publish" => {
+            plan.add(Family::DotnetBuild);
+            plan.add(Family::DotnetRestore);
+        }
+        "restore" => plan.add(Family::DotnetRestore),
+        "format" if args.iter().any(|arg| arg == "--verify-no-changes") => {
+            plan.add(Family::DotnetFormat)
+        }
+        _ => plan.raw = true,
     }
 }
 

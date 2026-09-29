@@ -577,7 +577,19 @@ Supported:
     composer install
     composer update
 
-Generic php script.php tetap raw bila output tidak dikenali.
+TTC mengenali PHPUnit/Pest termasuk executable `vendor/bin`, `php artisan test`,
+PHPStan, Psalm, PHPCS, php-cs-fixer dry-run, serta `composer test`, `composer run
+test`, `composer install`, dan `composer update`. Composer script hanya memakai
+hints statis dari manifest. PHP executable, callback, script aplikasi, atau
+reporter yang tidak dapat dibuktikan dari command tetap raw.
+
+Recognizer hanya compact progress terminal yang memiliki grammar khusus:
+record titik PHPUnit, baris passing Pest/PHPUnit, progress PHPCS/PHPStan, dan
+download/install package Composer. Tool diagnostic-only boleh dikenali sebagai
+family tanpa menghapus output. Tabel hasil, summary, diagnostic, assertion diff,
+warning, security/audit output, struktur JSON/XML/TAP, dan reporter alternatif
+dipertahankan. Output dinamis, flag reporter yang tidak didukung, php-cs-fixer
+tanpa `--dry-run`, dan php-cs-fixer yang mengubah file berjalan raw.
 
 ### 8.8 Java dan JVM
 
@@ -596,7 +608,16 @@ Supported:
     javac
     JUnit console runner
 
-Filter Maven download progress, Gradle task progress, dan passing JUnit records. Compilation error, failed tests, stack trace, warning, dan build summary dipertahankan.
+TTC mengenali Maven dan `mvnw` untuk `test`, `verify`, `package`, dan
+`install`; Gradle dan `gradlew` untuk `test`, `build`, dan `check`; serta
+`javac` dan JUnit Console. Filter hanya baris download Maven yang cocok dengan
+grammar, task Gradle `> Task :...` yang berhasil, dan passing JUnit Console
+dengan reporter tree yang didukung (`--details=tree`).
+
+Compilation error, compiler diagnostic, task gagal, test failure, stack trace,
+warning, build summary, output machine-readable, dan reporter JUnit lain
+dipertahankan. `javac` dikenali untuk perlindungan diagnostik, tetapi outputnya
+tetap raw.
 
 ### 8.9 .NET
 
@@ -609,7 +630,12 @@ Supported:
     dotnet publish
     dotnet format --verify-no-changes
 
-Filter passing test dan restore/build progress. Compiler diagnostic code, failed test output, stack trace, warning, dan summary dipertahankan.
+TTC mengenali `dotnet test`, `build`, `restore`, `publish`, serta
+`dotnet format --verify-no-changes`. Filter passing VSTest record dan baris
+restore/build yang cocok dengan grammar. Diagnostic code, compiler output,
+failed test, assertion diff, stack trace, warning, summary, JSON/XML/TAP, dan
+logger/reporter yang tidak didukung dipertahankan. Format tanpa
+`--verify-no-changes` berjalan raw.
 
 ### 8.10 C, C++, Swift, Ruby, dan build tools
 
@@ -702,6 +728,17 @@ TTC membaca manifest secara statis:
 - go.work;
 - Composer scripts;
 - Gradle/Maven project files.
+
+Composer script string dan array dibaca statis. Alias script rekursif,
+`@php`/`@composer`, working directory, dan callback lifecycle install/update
+yang relevan diselesaikan memakai aturan Composer; callback PHP, ekspansi
+dinamis, alias cycle, atau command yang tidak dapat dibuktikan membuat
+invocation raw. Maven dibaca sebagai XML struktural dengan parser pull; TTC
+hanya memakai identitas proyek dan module path literal, tidak mengambil
+external entity, parent, atau dependency dari jaringan. Gradle Groovy/Kotlin
+hanya memberi hints dari include/path literal tanpa mengevaluasi DSL, plugin,
+atau menjalankan Gradle. Module/target dinamis dan referensi wajib yang ambigu
+membuat invocation raw.
 
 Batas:
 
