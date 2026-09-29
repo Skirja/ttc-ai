@@ -97,6 +97,34 @@ fn junit_pass_maven_download_and_gradle_task_progress_are_compacted_safely() {
             .unwrap()
             .is_none()
     );
+    for status in ["UP-TO-DATE", "FROM-CACHE", "SKIPPED", "NO-SOURCE"] {
+        let mut gradle_status = filter(Family::JvmBuild);
+        let line = format!("> Task :module:test {status}\n");
+        for _ in 0..3 {
+            assert!(
+                gradle_status
+                    .decide(Stream::Stdout, line.as_bytes())
+                    .unwrap()
+                    .is_none()
+            );
+        }
+        assert!(matches!(
+            gradle_status.decide(Stream::Stdout, line.as_bytes()),
+            Ok(Some(CompactKind::Progress))
+        ));
+    }
+    let mut gradle_unknown_status = filter(Family::JvmBuild);
+    for _ in 0..8 {
+        assert!(
+            gradle_unknown_status
+                .decide(
+                    Stream::Stdout,
+                    b"> Task :module:test UNKNOWN-STATUS details\n"
+                )
+                .unwrap()
+                .is_none()
+        );
+    }
 }
 
 #[test]

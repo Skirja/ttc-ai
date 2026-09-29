@@ -41,13 +41,24 @@ fn gradle_task(line: &str) -> bool {
     let Some(task) = text.strip_prefix("> Task :") else {
         return false;
     };
-    if task.is_empty() || task.contains("FAILED") || task.len() > 512 {
+    if task.is_empty() || task.len() > 512 {
         return false;
     }
-    task.split_whitespace().next().is_some_and(|name| {
-        !name.is_empty()
-            && name.bytes().all(|byte| {
-                byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-' | b':' | b'.')
-            })
-    })
+    let mut parts = task.split_whitespace();
+    let Some(name) = parts.next() else {
+        return false;
+    };
+    if parts.next().is_some_and(|status| {
+        !matches!(
+            status,
+            "UP-TO-DATE" | "FROM-CACHE" | "SKIPPED" | "NO-SOURCE"
+        )
+    }) || parts.next().is_some()
+    {
+        return false;
+    }
+    !name.is_empty()
+        && name
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-' | b':' | b'.'))
 }

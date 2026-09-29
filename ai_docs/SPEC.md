@@ -611,7 +611,8 @@ Supported:
 TTC mengenali Maven dan `mvnw` untuk `test`, `verify`, `package`, dan
 `install`; Gradle dan `gradlew` untuk `test`, `build`, dan `check`; serta
 `javac` dan JUnit Console. Filter hanya baris download Maven yang cocok dengan
-grammar, task Gradle `> Task :...` yang berhasil, dan passing JUnit Console
+grammar, task Gradle `> Task :...` tanpa suffix atau dengan status yang dikenal
+(`UP-TO-DATE`, `FROM-CACHE`, `SKIPPED`, `NO-SOURCE`), dan passing JUnit Console
 dengan reporter tree yang didukung (`--details=tree`).
 
 Compilation error, compiler diagnostic, task gagal, test failure, stack trace,
