@@ -852,7 +852,7 @@ job M8 di Ubuntu CI sebelum acceptance terakhir atau artifact CI dicentang.
 
 ### Evidence
 
-- [ ] Commit implementasi dicatat.
+- [x] Commit implementasi: `6f1c643` (`feat: implement M8 ecosystem filters`).
 - [x] Command coverage matrix dilampirkan di `scripts/m8-command-coverage.md`.
 - [x] Tool version pins, checksum, retention, dan local reduction results
   dicatat di files serta report di atas.
