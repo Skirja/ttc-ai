@@ -871,9 +871,12 @@ CMake/Ninja dan memastikan output tetap byte-exact tanpa metadata.
 warnings`, `cargo test --all-targets --all-features`, `cargo build --release`,
 seluruh sembilan command verifikasi M8 di atas, syntax kedua script smoke, dan
 `git diff --check` lulus. Log: `target/m8-evidence/review-smoke-fixes.log`.
-Smoke penuh tetap belum dijalankan; run CI `36694479477` pada
-`204b08c4a5ab62abe322e8f9e961c5fae1bf85c6` ditolak sebelum alokasi runner karena
-billing/spending limit GitHub. Acceptance smoke dan artifact tetap belum dicentang.
+Smoke penuh tetap belum dijalankan. Perbaikan ini dipush ke PR #7 sebagai commit
+`52e0f0445b9f0f292fb03b17baba476c24d0e3c3`; [run CI `36698952360`](https://github.com/Skirja/ttc-ai/actions/runs/36698952360)
+ditolak sebelum alokasi runner karena billing/spending limit GitHub. Delapan job
+tidak memperoleh runner; annotation check M8 menyatakan pembayaran terakhir gagal
+atau spending limit perlu dinaikkan. Acceptance smoke dan artifact tetap belum
+dicentang. Perbaiki billing GitHub lalu rerun CI untuk commit perbaikan ini.
 
 ### Evidence
 
