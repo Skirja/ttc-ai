@@ -68,6 +68,69 @@ fn all_specified_javascript_tools_have_a_family() {
 }
 
 #[test]
+fn all_m8_commands_have_an_explicit_filter_family() {
+    let dir = TestDir::new();
+    let cases: &[(&[&str], Family)] = &[
+        (&["cmake", "--build", "build"], Family::CmakeBuild),
+        (&["ctest", "--test-dir", "build"], Family::Ctest),
+        (&["ninja"], Family::NinjaBuild),
+        (&["make", "test"], Family::MakeBuild),
+        (&["make", "check"], Family::MakeBuild),
+        (&["rspec"], Family::Rspec),
+        (&["bundle", "exec", "rspec"], Family::Rspec),
+        (&["rubocop"], Family::Rubocop),
+        (&["rake", "test"], Family::RakeTest),
+        (&["swift", "build"], Family::SwiftBuild),
+        (&["swift", "test"], Family::SwiftTest),
+        (&["docker", "build", "."], Family::ContainerBuild),
+        (&["docker", "compose", "build"], Family::ContainerBuild),
+        (&["podman", "build", "."], Family::ContainerBuild),
+        (&["terraform", "validate"], Family::TerraformValidate),
+        (&["helm", "lint", "charts/demo"], Family::HelmLint),
+    ];
+    for (args, family) in cases {
+        let plan = classify(&words(args), dir.path(), None);
+        assert_eq!(plan.families, vec![*family], "{args:?}");
+    }
+}
+
+#[test]
+fn m8_dynamic_targets_machine_output_and_mutating_ruby_commands_stay_raw() {
+    let dir = TestDir::new();
+    for args in [
+        vec!["make", "all"],
+        vec!["make", "test", "release"],
+        vec!["make", "-f", "custom.mk", "test"],
+        vec!["cmake", "--build", "build", "--target", "all"],
+        vec!["cmake", "--build", "build", "--target=install"],
+        vec!["cmake", "--build", "build", "-t", "custom"],
+        vec!["cmake", "--build", "build", "-tcustom"],
+        vec!["ninja", "custom-target"],
+        vec![
+            "ctest",
+            "--test-dir",
+            "build",
+            "--output-junit",
+            "results.xml",
+        ],
+        vec!["ctest", "--test-dir", "build", "-T", "Test"],
+        vec!["rspec", "--format", "json"],
+        vec!["rspec", "-fjson"],
+        vec!["rubocop", "--autocorrect"],
+        vec!["rubocop", "--format", "json"],
+        vec!["rake", "test", "--trace"],
+        vec!["docker", "build", "--progress=json", "."],
+        vec!["podman", "build", "--quiet", "."],
+        vec!["terraform", "validate", "-json"],
+        vec!["helm", "lint", "charts/demo", "--output", "json"],
+        vec!["swift", "test", "--dump-tests-json"],
+    ] {
+        let plan = classify(&words(&args), dir.path(), None);
+        assert!(plan.raw || plan.families.is_empty(), "{args:?}: {plan:?}");
+    }
+}
+
+#[test]
 fn package_managers_and_workspace_modifiers_supply_safe_candidates() {
     let dir = TestDir::new();
     fs::write(dir.path().join("package.json"), r#"{"scripts":{"test":"vitest run","lint":"eslint .","typecheck":"tsc --noEmit","build":"vite build"}}"#).unwrap();

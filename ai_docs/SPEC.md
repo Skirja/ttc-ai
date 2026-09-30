@@ -655,7 +655,25 @@ Supported:
     rubocop
     rake test
 
-Filter hanya progress dan passing records yang dikenal. Dynamic targets raw jika family tidak dapat ditentukan.
+Filter hanya progress dan passing records yang dikenal. Grammar yang boleh
+dikompaksi:
+
+- CMake: record persentase `Building ...` atau `Linking ...` yang cocok grammar;
+  summary target tetap ada.
+- Ninja dan backend CMake Ninja: record `[N/M] Building ...` atau `Linking ...`;
+  nama target eksplisit dan mode tool berjalan raw.
+- CTest serta Make target `test`/`check`: hanya record test `Passed` dengan
+  jumlah dan durasi valid. Failure, output test, dan summary tetap ada.
+- Swift: record compile/module/link yang dikenal dan passing XCTest/Swift
+  Testing dengan durasi valid. `swift build --show-bin-path` dan output package
+  terstruktur raw.
+- RSpec dan Rake test: hanya baris yang seluruhnya berisi titik passing.
+  RuboCop: hanya baris meter titik default. Formatter alternatif, reporter,
+  correction, dan offense tetap raw/retained.
+
+Dynamic target CMake/CTest/Ninja/Make yang tidak dapat diidentifikasi, custom
+Makefile, target selain `test`/`check`, dan grammar build/test yang tidak dikenal
+berjalan raw. TTC tidak membaca/evaluasi Makefile untuk memilih filter.
 
 ### 8.11 Container dan infrastructure
 
@@ -669,7 +687,17 @@ Filtering terbatas:
 
 Plan, diff, resource changes, warning, error, dan security output selalu dipertahankan.
 
-Interactive docker compose up dan kubectl logs -f raw streaming.
+Docker dan Docker Compose hanya boleh compact record metadata BuildKit internal
+untuk memuat definisi build, `.dockerignore`, build context, atau metadata image.
+Langkah `RUN`/`COPY`, cache/build summary, output aplikasi, warning, error, dan
+security message tetap dipertahankan. JSON/rawjson dan mode quiet berjalan raw.
+Output Podman yang tidak cocok grammar progress khusus dipertahankan penuh.
+`terraform validate` adalah diagnostic-only: output validasi maupun summary
+tidak pernah dikompaksi; JSON berjalan raw. Helm lint hanya boleh compact banner
+`==> Linting CHART`; lint result, rekomendasi, diagnostic, dan summary tetap ada.
+
+Interactive docker compose up (termasuk opsi global Compose) dan `kubectl logs`
+dengan `-f`/`--follow` raw streaming.
 
 ### 8.12 Commands yang selalu raw
 

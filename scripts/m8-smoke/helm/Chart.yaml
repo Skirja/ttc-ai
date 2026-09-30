@@ -1,0 +1,5 @@
+apiVersion: v2
+name: ttc-m8-smoke
+description: TTC M8 local lint fixture
+type: application
+version: 0.1.0

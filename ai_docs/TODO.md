@@ -763,29 +763,33 @@ yang eksplisit dan teruji.
 
 ### Implementation checklist
 
-- [ ] Implementasikan CMake build, CTest, Ninja, Make test/check, dan dynamic
+- [x] Implementasikan CMake build, CTest, Ninja, Make test/check, dan dynamic
   target fallback.
-- [ ] Implementasikan Swift build/test.
-- [ ] Implementasikan RSpec, RuboCop, dan Rake test.
-- [ ] Implementasikan limited filtering untuk Docker/Podman build, Docker
-  Compose build, Terraform validate, dan Helm lint.
-- [ ] Selalu retain plan, diff, resource changes, warning, error, dan security
+- [x] Implementasikan Swift build/test.
+- [x] Implementasikan RSpec, RuboCop, dan Rake test.
+- [x] Implementasikan limited filtering untuk metadata build Docker/Compose yang
+  dikenal; output Podman yang tidak cocok grammar tetap raw. Terraform validate
+  diagnostic-only; Helm lint hanya compact banner lint chart.
+- [x] Selalu retain plan, diff, resource changes, warning, error, dan security
   output.
-- [ ] Pastikan Docker Compose up, kubectl logs -f, dan seluruh interactive/watch
+- [x] Pastikan Docker Compose up, kubectl logs -f, dan seluruh interactive/watch
   list raw streaming.
-- [ ] Lengkapi always-raw command matrix, termasuk file/source readers, network,
+- [x] Lengkapi always-raw command matrix, termasuk file/source readers, network,
   SSH, database clients, application-specific CLI, git diff, dan git show.
-- [ ] Generalisasi signature confidence tanpa memungkinkan satu noisy record
+- [x] Generalisasi signature confidence tanpa memungkinkan satu noisy record
   mengaktifkan filter family.
-- [ ] Tambahkan fixture lengkap untuk setiap family dan pinned real-tool smoke
-  test yang representatif.
+- [x] Tambahkan success/failure/warning/unknown/large fixtures untuk setiap
+  family filterable serta pinned tool matrix dan smoke project.
+- [ ] Jalankan pinned real-tool smoke tests pada Ubuntu CI dan periksa output,
+  status, retention, serta evidence artifact.
 
 ### Acceptance criteria
 
-- [ ] Setiap command pada SPEC section 8 terpetakan oleh test matrix.
-- [ ] Dynamic/unknown target dan application-specific output tetap byte-exact.
-- [ ] Infrastructure diff/change/security content tidak pernah dikompaksi.
-- [ ] Large repetitive fixture tiap filterable family mengurangi byte minimum
+- [x] Setiap command pada SPEC section 8.10–8.12 terpetakan oleh matriks
+  `scripts/m8-command-coverage.md` dan test terkait.
+- [x] Dynamic/unknown target dan application-specific output tetap byte-exact.
+- [x] Infrastructure diff/change/security content tidak pernah dikompaksi.
+- [x] Large repetitive fixture tiap filterable family mengurangi byte minimum
   80%.
 - [ ] Representative build, Ruby, Swift, container, dan infrastructure smoke
   tests lulus pada versi pin.
@@ -793,18 +797,95 @@ yang eksplisit dan teruji.
 ### Verification commands
 
 ```bash
+cargo test --test classifier
+cargo test --test filter_safety
 cargo test --test build_tool_fixtures
 cargo test --test ruby_swift_fixtures
 cargo test --test infrastructure_fixtures
 cargo test --test raw_command_matrix
 cargo test --test remaining_ecosystem_e2e
+cargo test --test m8_smoke_assertions
+cargo test --test reduction
 ```
+
+Pinned tool matrix dicatat di `scripts/m8-tool-versions.txt`; archive checksum
+ada di `scripts/m8-tool-checksums.txt`, dan image Podman dikunci digest-nya di
+`scripts/m8-tool-images.txt`. `scripts/m8-smoke.sh` membandingkan status direct
+dan TTC pada fixture CMake/CTest/Ninja/Make, Ruby, Swift, Docker/Compose,
+Terraform, Helm, serta Podman. Konfigurasi, cache, project, raw capture, dan
+log smoke memakai direktori temporary atau `target/m8-evidence/`.
+
+Verifikasi lokal 2026-09-30 pada `feat/m8-remaining-ecosystems`:
+
+- Fixture/classifier, `filter_safety`, raw command matrix, M8 E2E, dan reduction
+  lulus. Baseline `cargo fmt --all -- --check`, Clippy seluruh target/fitur,
+  `cargo test --all-targets --all-features`, dan `cargo build --release` juga
+  lulus. Log gate dan seluruh-target test: `target/m8-evidence/repository-tests.log`;
+  fixture retention/reduction: `target/m8-evidence/fixtures.log`.
+- `M8_TOOL_HOME=... sh scripts/m8-install-tools.sh` memverifikasi checksum
+  CMake, Ninja, Make, Terraform, dan Helm sebelum install; semua versinya cocok
+  dengan matriks.
+- Smoke tool nyata lokal lulus untuk CMake/CTest 3.31.6, Ninja 1.12.1, Make
+  4.4.1, Terraform 1.11.4, Helm 3.17.3, dan image Podman 5.4.2 terpin digest.
+  Status direct/TTC dan stream CMake/Ninja/CTest/Make, Terraform validate
+  success/failure, Helm lint, serta diagnostic `security.capability` Podman
+  terverifikasi. Build fixture C lokal lulus; fixture C++ ada tetapi host tidak
+  menyediakan `g++`. Log berada di `target/m8-evidence/`.
+- Ukuran TTC di bawah sudah termasuk metadata. Capture menyimpan input asli;
+  fixture failure/warning/summary menguji konten yang dipertahankan.
+
+| Family | Input byte | TTC byte | Reduksi |
+|---|---:|---:|---:|
+| CMake | 58.128 | 348 | 99,40% |
+| Ninja | 34.104 | 276 | 99,19% |
+| Make/CTest | 69.139 | 381 | 99,45% |
+| RSpec/Rake | 5.056 | 156 | 96,91% |
+| RuboCop | 7.058 | 156 | 97,79% |
+| Swift build | 40.112 | 296 | 99,26% |
+| Swift test | 57.129 | 347 | 99,39% |
+| BuildKit metadata | 52.140 | 348 | 99,33% |
+| Helm lint banner | 24.133 | 285 | 98,82% |
+
+Smoke penuh belum dijalankan. Host tidak memiliki `g++` untuk kasus C++; Ruby
+dan Swift terpin juga belum tersedia, dan Docker lokal `29.8.1` berbeda dari
+smoke pin `28.1.1`. Compose build beserta smoke gabungan Ruby/Swift menunggu
+job M8 di Ubuntu CI sebelum acceptance terakhir atau artifact CI dicentang.
+
+Catatan review: run PR #7 `36690621070` pada commit `7edc9c2` selesai gagal
+sebelum ada job atau log. Pemeriksaan workflow menemukan penggunaan context
+`runner.temp` pada `env` tingkat job; branch kerja saat ini memperbaikinya.
+`cargo fmt --all -- --check`, Clippy, `cargo test --all-targets --all-features`,
+`cargo build --release`, shell syntax, dan YAML parse lulus setelah perbaikan.
+Seluruh command M8 pada bagian Verification commands juga lulus; retention dan
+reduction terbaru tersimpan di `target/m8-evidence/review-fixes.log`. Pinned
+real-tool smoke di Ubuntu CI tetap pending untuk PR revisi ini.
+
+Perbaikan review lanjutan untuk commit `204b08c` memisahkan build bersih yang
+wajib compact dari build warning opt-in (`TTC_M8_EMIT_WARNING=ON`) yang wajib
+retain. Assertion meter Ruby kini membaca kedua counter metadata TTC, sehingga
+RuboCop progress-only diterima tanpa menerima counter nol atau metadata rusak.
+Helper assertion yang sama dipakai smoke nyata dan `tests/m8_smoke_assertions.rs`.
+Regresi build empat langkah menguji warning sebelum confidence pada kedua family
+CMake/Ninja dan memastikan output tetap byte-exact tanpa metadata.
+`cargo fmt --all -- --check`, `cargo clippy --all-targets --all-features -- -D
+warnings`, `cargo test --all-targets --all-features`, `cargo build --release`,
+seluruh sembilan command verifikasi M8 di atas, syntax kedua script smoke, dan
+`git diff --check` lulus. Log: `target/m8-evidence/review-smoke-fixes.log`.
+Smoke penuh tetap belum dijalankan. Perbaikan ini dipush ke PR #7 sebagai commit
+`52e0f0445b9f0f292fb03b17baba476c24d0e3c3`; [run CI `36698952360`](https://github.com/Skirja/ttc-ai/actions/runs/36698952360)
+ditolak sebelum alokasi runner karena billing/spending limit GitHub. Delapan job
+tidak memperoleh runner; annotation check M8 menyatakan pembayaran terakhir gagal
+atau spending limit perlu dinaikkan. Acceptance smoke dan artifact tetap belum
+dicentang. Perbaiki billing GitHub lalu rerun CI untuk commit perbaikan ini.
 
 ### Evidence
 
-- [ ] Commit implementasi dicatat.
-- [ ] Command coverage matrix dilampirkan.
-- [ ] Tool versions, retention, dan reduction results dicatat.
+- [x] Commit implementasi: `6f1c643` (`feat: implement M8 ecosystem filters`).
+- [x] Command coverage matrix dilampirkan di `scripts/m8-command-coverage.md`.
+- [x] Tool version pins, checksum, retention, dan local reduction results
+  dicatat di files serta report di atas.
+- [ ] Pinned real-tool smoke log dan checksum tersedia pada artifact
+  `m8-remaining-ecosystem-evidence` untuk PR CI yang berhasil.
 
 ---
 

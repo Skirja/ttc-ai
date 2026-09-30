@@ -95,7 +95,6 @@ fn is_known_raw_command(arguments: &[OsString]) -> bool {
         .and_then(OsStr::to_str)
         .unwrap_or(program);
     let next = words.get(1).copied().unwrap_or_default();
-    let third = words.get(2).copied().unwrap_or_default();
 
     matches!(
         name,
@@ -122,16 +121,228 @@ fn is_known_raw_command(arguments: &[OsString]) -> bool {
             | "scp"
             | "watchexec"
             | "nodemon"
+            | "mysql"
+            | "mariadb"
+            | "psql"
+            | "sqlite3"
+            | "mongosh"
+            | "redis-cli"
+            | "sqlcmd"
+            | "pgcli"
     ) || matches!(
-        (name, next, third),
-        ("npm" | "pnpm" | "yarn" | "bun", "run", "dev")
-            | ("npm" | "pnpm" | "yarn" | "bun", "dev", _)
-            | ("vite" | "next" | "nuxt", "dev", _)
-            | ("cargo", "watch", _)
-            | ("docker", "compose", "up")
-            | ("kubectl", "logs", "-f")
-            | ("git", "diff" | "show", _)
-    ) || (name == "tail" && words.contains(&"-f"))
+        (name, next),
+        ("npm" | "pnpm" | "yarn" | "bun", "run")
+            if words.get(2).is_some_and(|word| *word == "dev")
+    ) || matches!((name, next), ("npm" | "pnpm" | "yarn" | "bun", "dev"))
+        || matches!((name, next), ("vite" | "next" | "nuxt", "dev"))
+        || matches!((name, next), ("cargo", "watch"))
+        || (name == "docker" && docker_compose_raw(&words[1..]))
+        || (name == "kubectl" && kubectl_raw_interactive(&words[1..]))
+        || (name == "git" && git_raw_subcommand(&words[1..]))
+        || (name == "tail" && words.contains(&"-f"))
+}
+
+fn docker_compose_raw(arguments: &[&str]) -> bool {
+    let mut index = 0;
+    while let Some(argument) = arguments.get(index) {
+        if *argument == "compose" {
+            index += 1;
+            break;
+        }
+        if matches!(
+            *argument,
+            "--config"
+                | "--context"
+                | "--host"
+                | "--log-level"
+                | "--tlscacert"
+                | "--tlscert"
+                | "--tlskey"
+        ) {
+            index += 2;
+        } else if [
+            "--config=",
+            "--context=",
+            "--host=",
+            "--log-level=",
+            "--tlscacert=",
+            "--tlscert=",
+            "--tlskey=",
+        ]
+        .iter()
+        .any(|prefix| argument.starts_with(prefix))
+            || matches!(*argument, "--tls" | "--tlsverify" | "-D")
+        {
+            index += 1;
+        } else {
+            return false;
+        }
+    }
+    if index == 0 || arguments.get(index - 1) != Some(&"compose") {
+        return false;
+    }
+    while let Some(argument) = arguments.get(index) {
+        if *argument == "up" {
+            return true;
+        }
+        if *argument == "run" {
+            return arguments[index + 1..].iter().any(|option| {
+                matches!(
+                    *option,
+                    "-i" | "-t"
+                        | "-it"
+                        | "-ti"
+                        | "--interactive"
+                        | "--tty"
+                        | "--interactive=true"
+                        | "--tty=true"
+                )
+            });
+        }
+        if matches!(
+            *argument,
+            "-f" | "--file"
+                | "--env-file"
+                | "--project-directory"
+                | "-p"
+                | "--project-name"
+                | "--profile"
+                | "--progress"
+                | "--ansi"
+                | "--parallel"
+        ) {
+            index += 2;
+        } else if argument.starts_with("--file=")
+            || argument.starts_with("--env-file=")
+            || argument.starts_with("--project-directory=")
+            || argument.starts_with("--project-name=")
+            || argument.starts_with("--profile=")
+            || argument.starts_with("--progress=")
+            || argument.starts_with("--ansi=")
+            || argument.starts_with("--parallel=")
+            || *argument == "--compatibility"
+        {
+            index += 1;
+        } else {
+            return false;
+        }
+    }
+    false
+}
+
+fn kubectl_raw_interactive(arguments: &[&str]) -> bool {
+    let mut index = 0;
+    while let Some(argument) = arguments.get(index) {
+        if matches!(*argument, "logs" | "exec") {
+            let subcommand = *argument;
+            let options = &arguments[index + 1..];
+            return if subcommand == "logs" {
+                options
+                    .iter()
+                    .any(|option| matches!(*option, "-f" | "--follow" | "--follow=true"))
+            } else {
+                options.iter().any(|option| {
+                    matches!(
+                        *option,
+                        "-i" | "-t"
+                            | "-it"
+                            | "-ti"
+                            | "--stdin"
+                            | "--tty"
+                            | "--stdin=true"
+                            | "--tty=true"
+                    )
+                })
+            };
+        }
+        if matches!(
+            *argument,
+            "--as"
+                | "--as-group"
+                | "--cache-dir"
+                | "--certificate-authority"
+                | "--cluster"
+                | "--client-certificate"
+                | "--client-key"
+                | "--context"
+                | "--kubeconfig"
+                | "--namespace"
+                | "-n"
+                | "--profile"
+                | "--profile-output"
+                | "--request-timeout"
+                | "--server"
+                | "--token"
+                | "--tls-server-name"
+                | "--user"
+        ) {
+            index += 2;
+        } else if [
+            "--as=",
+            "--as-group=",
+            "--cache-dir=",
+            "--client-certificate=",
+            "--client-key=",
+            "--certificate-authority=",
+            "--cluster=",
+            "--context=",
+            "--kubeconfig=",
+            "--namespace=",
+            "--profile=",
+            "--profile-output=",
+            "--request-timeout=",
+            "--server=",
+            "--token=",
+            "--tls-server-name=",
+            "--user=",
+        ]
+        .iter()
+        .any(|prefix| argument.starts_with(prefix))
+            || matches!(
+                *argument,
+                "--insecure-skip-tls-verify" | "--match-server-version" | "--warnings-as-errors"
+            )
+        {
+            index += 1;
+        } else {
+            return false;
+        }
+    }
+    false
+}
+
+fn git_raw_subcommand(arguments: &[&str]) -> bool {
+    let mut index = 0;
+    while let Some(argument) = arguments.get(index) {
+        if matches!(*argument, "diff" | "show") {
+            return true;
+        }
+        if matches!(
+            *argument,
+            "-C" | "-c" | "--git-dir" | "--work-tree" | "--namespace" | "--exec-path"
+        ) {
+            index += 2;
+        } else if argument.starts_with("-C")
+            || argument.starts_with("-c")
+            || ["--git-dir=", "--work-tree=", "--namespace=", "--exec-path="]
+                .iter()
+                .any(|prefix| argument.starts_with(prefix))
+            || matches!(
+                *argument,
+                "--no-pager"
+                    | "--paginate"
+                    | "--no-replace-objects"
+                    | "--bare"
+                    | "--literal-pathspecs"
+                    | "--no-optional-locks"
+            )
+        {
+            index += 1;
+        } else {
+            return false;
+        }
+    }
+    false
 }
 
 fn stream_child(command: &mut Command, config: Config, mut filter: DispatchFilter) -> ExitCode {

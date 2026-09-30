@@ -53,6 +53,18 @@ pub(crate) enum Family {
     DotnetBuild,
     DotnetRestore,
     DotnetFormat,
+    CmakeBuild,
+    Ctest,
+    NinjaBuild,
+    MakeBuild,
+    Rspec,
+    Rubocop,
+    RakeTest,
+    SwiftBuild,
+    SwiftTest,
+    ContainerBuild,
+    HelmLint,
+    TerraformValidate,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -360,7 +372,7 @@ fn machine_flag(word: &str) -> bool {
     matches!(
         word,
         "--json" | "--jsonl" | "--xml" | "--yaml" | "--sarif" | "--output" | "-o" | "--format"
-    ) || matches!(word, "--logger" | "--report" | "--log-junit")
+    ) || matches!(word, "--logger" | "--report" | "--log-junit" | "-json")
         || [
             "--json=",
             "--jsonl=",
@@ -379,6 +391,9 @@ fn machine_flag(word: &str) -> bool {
             "--log-junit",
             "--output-format=json",
             "--error-format=json",
+            "--progress=json",
+            "--progress=rawjson",
+            "--dump-tests-json",
         ]
         .iter()
         .any(|prefix| word.starts_with(prefix))
@@ -671,6 +686,21 @@ fn classify_segment(
     }
     if name == "composer" {
         classify_composer(args, directory, hints, plan, depth, local_discovery);
+        return;
+    }
+    if name == "bundle" {
+        if args.first().is_some_and(|arg| arg == "exec") && args.len() >= 2 {
+            let nested = Path::new(&args[1])
+                .file_name()
+                .and_then(|value| value.to_str())
+                .unwrap_or(&args[1]);
+            classify_tool(nested, &args[2..], plan, hints);
+            if plan.families.is_empty() {
+                plan.raw = true;
+            }
+        } else {
+            plan.raw = true;
+        }
         return;
     }
     if classify_monorepo_runner(
@@ -1870,6 +1900,125 @@ fn classify_tool(name: &str, args: &[String], plan: &mut Plan, hints: Option<&Ma
         classify_dotnet(args, plan);
         return;
     }
+    match base {
+        "cmake" if args.first().is_some_and(|arg| arg == "--build") => {
+            if args.iter().any(|arg| {
+                arg == "-t"
+                    || arg.starts_with("-t")
+                    || arg == "--target"
+                    || arg.starts_with("--target=")
+                    || arg == "--"
+            }) {
+                plan.raw = true;
+            } else {
+                plan.add(Family::CmakeBuild);
+            }
+            return;
+        }
+        "ctest" => {
+            if args.iter().any(|arg| {
+                matches!(arg.as_str(), "-T" | "--dashboard" | "-S")
+                    || arg.starts_with("--dashboard=")
+                    || arg.starts_with("--output-junit")
+            }) {
+                plan.raw = true;
+            } else {
+                plan.add(Family::Ctest);
+            }
+            return;
+        }
+        "ninja" => {
+            if ninja_arguments_supported(args) {
+                plan.add(Family::NinjaBuild);
+            } else {
+                plan.raw = true;
+            }
+            return;
+        }
+        "make" => {
+            if make_target(args).is_some() {
+                plan.add(Family::MakeBuild);
+            } else {
+                plan.raw = true;
+            }
+            return;
+        }
+        "rspec" => {
+            if unsupported_formatter(args) {
+                plan.raw = true;
+            } else {
+                plan.add(Family::Rspec);
+            }
+            return;
+        }
+        "rubocop" => {
+            if args.iter().any(|arg| {
+                matches!(
+                    arg.as_str(),
+                    "-A" | "-a" | "--autocorrect" | "--autocorrect-all"
+                )
+            }) || unsupported_formatter(args)
+            {
+                plan.raw = true;
+            } else {
+                plan.add(Family::Rubocop);
+            }
+            return;
+        }
+        "rake" if args.first().is_some_and(|arg| arg == "test") => {
+            if args.iter().any(|arg| arg.starts_with('-')) {
+                plan.raw = true;
+            } else {
+                plan.add(Family::RakeTest);
+            }
+            return;
+        }
+        "swift" => match args.first().map(String::as_str) {
+            Some("build") => {
+                if args.iter().any(|arg| {
+                    matches!(
+                        arg.as_str(),
+                        "--show-bin-path" | "--dump-package" | "--print-manifest"
+                    )
+                }) {
+                    plan.raw = true;
+                } else {
+                    plan.add(Family::SwiftBuild);
+                }
+                return;
+            }
+            Some("test") => {
+                plan.add(Family::SwiftTest);
+                return;
+            }
+            _ => {}
+        },
+        "docker" | "podman" if container_build(args) => {
+            if args.iter().any(|arg| {
+                matches!(arg.as_str(), "--progress=json" | "--progress=rawjson")
+                    || arg == "--progress"
+                        && args
+                            .iter()
+                            .any(|value| value == "json" || value == "rawjson")
+                    || arg == "--quiet"
+                    || arg == "-q"
+            }) {
+                plan.raw = true;
+            } else {
+                plan.add(Family::ContainerBuild);
+            }
+            return;
+        }
+        "terraform" if args.first().is_some_and(|arg| arg == "validate") => {
+            plan.add(Family::TerraformValidate);
+            return;
+        }
+        "helm" if args.first().is_some_and(|arg| arg == "lint") => {
+            plan.add(Family::HelmLint);
+            return;
+        }
+        _ => {}
+    }
     let family = match name {
         "vitest" | "jest" | "mocha" | "ava" | "tap" => Some(Family::Test),
         "playwright" if args.first().is_some_and(|x| x == "test") => Some(Family::Test),
@@ -1913,6 +2062,120 @@ fn classify_tool(name: &str, args: &[String], plan: &mut Plan, hints: Option<&Ma
     if let Some(family) = family {
         plan.add(family);
     }
+}
+
+fn unsupported_formatter(args: &[String]) -> bool {
+    let mut index = 0;
+    while let Some(argument) = args.get(index) {
+        let value = if matches!(argument.as_str(), "--format" | "-f") {
+            let Some(value) = args.get(index + 1) else {
+                return true;
+            };
+            index += 1;
+            value.as_str()
+        } else if let Some(value) = argument.strip_prefix("--format=") {
+            value
+        } else if let Some(value) = argument.strip_prefix("-f") {
+            if value.is_empty() {
+                index += 1;
+                continue;
+            }
+            value
+        } else {
+            index += 1;
+            continue;
+        };
+        if value != "progress" {
+            return true;
+        }
+        index += 1;
+    }
+    false
+}
+
+fn ninja_arguments_supported(args: &[String]) -> bool {
+    !args.iter().any(|arg| {
+        matches!(
+            arg.as_str(),
+            "-t" | "-C" | "-f" | "--tool" | "--directory" | "--file"
+        ) || arg.starts_with("--tool=")
+            || arg.starts_with("--directory=")
+            || arg.starts_with("--file=")
+            || arg.starts_with('-') && !matches!(arg.as_str(), "-v" | "-d")
+            || !arg.starts_with('-')
+    })
+}
+
+/// Make is only a supported test/check command when its target is explicit.
+/// Other targets can run arbitrary project actions and therefore remain raw.
+fn make_target(args: &[String]) -> Option<&str> {
+    let mut target = None;
+    let mut index = 0;
+    while index < args.len() {
+        let arg = args[index].as_str();
+        if matches!(arg, "-f" | "-C" | "-o" | "-W" | "--file" | "--directory") {
+            return None;
+        }
+        if arg.starts_with('-') {
+            if matches!(arg, "-j" | "--jobs" | "-l" | "--load-average") {
+                index += 1;
+                if index >= args.len() || args[index].starts_with('-') {
+                    return None;
+                }
+            } else if !arg.starts_with("-j") && !arg.starts_with("-l") {
+                return None;
+            }
+        } else if !arg.contains('=') {
+            if target.is_some() || !matches!(arg, "test" | "check") {
+                return None;
+            }
+            target = Some(arg);
+        }
+        index += 1;
+    }
+    target
+}
+
+fn container_build(args: &[String]) -> bool {
+    if args.first().is_some_and(|arg| arg == "build") {
+        return true;
+    }
+    if !args.first().is_some_and(|arg| arg == "compose") {
+        return false;
+    }
+    let mut index = 1;
+    while let Some(argument) = args.get(index) {
+        if argument == "build" {
+            return true;
+        }
+        if matches!(
+            argument.as_str(),
+            "-f" | "--file"
+                | "--env-file"
+                | "--project-directory"
+                | "-p"
+                | "--project-name"
+                | "--profile"
+                | "--progress"
+                | "--ansi"
+                | "--parallel"
+        ) {
+            index += 2;
+        } else if argument.starts_with("--file=")
+            || argument.starts_with("--env-file=")
+            || argument.starts_with("--project-directory=")
+            || argument.starts_with("--project-name=")
+            || argument.starts_with("--profile=")
+            || argument.starts_with("--progress=")
+            || argument.starts_with("--ansi=")
+            || argument.starts_with("--parallel=")
+        {
+            index += 1;
+        } else {
+            return false;
+        }
+    }
+    false
 }
 
 fn classify_maven(args: &[String], plan: &mut Plan, hints: Option<&ManifestHints>) {
