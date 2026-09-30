@@ -337,3 +337,89 @@ jobs:
           name: m7-php-jvm-dotnet-evidence
           path: target/m7-evidence/
           if-no-files-found: error
+
+  m8-remaining-ecosystems:
+    name: M8 build, Ruby, Swift, containers, and infrastructure
+    runs-on: ubuntu-24.04
+    env:
+      RUSTUP_TOOLCHAIN: 1.98.1
+      BUNDLE_GEMFILE: ${{ github.workspace }}/scripts/m8-smoke/ruby/Gemfile
+      BUNDLE_PATH: ${{ runner.temp }}/m8-bundle
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt,clippy
+
+      - name: Install pinned Ruby and Bundler
+        uses: ruby/setup-ruby@6797dcbb9a1889fd411d07e8aba7eded53fb8b48 # v1.264.0
+        with:
+          ruby-version: 3.3.8
+          bundler: 2.6.9
+
+      - name: Install pinned Swift
+        uses: swift-actions/setup-swift@682457186b71c25a884c45c06f859febbe259240 # v2.3.0
+        with:
+          swift-version: 6.1.2
+
+      - name: Install isolated pinned Docker engine
+        uses: docker/setup-docker-action@2bf61fb9464cc67f0cbdeabed6aa0380accd1c70 # v5
+        with:
+          version: v28.1.1
+          context: ttc-m8-docker
+          runtime-basedir: ${{ runner.temp }}/ttc-m8-docker
+          set-host: true
+
+      - name: Install pinned Buildx and Compose
+        uses: docker/setup-buildx-action@18ce135bb5112fa8ce4ed6c17ab05699d7f3a5e0 # v3.11.0
+        with:
+          version: v0.23.0
+          driver: docker
+      - uses: docker/setup-compose-action@364cc21a5de5b1ee4a7f5f9d3fa374ce0ccde746 # v1.2.0
+        with:
+          version: v2.35.1
+          cache-binary: false
+
+      - name: Install checksum-verified Make, Terraform, and Helm
+        shell: bash
+        run: |
+          set -euo pipefail
+          tool_home="$RUNNER_TEMP/m8-tools"
+          mkdir -p "$tool_home"
+          M8_TOOL_HOME="$tool_home" . scripts/m8-install-tools.sh
+          printf '%s/bin\n' "$tool_home" >> "$GITHUB_PATH"
+          printf '%s/cmake-3.31.6-linux-x86_64/bin\n' "$tool_home" >> "$GITHUB_PATH"
+
+      - name: Install locked Ruby smoke dependencies
+        run: bundle install --jobs 4 --retry 3
+
+      - name: Verify M8 classifier, fixtures, retention, and raw command matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p target/m8-evidence
+          : > target/m8-evidence/fixtures.log
+          cargo test --test classifier 2>&1 | tee -a target/m8-evidence/fixtures.log
+          cargo test --test filter_safety 2>&1 | tee -a target/m8-evidence/fixtures.log
+          TTC_M8_EVIDENCE=1 cargo test --test build_tool_fixtures -- --test-threads=1 --nocapture 2>&1 | tee -a target/m8-evidence/fixtures.log
+          TTC_M8_EVIDENCE=1 cargo test --test ruby_swift_fixtures -- --test-threads=1 --nocapture 2>&1 | tee -a target/m8-evidence/fixtures.log
+          TTC_M8_EVIDENCE=1 cargo test --test infrastructure_fixtures -- --test-threads=1 --nocapture 2>&1 | tee -a target/m8-evidence/fixtures.log
+          cargo test --test raw_command_matrix 2>&1 | tee -a target/m8-evidence/fixtures.log
+          cargo test --test remaining_ecosystem_e2e 2>&1 | tee -a target/m8-evidence/fixtures.log
+          cargo test --test reduction 2>&1 | tee -a target/m8-evidence/fixtures.log
+
+      - name: Build production binary
+        run: cargo build --release
+
+      - name: Run pinned build, Ruby, Swift, Docker, Podman, and infrastructure smoke tests
+        run: sh scripts/m8-smoke.sh target/release/ttc target/m8-evidence
+
+      - name: Upload passing M8 evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: m8-remaining-ecosystem-evidence
+          path: target/m8-evidence/
+          if-no-files-found: error

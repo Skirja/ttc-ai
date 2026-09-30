@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.24)
+project(TtcM8Smoke LANGUAGES C CXX)
+enable_testing()
+add_executable(ttc-m8-smoke main.c)
+add_executable(ttc-m8-cxx-smoke main.cpp)
+add_test(NAME smoke COMMAND ttc-m8-smoke)
+add_test(NAME cxx-smoke COMMAND ttc-m8-cxx-smoke)

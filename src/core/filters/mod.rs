@@ -9,6 +9,7 @@ use super::streaming::{CompactKind, Filter};
 mod dotnet;
 pub(crate) mod ecosystems;
 mod jvm;
+mod m8;
 mod php;
 
 pub(crate) struct JsFilter {
@@ -337,7 +338,7 @@ impl Filter for DispatchFilter {
 
 pub(crate) struct AdditionalFilter {
     plan: Plan,
-    confidence: HashMap<(usize, String), [u8; 14]>,
+    confidence: HashMap<(usize, String), [u8; 25]>,
     diagnostic_block: HashSet<(usize, String, u8)>,
     disabled: bool,
 }
@@ -381,7 +382,7 @@ impl AdditionalFilter {
         }
         let text = strip_ansi(line).ok_or(())?;
         let text = text.trim_end_matches(['\r', '\n']).trim();
-        let confidence = self.confidence.entry(key.clone()).or_insert([0; 14]);
+        let confidence = self.confidence.entry(key.clone()).or_insert([0; 25]);
         if self.plan.fallback_only_prefixed && source.is_empty() {
             confidence.fill(0);
             return Ok(None);
@@ -482,6 +483,18 @@ fn additional_index(family: Family) -> Option<u8> {
         DotnetBuild => 10,
         DotnetRestore => 11,
         DotnetFormat => 12,
+        CmakeBuild => 13,
+        Ctest => 14,
+        NinjaBuild => 15,
+        MakeBuild => 16,
+        Rspec => 17,
+        Rubocop => 18,
+        RakeTest => 19,
+        SwiftBuild => 20,
+        SwiftTest => 21,
+        ContainerBuild => 22,
+        HelmLint => 23,
+        TerraformValidate => 24,
         _ => return None,
     })
 }
@@ -498,6 +511,17 @@ fn additional_index_is_parser(family: &Family) -> bool {
             | Family::DotnetTest
             | Family::DotnetBuild
             | Family::DotnetRestore
+            | Family::CmakeBuild
+            | Family::Ctest
+            | Family::NinjaBuild
+            | Family::MakeBuild
+            | Family::Rspec
+            | Family::Rubocop
+            | Family::RakeTest
+            | Family::SwiftBuild
+            | Family::SwiftTest
+            | Family::ContainerBuild
+            | Family::HelmLint
     )
 }
 
@@ -512,11 +536,17 @@ fn additional_recognize(family: &Family, text: &str) -> Option<CompactKind> {
             | Family::JvmBuild
             | Family::JvmProgress
             | Family::DotnetBuild
-            | Family::DotnetRestore => CompactKind::Progress,
+            | Family::DotnetRestore
+            | Family::CmakeBuild
+            | Family::NinjaBuild
+            | Family::Rubocop
+            | Family::SwiftBuild
+            | Family::ContainerBuild
+            | Family::HelmLint => CompactKind::Progress,
             _ => CompactKind::Passing,
         })
     } else {
-        None
+        m8::recognize(family, text)
     }
 }
 

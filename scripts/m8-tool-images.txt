@@ -1,0 +1,1 @@
+podman=quay.io/podman/stable@sha256:52536d900c9e7e7cc924bb737eb8c570eeaa3c50f6a3b0b563eb0ec9c48807e4
