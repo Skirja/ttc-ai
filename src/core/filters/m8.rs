@@ -64,8 +64,15 @@ fn ninja_progress(text: &str) -> bool {
     let Some((current, total)) = counter.split_once('/') else {
         return false;
     };
-    current.parse::<u32>().is_ok_and(|n| n > 0)
-        && total.parse::<u32>().is_ok_and(|n| n > 0)
+    let Some(current) = current.parse::<u32>().ok() else {
+        return false;
+    };
+    let Some(total) = total.parse::<u32>().ok() else {
+        return false;
+    };
+    current > 0
+        && total > 0
+        && current <= total
         && [
             "Building C object ",
             "Building CXX object ",
@@ -81,31 +88,87 @@ fn ninja_progress(text: &str) -> bool {
 
 fn ctest_pass(text: &str) -> bool {
     let text = text.trim();
-    let Some((prefix, result)) = text.split_once(" ... Passed ") else {
+    let Some((prefix, result)) = text.rsplit_once(" Passed") else {
         return false;
     };
+    if !result.chars().next().is_some_and(char::is_whitespace) {
+        return false;
+    }
     let Some((progress, name)) = prefix.split_once(" Test #") else {
         return false;
     };
     let Some((index, total)) = progress.split_once('/') else {
         return false;
     };
-    let Some((number, name)) = name.split_once(':') else {
+    let Some((number, description)) = name.split_once(':') else {
         return false;
     };
-    let Some((seconds, unit)) = result.split_once(' ') else {
+    let description = description.trim_end();
+    let padding = description
+        .bytes()
+        .rev()
+        .take_while(|byte| *byte == b'.')
+        .count();
+    if padding < 3 {
+        return false;
+    }
+    let test_name = description[..description.len() - padding].trim();
+    let mut duration = result.split_ascii_whitespace();
+    let Some(seconds) = duration.next().and_then(|value| value.parse::<f64>().ok()) else {
         return false;
     };
-    index.parse::<u32>().is_ok()
-        && total.parse::<u32>().is_ok()
-        && number.parse::<u32>().is_ok()
-        && !name.trim().is_empty()
-        && seconds.parse::<f64>().is_ok()
+    let Some(unit) = duration.next() else {
+        return false;
+    };
+    let Some(index) = index.parse::<u32>().ok() else {
+        return false;
+    };
+    let Some(total) = total.parse::<u32>().ok() else {
+        return false;
+    };
+    let Some(number) = number.parse::<u32>().ok() else {
+        return false;
+    };
+    index > 0
+        && total > 0
+        && index <= total
+        && number > 0
+        && !test_name.is_empty()
+        && seconds.is_finite()
+        && seconds >= 0.0
         && unit == "sec"
+        && duration.next().is_none()
+}
+
+pub(super) fn ctest_start(family: &Family, text: &str) -> bool {
+    if !matches!(family, Family::Ctest | Family::MakeBuild) {
+        return false;
+    }
+    let Some(rest) = text.strip_prefix("Start ") else {
+        return false;
+    };
+    let Some((index, name)) = rest.split_once(": ") else {
+        return false;
+    };
+    index.parse::<u32>().is_ok_and(|index| index > 0) && !name.trim().is_empty()
 }
 
 fn passing_dots(text: &str) -> bool {
-    !text.is_empty() && text.len() <= 1024 && text.bytes().all(|byte| byte == b'.')
+    !text.is_empty() && text.len() <= 64 * 1024 && text.bytes().all(|byte| byte == b'.')
+}
+
+pub(super) fn confidence_units(family: &Family, text: &str) -> u8 {
+    if matches!(family, Family::Rspec | Family::RakeTest | Family::Rubocop) && passing_dots(text) {
+        text.len().min(u8::MAX as usize) as u8
+    } else {
+        1
+    }
+}
+
+fn valid_duration(seconds: &str) -> bool {
+    seconds
+        .parse::<f64>()
+        .is_ok_and(|seconds| seconds.is_finite() && seconds >= 0.0)
 }
 
 fn swift_build_progress(text: &str) -> bool {
@@ -124,7 +187,7 @@ fn swift_test_pass(text: &str) -> bool {
         && let Some((name, duration)) = rest.rsplit_once("' passed (")
         && let Some(seconds) = duration.strip_suffix(" seconds).")
     {
-        return !name.is_empty() && seconds.parse::<f64>().is_ok();
+        return !name.is_empty() && valid_duration(seconds);
     }
 
     let Some(rest) = text.strip_prefix("✔ Test ") else {
@@ -136,7 +199,7 @@ fn swift_test_pass(text: &str) -> bool {
     let Some(seconds) = duration.strip_suffix(" seconds.") else {
         return false;
     };
-    !name.is_empty() && seconds.parse::<f64>().is_ok()
+    !name.is_empty() && valid_duration(seconds)
 }
 
 fn buildkit_load_progress(text: &str) -> bool {
@@ -170,7 +233,9 @@ mod tests {
     fn recognizes_only_known_progress_and_passing_grammars() {
         assert!(cmake_progress("[ 25%] Building CXX object CMakeFiles/x.o"));
         assert!(ninja_progress("[2/4] Linking CXX executable app"));
-        assert!(ctest_pass(" 1/2 Test #1: smoke ... Passed 0.01 sec"));
+        assert!(ctest_pass(
+            " 1/2 Test #1: smoke ............................   Passed    0.01 sec"
+        ));
         assert!(swift_test_pass(
             "Test Case '-[Tests.Core testPass]' passed (0.1 seconds)."
         ));
@@ -200,7 +265,17 @@ mod tests {
             assert!(!buildkit_load_progress(line), "{line}");
             assert!(!helm_chart_progress(line), "{line}");
         }
+        assert!(!ninja_progress("[4/3] Building CXX object CMakeFiles/x.o"));
         assert!(!passing_dots("...F......"));
         assert!(!swift_test_pass("✔ Test Core.testPass() passed."));
+        assert!(!ctest_pass(
+            "0/0 Test #0: smoke ........................ Passed NaN sec"
+        ));
+        assert!(!ctest_pass(
+            "3/2 Test #3: smoke ........................ Passed 0.01 sec"
+        ));
+        assert!(!swift_test_pass(
+            "Test Case '-[Tests.Core testPass]' passed (NaN seconds)."
+        ));
     }
 }

@@ -22,12 +22,12 @@ fn build_tool_families_compact_only_repeated_known_records() {
         ),
         (
             Family::MakeBuild,
-            "1/2 Test #1: smoke ... Passed 0.01 sec\n",
+            "1/2 Test #1: smoke ............................   Passed    0.01 sec\n",
             false,
         ),
         (
             Family::Ctest,
-            "1/2 Test #1: smoke ... Passed 0.01 sec\n",
+            "1/2 Test #1: smoke ............................   Passed    0.01 sec\n",
             true,
         ),
     ] {

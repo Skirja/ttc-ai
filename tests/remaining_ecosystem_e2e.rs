@@ -55,7 +55,7 @@ fn build_ruby_swift_container_and_infrastructure_commands_match_status_and_invoc
         (
             "ctest",
             &["--test-dir", "build"],
-            "printf '1/1 Test #1: smoke ... Passed 0.01 sec\\n'; printf '100%% tests passed, 0 tests failed\\n'; exit 0",
+            "printf '1/1 Test #1: smoke ............................   Passed    0.01 sec\\n'; printf '100%% tests passed, 0 tests failed\\n'; exit 0",
             0,
         ),
         (
@@ -67,7 +67,7 @@ fn build_ruby_swift_container_and_infrastructure_commands_match_status_and_invoc
         (
             "make",
             &["test"],
-            "printf '1/1 Test #1: smoke ... Passed 0.01 sec\\n'; exit 0",
+            "printf '1/1 Test #1: smoke ............................   Passed    0.01 sec\\n'; exit 0",
             0,
         ),
         (

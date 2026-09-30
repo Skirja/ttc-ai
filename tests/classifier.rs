@@ -103,6 +103,8 @@ fn m8_dynamic_targets_machine_output_and_mutating_ruby_commands_stay_raw() {
         vec!["make", "-f", "custom.mk", "test"],
         vec!["cmake", "--build", "build", "--target", "all"],
         vec!["cmake", "--build", "build", "--target=install"],
+        vec!["cmake", "--build", "build", "-t", "custom"],
+        vec!["cmake", "--build", "build", "-tcustom"],
         vec!["ninja", "custom-target"],
         vec![
             "ctest",
@@ -113,7 +115,9 @@ fn m8_dynamic_targets_machine_output_and_mutating_ruby_commands_stay_raw() {
         ],
         vec!["ctest", "--test-dir", "build", "-T", "Test"],
         vec!["rspec", "--format", "json"],
+        vec!["rspec", "-fjson"],
         vec!["rubocop", "--autocorrect"],
+        vec!["rubocop", "--format", "json"],
         vec!["rake", "test", "--trace"],
         vec!["docker", "build", "--progress=json", "."],
         vec!["podman", "build", "--quiet", "."],

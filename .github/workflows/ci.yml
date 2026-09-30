@@ -344,7 +344,7 @@ jobs:
     env:
       RUSTUP_TOOLCHAIN: 1.98.1
       BUNDLE_GEMFILE: ${{ github.workspace }}/scripts/m8-smoke/ruby/Gemfile
-      BUNDLE_PATH: ${{ runner.temp }}/m8-bundle
+      BUNDLE_PATH: ${{ github.workspace }}/target/m8-bundle
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -389,7 +389,7 @@ jobs:
           set -euo pipefail
           tool_home="$RUNNER_TEMP/m8-tools"
           mkdir -p "$tool_home"
-          M8_TOOL_HOME="$tool_home" . scripts/m8-install-tools.sh
+          M8_TOOL_HOME="$tool_home" sh scripts/m8-install-tools.sh
           printf '%s/bin\n' "$tool_home" >> "$GITHUB_PATH"
           printf '%s/cmake-3.31.6-linux-x86_64/bin\n' "$tool_home" >> "$GITHUB_PATH"
 

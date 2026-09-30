@@ -1902,10 +1902,13 @@ fn classify_tool(name: &str, args: &[String], plan: &mut Plan, hints: Option<&Ma
     }
     match base {
         "cmake" if args.first().is_some_and(|arg| arg == "--build") => {
-            if args
-                .iter()
-                .any(|arg| arg == "--target" || arg.starts_with("--target=") || arg == "--")
-            {
+            if args.iter().any(|arg| {
+                arg == "-t"
+                    || arg.starts_with("-t")
+                    || arg == "--target"
+                    || arg.starts_with("--target=")
+                    || arg == "--"
+            }) {
                 plan.raw = true;
             } else {
                 plan.add(Family::CmakeBuild);
@@ -1941,7 +1944,7 @@ fn classify_tool(name: &str, args: &[String], plan: &mut Plan, hints: Option<&Ma
             return;
         }
         "rspec" => {
-            if args.iter().any(|arg| unsupported_rspec_formatter(arg)) {
+            if unsupported_formatter(args) {
                 plan.raw = true;
             } else {
                 plan.add(Family::Rspec);
@@ -1954,7 +1957,8 @@ fn classify_tool(name: &str, args: &[String], plan: &mut Plan, hints: Option<&Ma
                     arg.as_str(),
                     "-A" | "-a" | "--autocorrect" | "--autocorrect-all"
                 )
-            }) {
+            }) || unsupported_formatter(args)
+            {
                 plan.raw = true;
             } else {
                 plan.add(Family::Rubocop);
@@ -2060,8 +2064,33 @@ fn classify_tool(name: &str, args: &[String], plan: &mut Plan, hints: Option<&Ma
     }
 }
 
-fn unsupported_rspec_formatter(argument: &str) -> bool {
-    argument == "--format" || argument == "-f" || argument.starts_with("--format=")
+fn unsupported_formatter(args: &[String]) -> bool {
+    let mut index = 0;
+    while let Some(argument) = args.get(index) {
+        let value = if matches!(argument.as_str(), "--format" | "-f") {
+            let Some(value) = args.get(index + 1) else {
+                return true;
+            };
+            index += 1;
+            value.as_str()
+        } else if let Some(value) = argument.strip_prefix("--format=") {
+            value
+        } else if let Some(value) = argument.strip_prefix("-f") {
+            if value.is_empty() {
+                index += 1;
+                continue;
+            }
+            value
+        } else {
+            index += 1;
+            continue;
+        };
+        if value != "progress" {
+            return true;
+        }
+        index += 1;
+    }
+    false
 }
 
 fn ninja_arguments_supported(args: &[String]) -> bool {

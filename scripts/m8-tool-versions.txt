@@ -6,6 +6,7 @@ gxx=13.3.0
 ruby=3.3.8
 bundler=2.6.9
 rspec=3.13.0
+rspec-core=3.13.6
 rubocop=1.75.5
 rake=13.2.1
 swift=6.1.2

@@ -22,12 +22,12 @@ fn ruby_test_and_lint_progress_reduce_with_diagnostics_retained() {
         let result = run_filter(family, &lines);
         assert_eq!(
             result.report.passing,
-            if passing { 998 } else { 0 },
+            if passing { 1001 } else { 0 },
             "{family:?}"
         );
         assert_eq!(
             result.report.progress,
-            if passing { 0 } else { 998 },
+            if passing { 0 } else { 1001 },
             "{family:?}"
         );
         assert!(result.report.raw_id.is_some(), "{family:?}");

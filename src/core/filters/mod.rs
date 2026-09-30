@@ -417,6 +417,14 @@ impl AdditionalFilter {
             }
             return Ok(None);
         }
+        if self
+            .plan
+            .families
+            .iter()
+            .any(|family| m8::ctest_start(family, text))
+        {
+            return Ok(None);
+        }
         for family in &self.plan.families {
             let Some(index) = additional_index(*family) else {
                 continue;
@@ -433,7 +441,8 @@ impl AdditionalFilter {
             }
             let kind = additional_recognize(family, text);
             if let Some(kind) = kind {
-                confidence[index as usize] = confidence[index as usize].saturating_add(1);
+                confidence[index as usize] =
+                    confidence[index as usize].saturating_add(m8::confidence_units(family, text));
                 return Ok((confidence[index as usize] > 3).then_some(kind));
             }
             confidence[index as usize] = 0;

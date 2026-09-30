@@ -9,6 +9,8 @@ case "$evidence" in /*) ;; *) evidence="$repository_root/$evidence" ;; esac
 test -x "$binary"
 mkdir -p "$evidence"
 mkdir -p "$evidence/logs"
+original_home=${HOME:-}
+docker_cli_plugins=${DOCKER_CONFIG:-"$original_home/.docker"}/cli-plugins
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/ttc-m8.XXXXXX")
 trap 'rm -rf "$scratch"' EXIT HUP INT TERM
 mkdir -p "$scratch/home" "$scratch/config" "$scratch/state" "$scratch/data" "$scratch/cache"
@@ -16,7 +18,10 @@ export HOME="$scratch/home" XDG_CONFIG_HOME="$scratch/config" XDG_STATE_HOME="$s
 export XDG_DATA_HOME="$scratch/data" XDG_CACHE_HOME="$scratch/cache" TTC_INTERNAL_TEST_TMP_ROOT="$scratch"
 export BUNDLE_PATH=${BUNDLE_PATH:-"$scratch/bundle"} BUNDLE_APP_CONFIG="$scratch/bundle-config"
 export DOCKER_CONFIG="$scratch/docker-config" BUILDKIT_PROGRESS=plain
-mkdir -p "$DOCKER_CONFIG"
+mkdir -p "$DOCKER_CONFIG/cli-plugins"
+if [ -d "$docker_cli_plugins" ]; then
+  cp -R "$docker_cli_plugins/." "$DOCKER_CONFIG/cli-plugins/"
+fi
 
 version() {
   label=$1
@@ -37,7 +42,8 @@ version gxx "$(g++ -dumpfullversion -dumpversion)" 13.3.0
 version ruby "$(ruby -e 'print RUBY_VERSION')" 3.3.8
 version bundler "$(bundle --version | awk '{print $3}')" 2.6.9
 export BUNDLE_GEMFILE="$repository_root/scripts/m8-smoke/ruby/Gemfile"
-version rspec "$(bundle exec ruby -e 'require "rspec/core"; print RSpec::Core::Version::STRING')" 3.13.0
+version rspec "$(bundle exec ruby -e 'require "rubygems"; print Gem::Specification.find_by_name("rspec").version')" 3.13.0
+version rspec-core "$(bundle exec ruby -e 'require "rspec/core"; print RSpec::Core::Version::STRING')" 3.13.6
 version rubocop "$(bundle exec rubocop --version)" 1.75.5
 version rake "$(bundle exec rake --version | awk '{print $2}')" 13.2.1
 swift --version | grep -F 'Swift version 6.1.2' >/dev/null
@@ -54,15 +60,19 @@ printf 'swift=6.1.2\n' >> "$evidence/tool-versions.txt"
 printf 'binary-sha256=' >> "$evidence/tool-versions.txt"
 sha256sum "$binary" | awk '{print $1}' >> "$evidence/tool-versions.txt"
 
-compare() {
+compare_in() {
   label=$1
-  directory=$2
-  expected=$3
-  shift 3
+  direct_directory=$2
+  ttc_directory=$3
+  expected=$4
+  shift 4
+  mkdir -p "$scratch/$label-direct-cache" "$scratch/$label-ttc-cache"
   set +e
-  (cd "$directory" && "$@") > "$scratch/$label-direct.out" 2> "$scratch/$label-direct.err"
+  (cd "$direct_directory" && XDG_CACHE_HOME="$scratch/$label-direct-cache" "$@") \
+    > "$scratch/$label-direct.out" 2> "$scratch/$label-direct.err"
   direct_status=$?
-  (cd "$directory" && "$binary" "$@") > "$scratch/$label-ttc.out" 2> "$scratch/$label-ttc.err"
+  (cd "$ttc_directory" && XDG_CACHE_HOME="$scratch/$label-ttc-cache" "$binary" "$@") \
+    > "$scratch/$label-ttc.out" 2> "$scratch/$label-ttc.err"
   ttc_status=$?
   set -e
   test "$direct_status" -eq "$expected" || {
@@ -82,45 +92,146 @@ compare() {
     "$(($(wc -c < "$scratch/$label-ttc.out") + $(wc -c < "$scratch/$label-ttc.err")))" >> "$evidence/smoke-report.txt"
 }
 
+compare() {
+  label=$1
+  directory=$2
+  expected=$3
+  shift 3
+  compare_in "$label" "$directory" "$directory" "$expected" "$@"
+}
+
+require_fragment() {
+  label=$1
+  side=$2
+  fragment=$3
+  if ! cat "$scratch/$label-$side.out" "$scratch/$label-$side.err" | grep -F "$fragment" >/dev/null; then
+    printf '%s %s output did not retain: %s\n' "$label" "$side" "$fragment" >&2
+    return 1
+  fi
+}
+
+count_build_records() {
+  awk 'index($0, "Building ") || index($0, "Linking ") { count++ } END { print count + 0 }' "$1"
+}
+
+assert_build_records_compacted() {
+  label=$1
+  direct_count=$(count_build_records "$scratch/$label-direct.out")
+  ttc_count=$(count_build_records "$scratch/$label-ttc.out")
+  test "$direct_count" -ge 4 && test "$ttc_count" -ge 1 && test "$ttc_count" -lt "$direct_count" || {
+    printf '%s expected build records to compact: direct=%s TTC=%s\n' "$label" "$direct_count" "$ttc_count" >&2
+    return 1
+  }
+}
+
+assert_ctest_records_compacted() {
+  label=$1
+  direct_count=$(grep -c ' Test #' "$scratch/$label-direct.out" || true)
+  ttc_count=$(grep -c ' Test #' "$scratch/$label-ttc.out" || true)
+  test "$direct_count" -ge 8 && test "$ttc_count" -eq 3 || {
+    printf '%s expected eight CTest rows direct and three retained by TTC: direct=%s TTC=%s\n' "$label" "$direct_count" "$ttc_count" >&2
+    return 1
+  }
+}
+
+assert_dot_meter_compacted() {
+  label=$1
+  grep -Eq '^\.{4,}$' "$scratch/$label-direct.out" || {
+    printf '%s direct output did not contain a multi-record progress meter\n' "$label" >&2
+    return 1
+  }
+  if grep -Eq '^\.{4,}$' "$scratch/$label-ttc.out"; then
+    printf '%s TTC output retained a progress-only meter\n' "$label" >&2
+    return 1
+  fi
+  grep -Eq 'TTC: [1-9][0-9]* (passing|progress) records' "$scratch/$label-ttc.err" \
+    && grep -F 'compacted' "$scratch/$label-ttc.err" >/dev/null || {
+    printf '%s TTC did not report compacted passing records\n' "$label" >&2
+    return 1
+  }
+}
+
 printf 'commit=%s\n' "$(git -C "$repository_root" rev-parse HEAD)" > "$evidence/smoke-report.txt"
 
 build_source="$repository_root/scripts/m8-smoke/build"
-mkdir -p "$scratch/cmake-source" "$scratch/cmake-build"
-cp -R "$build_source/." "$scratch/cmake-source/"
-cmake -S "$scratch/cmake-source" -B "$scratch/cmake-build" -G Ninja > "$scratch/configure.log"
-compare cmake-build "$scratch/cmake-source" 0 cmake --build "$scratch/cmake-build"
-compare ninja-build "$scratch/cmake-build" 0 ninja
-compare ctest-pass "$scratch/cmake-source" 0 ctest --test-dir "$scratch/cmake-build" --output-on-failure
-CTEST_DIR="$scratch/cmake-build"; export CTEST_DIR
-compare make-test "$scratch/cmake-source" 0 make test
-compare make-check "$scratch/cmake-source" 0 make check
+prepare_build_pair() {
+  label=$1
+  for side in direct ttc; do
+    project="$scratch/$label-$side"
+    mkdir -p "$project"
+    cp -R "$build_source/." "$project/"
+    cmake -S "$project" -B "$project/build" -G Ninja > "$scratch/$label-$side-configure.log"
+  done
+}
+prepare_build_pair cmake
+prepare_build_pair ninja
+compare_in cmake-build "$scratch/cmake-direct" "$scratch/cmake-ttc" 0 cmake --build build
+assert_build_records_compacted cmake-build
+require_fragment cmake-build direct 'TTC M8 build warning retention'
+require_fragment cmake-build ttc 'TTC M8 build warning retention'
+compare_in ninja-build "$scratch/ninja-direct/build" "$scratch/ninja-ttc/build" 0 ninja
+assert_build_records_compacted ninja-build
+compare_in ctest-pass "$scratch/cmake-direct" "$scratch/cmake-ttc" 0 ctest --test-dir build --output-on-failure
+grep -F '100% tests passed' "$scratch/ctest-pass-direct.out" >/dev/null
+grep -F '100% tests passed' "$scratch/ctest-pass-ttc.out" >/dev/null
+assert_ctest_records_compacted ctest-pass
+CTEST_DIR=build; export CTEST_DIR
+compare_in make-test "$scratch/cmake-direct" "$scratch/cmake-ttc" 0 make test
+assert_ctest_records_compacted make-test
+compare_in make-check "$scratch/cmake-direct" "$scratch/cmake-ttc" 0 make check
+assert_ctest_records_compacted make-check
 
 ruby_project="$repository_root/scripts/m8-smoke/ruby"
 bundle check >/dev/null
 compare rspec-pass "$ruby_project" 0 bundle exec rspec spec/smoke_spec.rb
 compare rspec-fail "$ruby_project" 1 bundle exec rspec spec/failure_spec.rb
-grep -F 'expected: 5' "$scratch/rspec-fail-ttc.out" >/dev/null
-compare rubocop "$ruby_project" 0 bundle exec rubocop --format progress spec/smoke_spec.rb
-compare rake-test "$ruby_project" 0 env SPEC=spec/smoke_spec.rb bundle exec rake test
+require_fragment rspec-fail direct 'expected: 5'
+require_fragment rspec-fail ttc 'expected: 5'
+large_ruby_project="$scratch/ruby-large"
+mkdir -p "$large_ruby_project/spec" "$scratch/rubocop-large"
+printf "RSpec.describe 'TTC M8 smoke' do\n" > "$large_ruby_project/spec/large_spec.rb"
+index=0
+while [ "$index" -lt 1001 ]; do
+  printf "  it('passes') { expect(2 + 2).to eq(4) }\n" >> "$large_ruby_project/spec/large_spec.rb"
+  : > "$scratch/rubocop-large/fixture-$index.rb"
+  index=$((index + 1))
+done
+printf "end\n" >> "$large_ruby_project/spec/large_spec.rb"
+compare rspec-large "$large_ruby_project/spec" 0 bundle exec rspec large_spec.rb
+assert_dot_meter_compacted rspec-large
+compare rubocop "$ruby_project" 0 bundle exec rubocop spec/smoke_spec.rb
+compare rubocop-large "$scratch/rubocop-large" 0 bundle exec rubocop .
+assert_dot_meter_compacted rubocop-large
+SPEC=spec/smoke_spec.rb; export SPEC
+compare rake-test "$ruby_project" 0 bundle exec rake test
 
-swift_project="$scratch/swift"
-mkdir -p "$swift_project"
-cp -R "$repository_root/scripts/m8-smoke/swift/." "$swift_project/"
-compare swift-build "$swift_project" 0 swift build --package-path "$swift_project"
-compare swift-test-pass "$swift_project" 0 swift test --package-path "$swift_project" --filter SmokeTests/testPass
-compare swift-test-fail "$swift_project" 1 swift test --package-path "$swift_project" --filter SmokeTests/testFailure
-grep -F 'XCTAssertEqual failed' "$scratch/swift-test-fail-ttc.out" >/dev/null
+for side in direct ttc; do
+  swift_project="$scratch/swift-$side"
+  mkdir -p "$swift_project"
+  cp -R "$repository_root/scripts/m8-smoke/swift/." "$swift_project/"
+done
+compare_in swift-build "$scratch/swift-direct" "$scratch/swift-ttc" 0 swift build
+compare_in swift-test-pass "$scratch/swift-direct" "$scratch/swift-ttc" 0 swift test --filter SmokeTests/testPass
+compare_in swift-test-fail "$scratch/swift-direct" "$scratch/swift-ttc" 1 swift test --filter SmokeTests/testFailure
+require_fragment swift-test-fail direct 'XCTAssertEqual failed'
+require_fragment swift-test-fail ttc 'XCTAssertEqual failed'
 
 docker_project="$repository_root/scripts/m8-smoke/container"
-compare docker-build "$docker_project" 0 docker build --progress=plain -t ttc-m8-smoke .
-compare compose-build "$docker_project" 0 docker compose -f compose.yaml build --progress plain
+compare docker-build "$docker_project" 0 docker build --no-cache --progress=plain -t ttc-m8-smoke .
+require_fragment docker-build direct 'load build definition from Dockerfile'
+require_fragment docker-build ttc 'load build definition from Dockerfile'
+compare compose-build "$docker_project" 0 docker compose -f compose.yaml build --no-cache --progress plain
 
 terraform_project="$repository_root/scripts/m8-smoke/terraform"
 compare terraform-validate "$terraform_project" 0 terraform validate -no-color
+cmp "$scratch/terraform-validate-direct.out" "$scratch/terraform-validate-ttc.out"
+cmp "$scratch/terraform-validate-direct.err" "$scratch/terraform-validate-ttc.err"
 mkdir -p "$scratch/terraform-invalid"
 printf 'resource "invalid" {\n' > "$scratch/terraform-invalid/main.tf"
 compare terraform-invalid "$scratch/terraform-invalid" 1 terraform validate -no-color
 grep -F 'Error' "$scratch/terraform-invalid-ttc.err" >/dev/null
+cmp "$scratch/terraform-invalid-direct.out" "$scratch/terraform-invalid-ttc.out"
+cmp "$scratch/terraform-invalid-direct.err" "$scratch/terraform-invalid-ttc.err"
 
 helm_project="$repository_root/scripts/m8-smoke/helm"
 compare helm-lint "$helm_project" 0 helm lint .

@@ -837,9 +837,9 @@ Verifikasi lokal 2026-09-30 pada `feat/m8-remaining-ecosystems`:
 |---|---:|---:|---:|
 | CMake | 58.128 | 348 | 99,40% |
 | Ninja | 34.104 | 276 | 99,19% |
-| Make/CTest | 39.109 | 291 | 99,26% |
-| RSpec/Rake | 5.056 | 170 | 96,64% |
-| RuboCop | 7.058 | 176 | 97,51% |
+| Make/CTest | 69.139 | 381 | 99,45% |
+| RSpec/Rake | 5.056 | 156 | 96,91% |
+| RuboCop | 7.058 | 156 | 97,79% |
 | Swift build | 40.112 | 296 | 99,26% |
 | Swift test | 57.129 | 347 | 99,39% |
 | BuildKit metadata | 52.140 | 348 | 99,33% |
@@ -849,6 +849,15 @@ Smoke penuh belum dijalankan. Host tidak memiliki `g++` untuk kasus C++; Ruby
 dan Swift terpin juga belum tersedia, dan Docker lokal `29.8.1` berbeda dari
 smoke pin `28.1.1`. Compose build beserta smoke gabungan Ruby/Swift menunggu
 job M8 di Ubuntu CI sebelum acceptance terakhir atau artifact CI dicentang.
+
+Catatan review: run PR #7 `36690621070` pada commit `7edc9c2` selesai gagal
+sebelum ada job atau log. Pemeriksaan workflow menemukan penggunaan context
+`runner.temp` pada `env` tingkat job; branch kerja saat ini memperbaikinya.
+`cargo fmt --all -- --check`, Clippy, `cargo test --all-targets --all-features`,
+`cargo build --release`, shell syntax, dan YAML parse lulus setelah perbaikan.
+Seluruh command M8 pada bagian Verification commands juga lulus; retention dan
+reduction terbaru tersimpan di `target/m8-evidence/review-fixes.log`. Pinned
+real-tool smoke di Ubuntu CI tetap pending untuk PR revisi ini.
 
 ### Evidence
 
