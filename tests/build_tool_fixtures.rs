@@ -62,6 +62,45 @@ fn build_tool_families_compact_only_repeated_known_records() {
 }
 
 #[test]
+fn four_step_ninja_build_with_a_warning_stays_byte_exact() {
+    for family in [Family::CmakeBuild, Family::NinjaBuild] {
+        for warning_after in 1..=3 {
+            let mut lines = vec![
+                (
+                    "stdout",
+                    "[1/4] Building CXX object CMakeFiles/demo.dir/main.cpp.o\n",
+                ),
+                ("stdout", "[2/4] Linking CXX executable demo-cxx\n"),
+                (
+                    "stdout",
+                    "[3/4] Building C object CMakeFiles/demo.dir/main.c.o\n",
+                ),
+                ("stdout", "[4/4] Linking C executable demo\n"),
+            ];
+            lines.insert(
+                warning_after,
+                (
+                    "stdout",
+                    "main.c:2:2: warning: TTC M8 build warning retention\n",
+                ),
+            );
+            let result = run_filter(family, &lines);
+            let original = lines
+                .iter()
+                .flat_map(|(_, line)| line.bytes())
+                .collect::<Vec<_>>();
+            assert_eq!(
+                result.stdout, original,
+                "{family:?} warning after {warning_after}"
+            );
+            assert!(result.stderr.is_empty());
+            assert!(result.metadata.is_empty());
+            assert_eq!(result.report.progress, 0);
+        }
+    }
+}
+
+#[test]
 fn one_failure_or_custom_progress_line_never_compacts() {
     for (family, line) in [
         (Family::CmakeBuild, "[100%] Built target demo\n"),

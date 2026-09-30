@@ -110,67 +110,37 @@ require_fragment() {
   fi
 }
 
-count_build_records() {
-  awk 'index($0, "Building ") || index($0, "Linking ") { count++ } END { print count + 0 }' "$1"
-}
-
-assert_build_records_compacted() {
-  label=$1
-  direct_count=$(count_build_records "$scratch/$label-direct.out")
-  ttc_count=$(count_build_records "$scratch/$label-ttc.out")
-  test "$direct_count" -ge 4 && test "$ttc_count" -ge 1 && test "$ttc_count" -lt "$direct_count" || {
-    printf '%s expected build records to compact: direct=%s TTC=%s\n' "$label" "$direct_count" "$ttc_count" >&2
-    return 1
-  }
-}
-
-assert_ctest_records_compacted() {
-  label=$1
-  direct_count=$(grep -c ' Test #' "$scratch/$label-direct.out" || true)
-  ttc_count=$(grep -c ' Test #' "$scratch/$label-ttc.out" || true)
-  test "$direct_count" -ge 8 && test "$ttc_count" -eq 3 || {
-    printf '%s expected eight CTest rows direct and three retained by TTC: direct=%s TTC=%s\n' "$label" "$direct_count" "$ttc_count" >&2
-    return 1
-  }
-}
-
-assert_dot_meter_compacted() {
-  label=$1
-  grep -Eq '^\.{4,}$' "$scratch/$label-direct.out" || {
-    printf '%s direct output did not contain a multi-record progress meter\n' "$label" >&2
-    return 1
-  }
-  if grep -Eq '^\.{4,}$' "$scratch/$label-ttc.out"; then
-    printf '%s TTC output retained a progress-only meter\n' "$label" >&2
-    return 1
-  fi
-  grep -Eq 'TTC: [1-9][0-9]* (passing|progress) records' "$scratch/$label-ttc.err" \
-    && grep -F 'compacted' "$scratch/$label-ttc.err" >/dev/null || {
-    printf '%s TTC did not report compacted passing records\n' "$label" >&2
-    return 1
-  }
-}
+. "$repository_root/scripts/m8-smoke-assertions.sh"
 
 printf 'commit=%s\n' "$(git -C "$repository_root" rev-parse HEAD)" > "$evidence/smoke-report.txt"
 
 build_source="$repository_root/scripts/m8-smoke/build"
 prepare_build_pair() {
   label=$1
+  shift
   for side in direct ttc; do
     project="$scratch/$label-$side"
     mkdir -p "$project"
     cp -R "$build_source/." "$project/"
-    cmake -S "$project" -B "$project/build" -G Ninja > "$scratch/$label-$side-configure.log"
+    cmake -S "$project" -B "$project/build" -G Ninja "$@" > "$scratch/$label-$side-configure.log"
   done
 }
 prepare_build_pair cmake
 prepare_build_pair ninja
 compare_in cmake-build "$scratch/cmake-direct" "$scratch/cmake-ttc" 0 cmake --build build
 assert_build_records_compacted cmake-build
-require_fragment cmake-build direct 'TTC M8 build warning retention'
-require_fragment cmake-build ttc 'TTC M8 build warning retention'
 compare_in ninja-build "$scratch/ninja-direct/build" "$scratch/ninja-ttc/build" 0 ninja
 assert_build_records_compacted ninja-build
+prepare_build_pair cmake-warning -DTTC_M8_EMIT_WARNING=ON
+compare_in cmake-warning "$scratch/cmake-warning-direct" "$scratch/cmake-warning-ttc" 0 cmake --build build
+require_fragment cmake-warning direct 'TTC M8 build warning retention'
+require_fragment cmake-warning ttc 'TTC M8 build warning retention'
+# Diagnostic output makes the remaining physical stream raw. This four-step
+# fixture cannot establish confidence before the warning and must stay raw.
+if grep -F 'TTC:' "$scratch/cmake-warning-ttc.err" >/dev/null; then
+  printf 'cmake-warning unexpectedly compacted diagnostic output\n' >&2
+  exit 1
+fi
 compare_in ctest-pass "$scratch/cmake-direct" "$scratch/cmake-ttc" 0 ctest --test-dir build --output-on-failure
 grep -F '100% tests passed' "$scratch/ctest-pass-direct.out" >/dev/null
 grep -F '100% tests passed' "$scratch/ctest-pass-ttc.out" >/dev/null

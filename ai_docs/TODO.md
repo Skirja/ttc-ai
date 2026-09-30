@@ -804,6 +804,7 @@ cargo test --test ruby_swift_fixtures
 cargo test --test infrastructure_fixtures
 cargo test --test raw_command_matrix
 cargo test --test remaining_ecosystem_e2e
+cargo test --test m8_smoke_assertions
 cargo test --test reduction
 ```
 
@@ -858,6 +859,21 @@ sebelum ada job atau log. Pemeriksaan workflow menemukan penggunaan context
 Seluruh command M8 pada bagian Verification commands juga lulus; retention dan
 reduction terbaru tersimpan di `target/m8-evidence/review-fixes.log`. Pinned
 real-tool smoke di Ubuntu CI tetap pending untuk PR revisi ini.
+
+Perbaikan review lanjutan untuk commit `204b08c` memisahkan build bersih yang
+wajib compact dari build warning opt-in (`TTC_M8_EMIT_WARNING=ON`) yang wajib
+retain. Assertion meter Ruby kini membaca kedua counter metadata TTC, sehingga
+RuboCop progress-only diterima tanpa menerima counter nol atau metadata rusak.
+Helper assertion yang sama dipakai smoke nyata dan `tests/m8_smoke_assertions.rs`.
+Regresi build empat langkah menguji warning sebelum confidence pada kedua family
+CMake/Ninja dan memastikan output tetap byte-exact tanpa metadata.
+`cargo fmt --all -- --check`, `cargo clippy --all-targets --all-features -- -D
+warnings`, `cargo test --all-targets --all-features`, `cargo build --release`,
+seluruh sembilan command verifikasi M8 di atas, syntax kedua script smoke, dan
+`git diff --check` lulus. Log: `target/m8-evidence/review-smoke-fixes.log`.
+Smoke penuh tetap belum dijalankan; run CI `36694479477` pada
+`204b08c4a5ab62abe322e8f9e961c5fae1bf85c6` ditolak sebelum alokasi runner karena
+billing/spending limit GitHub. Acceptance smoke dan artifact tetap belum dicentang.
 
 ### Evidence
 

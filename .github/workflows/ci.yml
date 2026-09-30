@@ -409,6 +409,7 @@ jobs:
           TTC_M8_EVIDENCE=1 cargo test --test infrastructure_fixtures -- --test-threads=1 --nocapture 2>&1 | tee -a target/m8-evidence/fixtures.log
           cargo test --test raw_command_matrix 2>&1 | tee -a target/m8-evidence/fixtures.log
           cargo test --test remaining_ecosystem_e2e 2>&1 | tee -a target/m8-evidence/fixtures.log
+          cargo test --test m8_smoke_assertions 2>&1 | tee -a target/m8-evidence/fixtures.log
           cargo test --test reduction 2>&1 | tee -a target/m8-evidence/fixtures.log
 
       - name: Build production binary
