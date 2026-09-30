@@ -6,6 +6,8 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 
 use globset::{GlobBuilder, GlobSetBuilder};
+use quick_xml::Reader as XmlReader;
+use quick_xml::events::Event as XmlEvent;
 use serde::de::{Deserialize, Deserializer, MapAccess, SeqAccess, Visitor};
 
 const MAX_MANIFEST_BYTES: usize = 1024 * 1024;
@@ -39,6 +41,11 @@ pub(crate) struct WorkspaceHints {
     pub package_manager: Option<String>,
     pub yarn_classic: Option<bool>,
     pub pnpm_pre_post: Option<bool>,
+    pub has_composer_manifest: bool,
+    pub composer_scripts: BTreeMap<String, String>,
+    pub maven_modules: Vec<String>,
+    pub gradle_modules: Vec<String>,
+    pub gradle_dynamic: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -136,6 +143,12 @@ impl WorkspaceHints {
             let marker_workspace = directory.join("pnpm-workspace.yaml").exists()
                 || directory.join("go.work").exists()
                 || directory.join("go.mod").exists()
+                || directory.join("composer.json").exists()
+                || directory.join("pom.xml").exists()
+                || directory.join("settings.gradle").exists()
+                || directory.join("settings.gradle.kts").exists()
+                || directory.join("build.gradle").exists()
+                || directory.join("build.gradle.kts").exists()
                 || package_workspace
                 || cargo_workspace
                 || [
@@ -251,6 +264,7 @@ impl WorkspaceHints {
         }
 
         load_runner_manifests(&root, &mut result, budget)?;
+        load_php_jvm_manifests(&root, &mut result, budget)?;
         if result.projects.len() > MAX_PROJECTS {
             return Err(DiscoveryError::Limit);
         }
@@ -796,6 +810,266 @@ fn add_project_path(
     };
     projects.push(project);
     Ok(())
+}
+
+fn load_php_jvm_manifests(
+    root: &Path,
+    hints: &mut WorkspaceHints,
+    budget: &mut Budget,
+) -> Result<(), DiscoveryError> {
+    let composer = root.join("composer.json");
+    if composer.exists() {
+        let bytes = budget.read(&composer)?;
+        let value = unique_json(&bytes).map_err(|_| DiscoveryError::Malformed)?;
+        let object = value.as_object().ok_or(DiscoveryError::Malformed)?;
+        hints.has_composer_manifest = true;
+        if let Some(scripts) = object.get("scripts") {
+            let scripts = scripts.as_object().ok_or(DiscoveryError::Malformed)?;
+            for (name, value) in scripts {
+                if name.is_empty() || name.len() > 128 {
+                    return Err(DiscoveryError::Malformed);
+                }
+                let body = if let Some(command) = value.as_str() {
+                    command.to_owned()
+                } else if let Some(commands) = value.as_array() {
+                    let mut lines = Vec::with_capacity(commands.len());
+                    for command in commands {
+                        lines.push(
+                            command
+                                .as_str()
+                                .filter(|command| command.len() <= 4096)
+                                .ok_or(DiscoveryError::Malformed)?
+                                .to_owned(),
+                        );
+                    }
+                    lines.join("\n")
+                } else {
+                    return Err(DiscoveryError::Malformed);
+                };
+                if body.len() > 16 * 1024 {
+                    return Err(DiscoveryError::Limit);
+                }
+                hints.composer_scripts.insert(name.clone(), body);
+            }
+        }
+    }
+
+    let pom = root.join("pom.xml");
+    if pom.exists() {
+        let bytes = budget.read(&pom)?;
+        let source = std::str::from_utf8(&bytes).map_err(|_| DiscoveryError::Malformed)?;
+        hints.maven_modules = parse_maven_modules(source)?;
+    }
+
+    let groovy = root.join("settings.gradle");
+    let kotlin = root.join("settings.gradle.kts");
+    if groovy.exists() && kotlin.exists() {
+        return Err(DiscoveryError::Malformed);
+    }
+    let settings = if groovy.exists() { groovy } else { kotlin };
+    if settings.exists() {
+        let bytes = budget.read(&settings)?;
+        let source = std::str::from_utf8(&bytes).map_err(|_| DiscoveryError::Malformed)?;
+        let (modules, dynamic) = parse_gradle_settings(source)?;
+        hints.gradle_modules = modules;
+        hints.gradle_dynamic = dynamic;
+    }
+    Ok(())
+}
+
+fn parse_maven_modules(source: &str) -> Result<Vec<String>, DiscoveryError> {
+    let mut reader = XmlReader::from_str(source);
+    reader.config_mut().trim_text(true);
+    let mut stack: Vec<String> = Vec::new();
+    let mut modules = Vec::new();
+    let mut in_modules = false;
+    let mut saw_project = false;
+    let mut module_text: Option<String> = None;
+    loop {
+        match reader.read_event() {
+            Ok(XmlEvent::Start(element)) => {
+                let name = element.local_name().as_ref().to_ascii_lowercase();
+                if stack.is_empty() {
+                    if name != "project" {
+                        return Err(DiscoveryError::Malformed);
+                    }
+                    saw_project = true;
+                }
+                if name == "modules" {
+                    if in_modules || stack.len() != 1 {
+                        return Err(DiscoveryError::Malformed);
+                    }
+                    in_modules = true;
+                }
+                if name == "module" && in_modules {
+                    if stack.len() != 2 || module_text.is_some() {
+                        return Err(DiscoveryError::Malformed);
+                    }
+                    module_text = Some(String::new());
+                }
+                stack.push(name);
+            }
+            Ok(XmlEvent::Empty(element)) => {
+                let local_name = element.local_name();
+                let name = local_name.as_ref();
+                if name.eq_ignore_ascii_case("module") && in_modules {
+                    return Err(DiscoveryError::Malformed);
+                }
+                if stack.is_empty() {
+                    if !name.eq_ignore_ascii_case("project") || saw_project {
+                        return Err(DiscoveryError::Malformed);
+                    }
+                    saw_project = true;
+                }
+            }
+            Ok(XmlEvent::Text(text))
+                if module_text.is_some()
+                    && stack.len() == 3
+                    && stack.last().is_some_and(|name| name == "module") =>
+            {
+                let content = quick_xml::escape::unescape(text.as_ref())
+                    .map_err(|_| DiscoveryError::Malformed)?
+                    .into_owned();
+                module_text.as_mut().unwrap().push_str(&content);
+            }
+            Ok(XmlEvent::End(element)) => {
+                let name = element.local_name().as_ref().to_ascii_lowercase();
+                if name == "module" && in_modules {
+                    let module = module_text.take().ok_or(DiscoveryError::Malformed)?;
+                    let module = module.trim().to_owned();
+                    let path = Path::new(&module);
+                    if module.is_empty()
+                        || module.len() > 512
+                        || path.is_absolute()
+                        || path.components().any(|component| {
+                            matches!(
+                                component,
+                                std::path::Component::ParentDir
+                                    | std::path::Component::CurDir
+                                    | std::path::Component::RootDir
+                                    | std::path::Component::Prefix(_)
+                            )
+                        })
+                        || module.chars().any(|ch| matches!(ch, '$' | '&' | '\\'))
+                    {
+                        return Err(DiscoveryError::Malformed);
+                    }
+                    modules.push(module);
+                    if modules.len() > MAX_PROJECTS {
+                        return Err(DiscoveryError::Limit);
+                    }
+                }
+                if name == "modules" {
+                    if !in_modules {
+                        return Err(DiscoveryError::Malformed);
+                    }
+                    in_modules = false;
+                }
+                if stack.pop().as_deref() != Some(name.as_str()) {
+                    return Err(DiscoveryError::Malformed);
+                }
+            }
+            Ok(XmlEvent::CData(_)) if module_text.is_some() => {
+                return Err(DiscoveryError::Malformed);
+            }
+            Ok(XmlEvent::GeneralRef(_)) if module_text.is_some() => {
+                return Err(DiscoveryError::Malformed);
+            }
+            Ok(XmlEvent::DocType(_)) => return Err(DiscoveryError::Malformed),
+            Ok(XmlEvent::Eof) => break,
+            Ok(_) => {}
+            Err(_) => return Err(DiscoveryError::Malformed),
+        }
+    }
+    if !stack.is_empty() || in_modules || module_text.is_some() || !saw_project {
+        return Err(DiscoveryError::Malformed);
+    }
+    modules.sort();
+    if modules.windows(2).any(|pair| pair[0] == pair[1]) {
+        return Err(DiscoveryError::Malformed);
+    }
+    Ok(modules)
+}
+
+fn parse_gradle_settings(source: &str) -> Result<(Vec<String>, bool), DiscoveryError> {
+    let mut modules = Vec::new();
+    let mut dynamic = false;
+    for line in source.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with("//") || line.starts_with('*') {
+            continue;
+        }
+        if let Some(rest) = line.strip_prefix("includeBuild") {
+            if !rest.is_empty() {
+                dynamic = true;
+            }
+            continue;
+        }
+        let Some(rest) = line.strip_prefix("include") else {
+            if line.contains("include(") || line.contains("include ") {
+                dynamic = true;
+            }
+            continue;
+        };
+        if !rest.starts_with(char::is_whitespace) && !rest.starts_with('(') {
+            continue;
+        }
+        let mut remaining = rest.trim_start().trim_start_matches('(').trim();
+        if remaining.starts_with(['\'', '"']) {
+            while !remaining.is_empty() {
+                let Some(quote) = remaining.chars().next() else {
+                    break;
+                };
+                if !matches!(quote, '\'' | '"') {
+                    if remaining.starts_with(',') || remaining.starts_with(')') {
+                        remaining = remaining[1..].trim_start();
+                        continue;
+                    }
+                    dynamic = true;
+                    break;
+                }
+                remaining = &remaining[quote.len_utf8()..];
+                let Some(end) = remaining.find(quote) else {
+                    return Err(DiscoveryError::Malformed);
+                };
+                let project = &remaining[..end];
+                if project.is_empty()
+                    || project.contains(['$', '{', '}', '\\'])
+                    || project.len() > 256
+                {
+                    return Err(DiscoveryError::Malformed);
+                }
+                let normalized = project.trim_start_matches(':').replace(':', "/");
+                if normalized
+                    .split('/')
+                    .any(|part| part == ".." || part.is_empty())
+                {
+                    return Err(DiscoveryError::Malformed);
+                }
+                modules.push(normalized);
+                remaining = remaining[end + quote.len_utf8()..].trim_start();
+                if remaining.is_empty() || remaining.starts_with(')') {
+                    break;
+                }
+                if remaining.starts_with(',') {
+                    remaining = remaining[1..].trim_start();
+                    continue;
+                }
+                dynamic = true;
+                break;
+            }
+        } else {
+            dynamic = true;
+        }
+        if modules.len() > MAX_PROJECTS {
+            return Err(DiscoveryError::Limit);
+        }
+    }
+    modules.sort();
+    if modules.windows(2).any(|pair| pair[0] == pair[1]) {
+        return Err(DiscoveryError::Malformed);
+    }
+    Ok((modules, dynamic))
 }
 
 fn load_runner_manifests(

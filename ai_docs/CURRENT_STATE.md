@@ -1,29 +1,28 @@
 # Current State
 
-**Diperbarui:** 2026-09-28 WIB
+**Diperbarui:** 2026-09-29 WIB
 
 ## Sedang dikerjakan
 
-- M6 — partial untuk verifikasi branch terbaru. Lima temuan review sudah
-  diperbaiki; local gate dan full pinned smoke lulus. Branch
-  `feat/m6-package-monorepo`, PR #5 masih terbuka. Head terakhir:
-  `332d8cdbaab31231c5639a4c98016ee836b0befa`.
-- Pada CI run `36366060564`, baseline Rust dan job M2–M4/M6 lulus. M5 masih
-  `in_progress` ketika sesi dihentikan, sehingga seluruh required CI pada head
-  terakhir belum terkonfirmasi.
+- M7 — partial. Implementasi lengkap dan local verification lulus pada commit
+  `a8eba611fe9488c3097cc264102ce8c09d70384c`; branch
+  `feat/m7-php-jvm-dotnet`, PR #6 terbuka ke `master`.
+- Required GitHub CI belum berjalan: run `36550214966` pada commit awal, `36550562994` pada docs head `5eeef81`,
+  serta `36551949796` pada commit kode `a8eba61` gagal sebelum runner dialokasikan
+  karena notifikasi billing/spending limit akun. Tidak ada job step atau
+  artifact; jangan menandai M7 selesai sampai workflow berhasil.
 
 ## Terakhir selesai
 
-- Memperbaiki lima finding branch review dan menambah regresi untuk prefix
-  warning, konflik Nx/package scripts, `npm --prefix`, `npm run install`, dan
-  nested shell background.
-- Menstabilkan smoke Yarn pada CI dan membetulkan normalisasi ANSI pada
-  pembanding record.
-- Gate Rust lengkap dan full smoke lokal lulus. Artifact M6 dari run
-  `36366060564` diunduh dan checksum-nya diverifikasi; detail ada di
-  `ai_docs/TODO.md`.
-- Kode tersentuh: `src/core/classification.rs`, `src/core/manifests.rs`,
-  `src/core/filters/mod.rs`, `scripts/m6-smoke.sh`, serta regresi di `tests/`.
+- M6 sudah merged ke `master` melalui PR #5 pada 2026-09-28.
+- Implementasi M7 mencakup PHP/Composer, Maven/Gradle/JUnit, .NET, bounded
+  static manifest hints, fixtures, pinned isolated smoke project, dan job CI.
+- Format, Clippy, seluruh Rust test target/fitur, release build, serta pinned
+  smoke nyata M7 lulus lokal. Smoke report SHA-256:
+  `76a150affbc59c04a4355d9638d46878bb7611b225c20e439e570488a097c335`.
+- Kode tersentuh: `src/core/classification.rs`, `src/core/filters/`,
+  `src/core/manifests.rs`, `tests/`, `scripts/m7-*`, `.github/workflows/ci.yml`,
+  dan `ai_docs/SPEC.md`.
 
 ## Keputusan yang dikunci
 
@@ -35,27 +34,28 @@
 - Runner asli mengatur selection, dependency order, concurrency, cache, cwd,
   stdin, dan environment.
 - Jangan mulai Codex integration M10 sebelum M1–M9 dan evidence CI M9 lengkap.
-- Branch kerja `feat/m6-package-monorepo`; target PR `master`; pengguna yang
+- Branch aktif `feat/m7-php-jvm-dotnet`, target PR `master`; pengguna yang
   melakukan merge.
 
 ## Temuan / blocker terbuka
 
-- Hasil akhir job M5 pada run `36366060564` belum diperiksa setelah interupsi.
-- Review formal awal branch mendapat `NEEDS CHANGES · 5 blocking`; semua lima
-  finding sudah diperbaiki, tetapi final diff belum direview ulang.
+- Runner GitHub Actions tidak dialokasikan karena masalah billing/spending
+  limit akun; tidak ada temuan code failure dari run tersebut.
+- Artifact `m7-php-jvm-dotnet-evidence` belum tersedia. Local smoke/report ada
+  di `target/m7-evidence/` dan tidak di-commit.
 
 ## Batasan yang diketahui
 
-- PR #5 masih terbuka dan belum di-merge.
-- Artifact smoke dan CI berada di `target/`, bukan di-commit.
-- Smoke lokal dengan `CI=true FORCE_COLOR=1` lulus pada commit `332d8cd`; report
-  SHA-256 `045244863845e3ba459a2a24f9525948e9ddf8a1b12d3f4be4d54c88909f52e3`.
+- PR #6 masih terbuka; commit implementasi `71462d4`, perbaikan `a8eba61`, dan dokumentasi `5eeef81`
+  sudah dipush. Head: `a8eba611fe9488c3097cc264102ce8c09d70384c`.
+- M7 belum lengkap sampai required CI hijau dan artifact CI diperiksa.
+- Local M7 smoke report/log berada pada direktori ignored `target/`.
 
 ## Next action
 
-- Periksa penyelesaian M5 pada run `36366060564`; setelah semua CI hijau,
-  lakukan review ulang final diff dan sinkronkan status M6. Pengguna merge PR #5.
+- Setelah masalah billing GitHub dipulihkan, rerun workflow PR #6; periksa semua
+  job dan artifact, lalu perbarui TODO/state dengan run serta checksum aktual.
 
 ## Arsip terakhir
 
-- `ai_docs/steps_done/06-m6-review-fixes-and-smoke.md`
+- `ai_docs/steps_done/07-m7-php-jvm-dotnet-local-implementation.md`

@@ -257,3 +257,83 @@ jobs:
           name: m6-monorepo-evidence
           path: target/m6-evidence/
           if-no-files-found: error
+
+  m7-php-jvm-dotnet:
+    name: M7 PHP, JVM, and .NET filtering
+    runs-on: ubuntu-24.04
+    env:
+      RUSTUP_TOOLCHAIN: 1.98.1
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt,clippy
+
+      - name: Install pinned PHP and Composer
+        uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # v2.37.1
+        with:
+          php-version: 8.4.25
+          tools: composer:2.10.3
+          extensions: zip
+          coverage: none
+
+      - name: Install pinned Java 21 LTS
+        uses: actions/setup-java@f2beeb24e141e01a676f977032f5a29d81c9e27e # v5.1.0
+        with:
+          distribution: temurin
+          java-version: 21.0.12.1+1
+
+      - name: Install pinned .NET 10 LTS
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.401
+
+      - name: Install checksum-verified Maven and Gradle
+        shell: bash
+        run: |
+          export M7_TOOL_HOME="$RUNNER_TEMP/m7-tools"
+          . scripts/m7-install-jvm-tools.sh
+          printf '%s\n' "$MAVEN_HOME/bin" "$GRADLE_HOME/bin" >> "$GITHUB_PATH"
+          printf 'M7_MAVEN_SHA256=%s\n' "$M7_MAVEN_SHA256" >> "$GITHUB_ENV"
+          printf 'M7_GRADLE_SHA256=%s\n' "$M7_GRADLE_SHA256" >> "$GITHUB_ENV"
+
+      - name: Verify M7 classifier, manifests, safety, and fixtures
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p target/m7-evidence
+          : > target/m7-evidence/fixtures.txt
+          cargo test --test classifier 2>&1 | tee -a target/m7-evidence/fixtures.txt
+          cargo test --test manifests 2>&1 | tee -a target/m7-evidence/fixtures.txt
+          cargo test --test filter_safety 2>&1 | tee -a target/m7-evidence/fixtures.txt
+          cargo test --test php_fixtures 2>&1 | tee -a target/m7-evidence/fixtures.txt
+          cargo test --test jvm_fixtures 2>&1 | tee -a target/m7-evidence/fixtures.txt
+          cargo test --test dotnet_fixtures 2>&1 | tee -a target/m7-evidence/fixtures.txt
+          cargo test --test additional_ecosystem_e2e 2>&1 | tee -a target/m7-evidence/fixtures.txt
+          cargo test --test reduction -- --nocapture 2>&1 | tee -a target/m7-evidence/fixtures.txt
+
+      - name: Build production binary
+        run: cargo build --release
+
+      - name: Run pinned PHP, JVM, and .NET smoke tests
+        shell: bash
+        run: |
+          if sh scripts/m7-smoke.sh target/release/ttc target/m7-evidence/report.txt > target/m7-evidence/smoke.log 2>&1; then
+            tail -n 24 target/m7-evidence/report.txt
+          else
+            tail -c 12000 target/m7-evidence/smoke.log
+            exit 1
+          fi
+
+      - name: Record passing M7 checksums
+        run: sha256sum scripts/m7-tool-versions.txt scripts/m7-tool-checksums.txt target/m7-evidence/fixtures.txt target/m7-evidence/report.txt > target/m7-evidence/SHA256SUMS
+
+      - name: Upload passing M7 evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: m7-php-jvm-dotnet-evidence
+          path: target/m7-evidence/
+          if-no-files-found: error

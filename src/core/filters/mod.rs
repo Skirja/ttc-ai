@@ -6,7 +6,10 @@ use super::classification::{Family, Plan};
 use super::raw_store::Stream;
 use super::streaming::{CompactKind, Filter};
 
+mod dotnet;
 pub(crate) mod ecosystems;
+mod jvm;
+mod php;
 
 pub(crate) struct JsFilter {
     plan: Plan,
@@ -205,6 +208,15 @@ fn structured_line(text: &str) -> bool {
 
 pub(crate) fn protected(text: &str) -> bool {
     let lower = text.to_ascii_lowercase();
+    if text
+        .chars()
+        .any(|ch| matches!(ch, '✘' | '⚠' | '↩' | '↷' | '∅' | '☠'))
+    {
+        return true;
+    }
+    if text.trim_start().starts_with("at ") {
+        return true;
+    }
     if [
         "error",
         "warn",
@@ -222,7 +234,6 @@ pub(crate) fn protected(text: &str) -> bool {
         "diff",
         "exception",
         "traceback",
-        "at ",
         "caused by",
         " test passed",
         " tests passed",
@@ -251,6 +262,7 @@ pub(crate) fn protected(text: &str) -> bool {
 pub(crate) struct DispatchFilter {
     js: JsFilter,
     ecosystems: ecosystems::EcosystemFilter,
+    additional: AdditionalFilter,
     sources: Vec<(String, String)>,
     source_states: HashSet<(usize, String, u8)>,
     source_limit_exceeded: bool,
@@ -261,7 +273,8 @@ impl DispatchFilter {
         let sources = plan.source_aliases.clone();
         Self {
             js: JsFilter::new(plan.clone()),
-            ecosystems: ecosystems::EcosystemFilter::new(plan),
+            ecosystems: ecosystems::EcosystemFilter::new(plan.clone()),
+            additional: AdditionalFilter::new(plan),
             sources,
             source_states: HashSet::new(),
             source_limit_exceeded: false,
@@ -271,7 +284,10 @@ impl DispatchFilter {
 
 impl Filter for DispatchFilter {
     fn can_compact(&self) -> bool {
-        !self.source_limit_exceeded && (self.js.can_compact() || self.ecosystems.can_compact())
+        !self.source_limit_exceeded
+            && (self.js.can_compact()
+                || self.ecosystems.can_compact()
+                || self.additional.can_compact())
     }
 
     fn decide(&mut self, stream: Stream, line: &[u8]) -> Result<Option<CompactKind>, ()> {
@@ -283,6 +299,7 @@ impl Filter for DispatchFilter {
         for (active, recognizer) in [
             (self.js.can_compact(), 0),
             (self.ecosystems.can_compact(), 1),
+            (self.additional.can_compact(), 2),
         ] {
             if active
                 && !self
@@ -293,6 +310,7 @@ impl Filter for DispatchFilter {
                     self.source_limit_exceeded = true;
                     self.js.disable();
                     self.ecosystems.disable();
+                    self.additional.disable();
                     return Ok(None);
                 }
                 self.source_states
@@ -306,6 +324,199 @@ impl Filter for DispatchFilter {
         }
         self.ecosystems
             .decide_for_source(stream, &normalized, &source)
+            .and_then(|decision| {
+                if decision.is_some() {
+                    Ok(decision)
+                } else {
+                    self.additional
+                        .decide_for_source(stream, &normalized, &source)
+                }
+            })
+    }
+}
+
+pub(crate) struct AdditionalFilter {
+    plan: Plan,
+    confidence: HashMap<(usize, String), [u8; 14]>,
+    diagnostic_block: HashSet<(usize, String, u8)>,
+    disabled: bool,
+}
+
+impl AdditionalFilter {
+    pub(crate) fn new(plan: Plan) -> Self {
+        Self {
+            plan,
+            confidence: HashMap::new(),
+            diagnostic_block: HashSet::new(),
+            disabled: false,
+        }
+    }
+
+    fn disable(&mut self) {
+        self.disabled = true;
+        self.confidence.clear();
+        self.diagnostic_block.clear();
+    }
+
+    fn can_compact(&self) -> bool {
+        !self.disabled
+            && !self.plan.raw
+            && self.plan.families.iter().any(additional_index_is_parser)
+    }
+
+    fn decide_for_source(
+        &mut self,
+        stream: Stream,
+        line: &[u8],
+        source: &str,
+    ) -> Result<Option<CompactKind>, ()> {
+        if !self.can_compact() {
+            return Ok(None);
+        }
+        let stream_index = if stream == Stream::Stdout { 0 } else { 1 };
+        let key = (stream_index, source.to_owned());
+        if !self.confidence.contains_key(&key) && self.confidence.len() >= 4096 {
+            self.disable();
+            return Ok(None);
+        }
+        let text = strip_ansi(line).ok_or(())?;
+        let text = text.trim_end_matches(['\r', '\n']).trim();
+        let confidence = self.confidence.entry(key.clone()).or_insert([0; 14]);
+        if self.plan.fallback_only_prefixed && source.is_empty() {
+            confidence.fill(0);
+            return Ok(None);
+        }
+        if text.is_empty() {
+            confidence.fill(0);
+            return Ok(None);
+        }
+        if self.plan.families.contains(&Family::PhpTest)
+            && (text.starts_with("Runtime: ")
+                || text.starts_with("Configuration: ")
+                || text.starts_with("Time: "))
+        {
+            confidence[0] = 0;
+            return Ok(None);
+        }
+        if self.plan.families.contains(&Family::DotnetTest)
+            && (text.starts_with("Build started ")
+                || text.starts_with("Time Elapsed ")
+                || dotnet_test_preamble(text))
+        {
+            confidence[9] = 0;
+            return Ok(None);
+        }
+        if structured_line(text) || protected(text) {
+            for family in &self.plan.families {
+                if let Some(index) = additional_index(*family) {
+                    confidence[index as usize] = 0;
+                    self.diagnostic_block
+                        .insert((stream_index, source.to_owned(), index));
+                }
+            }
+            return Ok(None);
+        }
+        for family in &self.plan.families {
+            let Some(index) = additional_index(*family) else {
+                continue;
+            };
+            if !additional_index_is_parser(family)
+                || self
+                    .diagnostic_block
+                    .contains(&(stream_index, source.to_owned(), index))
+                || self
+                    .diagnostic_block
+                    .contains(&(stream_index, String::new(), index))
+            {
+                continue;
+            }
+            let kind = additional_recognize(family, text);
+            if let Some(kind) = kind {
+                confidence[index as usize] = confidence[index as usize].saturating_add(1);
+                return Ok((confidence[index as usize] > 3).then_some(kind));
+            }
+            confidence[index as usize] = 0;
+        }
+        Ok(None)
+    }
+}
+
+fn dotnet_test_preamble(text: &str) -> bool {
+    let Some(rest) = text.strip_prefix("A total of ") else {
+        return false;
+    };
+    let Some((count, remainder)) = rest.split_once(' ') else {
+        return false;
+    };
+    count.parse::<u32>().is_ok()
+        && matches!(
+            remainder,
+            "test files matched the specified pattern."
+                | "test file matched the specified pattern."
+        )
+}
+
+impl Filter for AdditionalFilter {
+    fn can_compact(&self) -> bool {
+        AdditionalFilter::can_compact(self)
+    }
+
+    fn decide(&mut self, stream: Stream, line: &[u8]) -> Result<Option<CompactKind>, ()> {
+        self.decide_for_source(stream, line, "")
+    }
+}
+
+fn additional_index(family: Family) -> Option<u8> {
+    use Family::*;
+    Some(match family {
+        PhpTest => 0,
+        PhpLint => 1,
+        PhpTypecheck => 2,
+        PhpFormat => 3,
+        PhpInstall => 4,
+        JvmTest => 5,
+        JvmBuild => 6,
+        JvmProgress => 7,
+        JvmCompile => 8,
+        DotnetTest => 9,
+        DotnetBuild => 10,
+        DotnetRestore => 11,
+        DotnetFormat => 12,
+        _ => return None,
+    })
+}
+
+fn additional_index_is_parser(family: &Family) -> bool {
+    matches!(
+        family,
+        Family::PhpTest
+            | Family::PhpLint
+            | Family::PhpInstall
+            | Family::JvmTest
+            | Family::JvmBuild
+            | Family::JvmProgress
+            | Family::DotnetTest
+            | Family::DotnetBuild
+            | Family::DotnetRestore
+    )
+}
+
+fn additional_recognize(family: &Family, text: &str) -> Option<CompactKind> {
+    if php::recognize(family, text)
+        || jvm::recognize(family, text)
+        || dotnet::recognize(family, text)
+    {
+        Some(match family {
+            Family::PhpLint
+            | Family::PhpInstall
+            | Family::JvmBuild
+            | Family::JvmProgress
+            | Family::DotnetBuild
+            | Family::DotnetRestore => CompactKind::Progress,
+            _ => CompactKind::Passing,
+        })
+    } else {
+        None
     }
 }
 

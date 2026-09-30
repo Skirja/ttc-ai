@@ -185,6 +185,69 @@ fn manifest_and_invocation_resource_limits_fail_discovery_closed() {
 }
 
 #[test]
+fn composer_scripts_and_maven_modules_are_read_as_bounded_static_hints() {
+    let composer = TestDir::new();
+    fs::write(
+        composer.path().join("composer.json"),
+        r#"{"scripts":{"test":"@php vendor/bin/phpunit","check":["@test","@php vendor/bin/pest"],"cycle":"@cycle"}}"#,
+    ).unwrap();
+    let hints = WorkspaceHints::discover(composer.path()).unwrap().unwrap();
+    assert!(hints.has_composer_manifest);
+    assert_eq!(
+        hints.composer_scripts.get("test").unwrap(),
+        "@php vendor/bin/phpunit"
+    );
+    assert_eq!(
+        hints.composer_scripts.get("check").unwrap(),
+        "@test\n@php vendor/bin/pest"
+    );
+
+    let maven = TestDir::new();
+    fs::write(
+        maven.path().join("pom.xml"),
+        r#"<project xmlns="http://maven.apache.org/POM/4.0.0"><modelVersion>4.0.0</modelVersion><artifactId>root</artifactId><modules><module>api</module><module>shared/core</module></modules></project>"#,
+    ).unwrap();
+    let hints = WorkspaceHints::discover(maven.path()).unwrap().unwrap();
+    assert_eq!(hints.maven_modules, vec!["api", "shared/core"]);
+}
+
+#[test]
+fn maven_external_entities_and_invalid_xml_fail_closed() {
+    for source in [
+        "<!DOCTYPE project [<!ENTITY x SYSTEM 'file:///etc/passwd'>]><project><modules><module>&x;</module></modules></project>",
+        "<project><modules><module>../outside</module></modules></project>",
+        "<project><modules><module>api</modules></project>",
+        "<modules><module>api</module></modules>",
+    ] {
+        let dir = TestDir::new();
+        fs::write(dir.path().join("pom.xml"), source).unwrap();
+        assert!(WorkspaceHints::discover(dir.path()).is_err(), "{source}");
+    }
+}
+
+#[test]
+fn gradle_settings_keep_literal_includes_and_flag_dynamic_module_discovery() {
+    let dir = TestDir::new();
+    fs::write(
+        dir.path().join("settings.gradle.kts"),
+        "rootProject.name = \"sample\"\ninclude(\":api\", \":shared:core\")\n",
+    )
+    .unwrap();
+    fs::write(dir.path().join("build.gradle.kts"), "plugins { java }\n").unwrap();
+    let hints = WorkspaceHints::discover(dir.path()).unwrap().unwrap();
+    assert_eq!(hints.gradle_modules, vec!["api", "shared/core"]);
+    assert!(!hints.gradle_dynamic);
+
+    fs::write(
+        dir.path().join("settings.gradle.kts"),
+        "val modules = listOf(\":api\")\ninclude(*modules.toTypedArray())\n",
+    )
+    .unwrap();
+    let hints = WorkspaceHints::discover(dir.path()).unwrap().unwrap();
+    assert!(hints.gradle_dynamic);
+}
+
+#[test]
 fn project_entry_and_ancestor_limits_are_enforced() {
     let projects = TestDir::new();
     fs::create_dir_all(projects.path().join("packages")).unwrap();

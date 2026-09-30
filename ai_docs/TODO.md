@@ -681,28 +681,28 @@ manifest-hint interface yang sudah dikunci M4.
 
 ### Implementation checklist
 
-- [ ] Implementasikan PHPUnit, Pest, Artisan test, PHPStan, Psalm, PHPCS,
+- [x] Implementasikan PHPUnit, Pest, Artisan test, PHPStan, Psalm, PHPCS,
   php-cs-fixer dry-run, dan Composer command pada SPEC.
-- [ ] Implementasikan Maven/mvnw dan Gradle/gradlew test/build/check serta javac
+- [x] Implementasikan Maven/mvnw dan Gradle/gradlew test/build/check serta javac
   dan JUnit console output.
-- [ ] Compact download/task/passing progress; retain compiler error, failed test,
+- [x] Compact download/task/passing progress; retain compiler error, failed test,
   stack trace, warning, dan build summary.
-- [ ] Implementasikan dotnet test/build/restore/publish/format verification.
-- [ ] Retain diagnostic code, failed-test output, stack trace, warning, dan
+- [x] Implementasikan dotnet test/build/restore/publish/format verification.
+- [x] Retain diagnostic code, failed-test output, stack trace, warning, dan
   summary .NET.
-- [ ] Hubungkan Composer/Maven/Gradle manifest discovery ke classifier tanpa
+- [x] Hubungkan Composer/Maven/Gradle manifest discovery ke classifier tanpa
   menambah child execution.
-- [ ] Tambahkan success/failure/warning/unknown/large fixtures dan pinned smoke
+- [x] Tambahkan success/failure/warning/unknown/large fixtures dan pinned smoke
   project/tool untuk setiap family.
 
 ### Acceptance criteria
 
-- [ ] Semua command PHP/JVM/.NET pada SPEC dikenali atau explicit raw.
-- [ ] Failure diagnostic dan exit status sama dengan baseline.
-- [ ] Large fixture setiap family mengurangi byte minimum 80%.
-- [ ] PHPUnit/Pest representative, Maven dan Gradle, serta dotnet real-tool smoke
+- [x] Semua command PHP/JVM/.NET pada SPEC dikenali atau explicit raw.
+- [x] Failure diagnostic dan exit status sama dengan baseline.
+- [x] Large fixture setiap family mengurangi byte minimum 80%.
+- [x] PHPUnit/Pest representative, Maven dan Gradle, serta dotnet real-tool smoke
   tests lulus pada versi pin.
-- [ ] Unknown generic PHP/Java/.NET application output tetap raw.
+- [x] Unknown generic PHP/Java/.NET application output tetap raw.
 
 ### Verification commands
 
@@ -715,9 +715,42 @@ cargo test --test additional_ecosystem_e2e
 
 ### Evidence
 
-- [ ] Commit implementasi dicatat.
-- [ ] Tool version matrix dan smoke logs dicatat.
-- [ ] Retention/reduction report disimpan.
+- [x] Commit implementasi `a8eba611fe9488c3097cc264102ce8c09d70384c` dicatat.
+- [x] Tool version matrix dan smoke logs lokal dicatat.
+- [x] Retention/reduction report lokal disimpan.
+- [ ] Required PR CI lulus dan artifact `m7-php-jvm-dotnet-evidence` tersedia.
+
+Bukti lokal pada branch `feat/m7-php-jvm-dotnet`, PR
+[#6](https://github.com/Skirja/ttc-ai/pull/6):
+
+- `cargo test --test classifier --test manifests --test filter_safety --test php_fixtures --test jvm_fixtures --test dotnet_fixtures --test additional_ecosystem_e2e --test reduction`, `cargo fmt --all -- --check`, `cargo clippy --all-targets --all-features -- -D warnings`, `cargo test --all-targets --all-features`, dan `cargo build --release` lulus pada commit `a8eba611fe9488c3097cc264102ce8c09d70384c`.
+- Pinned smoke nyata lulus pada lingkungan terisolasi. Versi ada di
+  `scripts/m7-tool-versions.txt`; log dan report lokal berada di
+  `target/m7-evidence/smoke.log` dan `target/m7-evidence/report.txt`.
+  SHA-256 report: `76a150affbc59c04a4355d9638d46878bb7611b225c20e439e570488a097c335`.
+- Byte direct/TTC dari large real-tool smoke, termasuk metadata TTC:
+
+| Family | Direct byte | TTC byte | Reduksi |
+|---|---:|---:|---:|
+| PHPUnit | 66.656 | 757 | 98,86% |
+| JUnit Console | 64.916 | 835 | 98,71% |
+| .NET VSTest | 38.280 | 563 | 98,53% |
+
+- Large fixture tambahan mengukur Composer/PHPCS, Maven/Gradle, dan .NET
+  restore/build; setiap grammar progress memenuhi ambang 80% setelah metadata
+  TTC dihitung. Kegagalan, warning, diagnostic, stream terpisah, exit status,
+  invocation count, cwd, environment, stdin, signal, dan raw replay juga diuji.
+- [CI run 36550214966](https://github.com/Skirja/ttc-ai/actions/runs/36550214966)
+  dibuat untuk commit yang sama, tetapi GitHub tidak mengalokasikan runner
+  karena billing/account spending limit; semua job memiliki 0 step. Run ini
+  bukan hasil CI hijau dan belum menghasilkan artifact M7. Required CI tetap
+  pending sampai runner GitHub dapat dialokasikan lalu workflow di-rerun.
+- Push dokumentasi memicu [CI run 36550562994](https://github.com/Skirja/ttc-ai/actions/runs/36550562994)
+  pada PR head `5eeef81598d4fc43849608821cef3f1d80fc192e`; semua job kembali
+  berhenti sebelum step dengan alasan billing yang sama.
+- Setelah grammar Gradle diperketat, [CI run 36551949796](https://github.com/Skirja/ttc-ai/actions/runs/36551949796)
+  dibuat untuk commit kode `a8eba611fe9488c3097cc264102ce8c09d70384c`; semua job
+  kembali berhenti sebelum step akibat billing yang sama.
 
 ---
 

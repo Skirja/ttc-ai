@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>dev.ttc.m7</groupId>
+  <artifactId>m7-maven-smoke</artifactId>
+  <version>0.1.0</version>
+  <packaging>pom</packaging>
+  <modules>
+    <module>smoke-module</module>
+  </modules>
+</project>
