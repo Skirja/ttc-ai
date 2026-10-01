@@ -101,6 +101,27 @@ fn four_step_ninja_build_with_a_warning_stays_byte_exact() {
 }
 
 #[test]
+fn make_echo_with_failure_flag_keeps_following_passing_output_raw() {
+    let mut lines = vec![("stdout", "ctest --test-dir \"build\" --output-on-failure\n")];
+    lines.extend(std::iter::repeat_n(
+        (
+            "stdout",
+            "1/2 Test #1: smoke ............................   Passed    0.01 sec\n",
+        ),
+        10,
+    ));
+    let result = run_filter(Family::MakeBuild, &lines);
+    let original = lines
+        .iter()
+        .flat_map(|(_, line)| line.bytes())
+        .collect::<Vec<_>>();
+    assert_eq!(result.stdout, original);
+    assert!(result.stderr.is_empty());
+    assert!(result.metadata.is_empty());
+    assert_eq!(result.report.progress, 0);
+}
+
+#[test]
 fn one_failure_or_custom_progress_line_never_compacts() {
     for (family, line) in [
         (Family::CmakeBuild, "[100%] Built target demo\n"),
