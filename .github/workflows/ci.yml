@@ -433,7 +433,15 @@ jobs:
         run: cargo build --release
 
       - name: Run pinned build, Ruby, Swift, Docker, Podman, and infrastructure smoke tests
-        run: sh scripts/m8-smoke.sh target/release/ttc target/m8-evidence
+        shell: bash
+        run: |
+          mkdir -p target/m8-evidence
+          if sh -x scripts/m8-smoke.sh target/release/ttc target/m8-evidence > target/m8-evidence/smoke.log 2>&1; then
+            tail -n 24 target/m8-evidence/smoke-report.txt
+          else
+            tail -c 12000 target/m8-evidence/smoke.log
+            exit 1
+          fi
 
       - name: Upload passing M8 evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
