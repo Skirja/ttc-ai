@@ -1,11 +1,13 @@
 """Stable tag/version/master containment policy, isolated Git history."""
 import importlib.util
+import os
 from pathlib import Path
 import subprocess
 import sys
 sys.dont_write_bytecode = True
 import tempfile
 import unittest
+from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location("policy", Path(__file__).with_name("check-release-version.py"))
 policy = importlib.util.module_from_spec(spec)
@@ -16,6 +18,12 @@ class ReleasePolicyTests(unittest.TestCase):
     def test_stable_tag_matches_version_and_master_history(self):
         with tempfile.TemporaryDirectory(prefix="ttc-tag-policy-") as temporary:
             root = Path(temporary)
+            isolation = patch.dict(os.environ, {
+                "HOME": temporary, "XDG_CONFIG_HOME": str(root / "config"),
+                "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1",
+            })
+            isolation.start()
+            self.addCleanup(isolation.stop)
             def git(*args):
                 return subprocess.run(["git", *args], cwd=root, check=True, capture_output=True)
             git("init", "-b", "master")

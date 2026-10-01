@@ -19,6 +19,8 @@ for name, report in required.items():
     if not (directory / report).is_file():
         raise SystemExit(f"Required evidence missing: {name}/{report}")
     sums = directory / "SHA256SUMS"
+    if name in {"m6-monorepo-evidence", "m7-php-jvm-dotnet-evidence", "m8-remaining-ecosystem-evidence"} and not sums.is_file():
+        raise SystemExit(f"Required checksum manifest missing: {sums}")
     if sums.is_file():
         entries = sums.read_text().splitlines()
         if not entries:

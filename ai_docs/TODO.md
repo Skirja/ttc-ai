@@ -940,16 +940,16 @@ candidate, dan dibuktikan oleh artifact CI sebelum pekerjaan Codex dimulai.
 
 ### Implementation checklist
 
-- [ ] Jalankan full unit, integration, fixture, monorepo, real-tool, safety, dan
+- [x] Jalankan full unit, integration, fixture, monorepo, real-tool, safety, dan
   reduction suite dalam pinned CI matrix.
 - [x] Audit seluruh requirement SPEC terhadap test/implementation; tidak boleh
   ada command atau failure mode tanpa mapping.
 - [x] Tambahkan release workflow target `x86_64-unknown-linux-gnu` pada branch
   `master` dan tag `v*`.
 - [x] Pastikan tag version harus sama dengan Cargo package version.
-- [ ] Build release binary, jalankan smoke test di luar source tree, dan upload
+- [x] Build release binary, jalankan smoke test di luar source tree, dan upload
   workflow artifact.
-- [ ] Hasilkan executable release asset dan SHA-256.
+- [x] Hasilkan executable release asset dan SHA-256.
 - [x] Implementasikan `install.sh` latest-only untuk Linux x86_64 dengan HTTPS,
   checksum verification, atomic replacement, dan executable permission.
 - [x] Uji installer M9 terhadap local/mock release endpoint dengan override
@@ -967,8 +967,8 @@ candidate, dan dibuktikan oleh artifact CI sebelum pekerjaan Codex dimulai.
 
 ### Acceptance criteria
 
-- [ ] Seluruh M1–M8 acceptance tetap lulus dalam satu clean CI run.
-- [ ] Artifact release-mode Linux dapat berjalan tanpa repository/source tree.
+- [x] Seluruh M1–M8 acceptance tetap lulus dalam satu clean CI run.
+- [x] Artifact release-mode Linux dapat berjalan tanpa repository/source tree.
 - [x] Fresh install, same-version reinstall, dan upgrade replacement atomik.
 - [x] Checksum mismatch dan unsupported platform gagal sebelum binary diganti.
 - [x] Installer tidak otomatis memasang integrasi Codex.
@@ -1012,15 +1012,57 @@ terisolasi. Override HTTP hanya loopback dengan opt-in test. `sha2 = =0.10.9`
 dipilih untuk streaming SHA-256 native dan validasi binary existing tanpa
 mengeksekusinya. Core execution/filter tidak diubah pada implementasi M9.
 
-CI/upload artifact dan master acceptance masih menunggu run aktual; checkboxes
-yang memerlukan evidence tersebut tetap terbuka.
+CI PR dan downloaded candidate sudah lulus pada evidence berikut. Master
+acceptance tetap menunggu merge pengguna dan run master yang diperiksa.
+
+### Evidence CI kandidat M9
+
+[PR #9](https://github.com/Skirja/ttc-ai/pull/9), production commit
+`bea54a5834722c7146e842dc0692d6b7d15edeb4`, lulus seluruh **10 job** pada
+[run `36824224429`](https://github.com/Skirja/ttc-ai/actions/runs/36824224429).
+Checkout merge CI yang menghasilkan artifact:
+`465b95c079244f95c36dbbc95b55d78f86dc18d3`. Semua baseline M1–M8 dan full
+pinned real-tool smoke dijalankan ulang, lalu distribution job memakai clean
+checkout, explicit GNU target, lockfile dan toolchain Rust `1.98.1`.
+
+Artifact `ttc-m9-x86_64-unknown-linux-gnu` diunduh ke
+`target/m9-evidence/run-36824224429/`; `sha256sum --check --status SHA256SUMS`
+dan `sha256sum --check --status EVIDENCE-SHA256SUMS` lulus untuk asset dan
+**112 evidence entries**. Checksum:
+
+| File | SHA-256 |
+|---|---|
+| ttc-x86_64-unknown-linux-gnu | `f1b6dd184ab31b0331055fe76e3a4370e4fa07f30d3b10199312a6d507700301` |
+| install.sh | `19e0e744ec83a0e4e29934b47f522eecba37dcdd95ad899b5193f6c8a9cebda7` |
+| SHA256SUMS | `90f8b6f54de0d200a300935da3d233d04d5eb5b47b32b281814d6ec9e58e52d8` |
+| EVIDENCE-SHA256SUMS | `70937a60d748d411d4fd6c715367d6bc802f9cebeceae243858d41de8e23ba8c` |
+
+`evidence/coverage.md` mencakup seluruh section/klausul/form command SPEC,
+source/test mapping dan batas kontrak M10. `evidence/prerequisites/` mencakup
+passthrough, streaming, fixture/reduction dan pinned smoke M2–M8 dari run yang
+sama; checksum wajib M6–M8 juga diperiksa. `evidence/standalone.txt` dan
+`evidence/packaged-smoke.txt` membuktikan versi, argv/shell bytes per-stream,
+cwd/env/stdin, status/signal, count1, TTY, retained diagnostic, raw replay dan
+representative reduction `23999/254` byte. Installer 17 E2E lulus pada CI.
+Binary hasil unduhan diuji ulang lokal menggunakan:
+
+```sh
+TTC_M9_BINARY="$PWD/target/m9-evidence/run-36824224429/ttc-x86_64-unknown-linux-gnu" ./scripts/test-release-artifact.sh
+TTC_M9_BINARY="$PWD/target/m9-evidence/run-36824224429/ttc-x86_64-unknown-linux-gnu" ./scripts/test-install.sh
+```
+
+Keduanya lulus. Gate evidence kini juga menolak checksum manifest wajib yang
+hilang; test tag mengisolasi HOME/config Git. Verifikasi narrow kedua perubahan
+tersebut lulus lokal. Run PR kandidat membuktikan implementasi; **M9 belum
+complete** sampai pengguna merge dan clean successful master run/artifact
+diperiksa. Tidak ada tag, public release atau Codex integration dibuat.
 
 ### Evidence
 
-- [ ] Commit production hardening dicatat.
+- [x] Commit production hardening dicatat.
 - [ ] Successful `master` CI run URL dicatat.
-- [ ] Downloaded workflow artifact checksum dicatat.
-- [ ] Full command coverage dan reduction reports dilampirkan.
+- [x] Downloaded workflow artifact checksum dicatat.
+- [x] Full command coverage dan reduction reports dilampirkan.
 
 ---
 

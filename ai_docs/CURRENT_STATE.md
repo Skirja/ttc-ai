@@ -9,7 +9,9 @@ M9 — production binary dan distribution gate pada
 prasyarat CI yang sudah teruji. Installer/latest finalizer, metadata ownership,
 transaksi atomik dengan lock/rollback/pending marker, PATH backup/fallback,
 global uninstall, audit SPEC dan workflow kandidat GNU telah diimplementasikan.
-Seluruh gate lokal M9 lulus; PR CI sedang diselesaikan. M9 belum ditandai lengkap.
+Seluruh gate lokal dan 10 job PR CI M9 lulus. Candidate artifact diunduh,
+checksum asset/112 evidence entries serta smoke ulang lulus. PR #9 menunggu
+merge pengguna; M9 belum lengkap karena master artifact gate belum terpenuhi.
 
 ## Prasyarat yang sudah terbukti
 
@@ -21,7 +23,7 @@ runner. Full pinned smoke M7/M8 lulus; artifact diunduh dan seluruh checksum
 M7 (4 entry) serta M8 (91 entry) diperiksa. Checksum dan reduction detail ada
 pada TODO M9. PR #8 masih menunggu merge pengguna.
 
-## Verifikasi lokal M9
+## Verifikasi M9
 
 - 11 unit test distribusi lulus, termasuk actual SIGKILL setelah replacement,
   penolakan marker berikutnya, kegagalan rename/commit metadata, rollback,
@@ -37,6 +39,13 @@ pada TODO M9. PR #8 masih menunggu merge pengguna.
   temporary. Audit coverage mengunci digest SPEC, semua section/clauses,
   source/test references dan CI jobs; tidak mengklaim bukti semantik dari
   keberadaan mapping saja.
+
+- [PR #9](https://github.com/Skirja/ttc-ai/pull/9), production commit `bea54a5`,
+  lulus 10 job pada [run 36824224429](https://github.com/Skirja/ttc-ai/actions/runs/36824224429).
+  Artifact GNU SHA-256 `f1b6dd184ab31b0331055fe76e3a4370e4fa07f30d3b10199312a6d507700301`;
+  checksum seluruh 112 evidence entries dan standalone/installer smoke ulang
+  memakai downloaded binary lulus. Exact head/merge SHA dan seluruh checksum
+  dicatat pada TODO. PR #9 membawa seluruh perbaikan PR #8.
 
 ## Keputusan yang dikunci
 
@@ -61,10 +70,9 @@ lokal yang tidak menyediakan seluruh build prerequisite.
 
 ## Next action
 
-Selesaikan seluruh verifikasi M9, commit, push branch, buka PR ke master dan
-periksa seluruh required jobs serta downloaded candidate checksum. Setelah
-pengguna merge, periksa clean successful master artifact; baru lengkapi M9 dan
-mulai M10 pada tugas berikutnya.
+Selesaikan CI pada commit pencatatan evidence, lalu pengguna merge PR #9.
+Periksa clean successful master run dan downloaded GNU artifact; catat exact
+commit/run/checksum dan lengkapi M9. M10 tetap menunggu gate master tersebut.
 
 ## Arsip terakhir
 
