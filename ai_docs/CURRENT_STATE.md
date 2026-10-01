@@ -57,6 +57,10 @@
 - M8 masih gagal pada clean Make fixture karena echo command mengandung
   `--output-on-failure`. Recipe fixture dibuat senyap; regresi memastikan
   output echo itu tetap raw. Perbaikan ini masih menunggu PR CI berikutnya.
+- Run `36812824994` pada `b4433f6` telah melewati smoke Make; sekarang M8
+  berhenti pada RuboCop large dengan file kosong (baseline status 1).
+  Fixture diganti source Ruby minimal dan smoke mencetak tail stdout/stderr
+  pada status gagal. Shell syntax/diff check lulus; smoke masih menunggu CI.
 - Dua full test lokal menemui `Text file busy` pada executable fixture.
   Full suite serial (`RUST_TEST_THREADS=1`) dan release build lulus.
   Parallel baseline CI pada commit `da31455` lulus tanpa penyesuaian atau skip.
