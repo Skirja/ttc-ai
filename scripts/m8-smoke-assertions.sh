@@ -1,6 +1,17 @@
 #!/bin/sh
 # Sourced by the real-tool smoke and its isolated regression tests.
 
+# Keep instrumentation out of the command's independently captured streams.
+m8_capture_in() {
+  (
+    { set +x; } 2>/dev/null
+    directory=$1
+    cache=$3
+    shift 3
+    cd "$directory" && XDG_CACHE_HOME="$cache" "$@"
+  ) > "$2.out" 2> "$2.err"
+}
+
 count_build_records() {
   awk 'index($0, "Building ") || index($0, "Linking ") { count++ } END { print count + 0 }' "$1"
 }

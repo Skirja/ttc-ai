@@ -961,6 +961,16 @@ benar diasert, menggantikan klaim byte-exact yang belum dibandingkan di smoke
 tersebut. Byte-exact unknown output tetap diuji oleh raw command matrix.
 YAML parse, shell syntax, dan diff check lulus; seluruh gate tetap wajib lulus.
 
+Trace run `36814092707` pada `f4217d9` membuktikan build/Ruby/Swift dan
+Docker/Compose melewati assertion status. Instrumentation `sh -x` sendiri
+masuk ke stderr subprocess dan mengganggu perbandingan byte-exact Terraform.
+Capture helper kini menonaktifkan trace di dalam subprocess; regresi menguji
+stdout dengan NUL, stderr warning, exit 7, dan invocation count satu pada
+mode trace aktif maupun nonaktif. Targeted `m8_smoke_assertions`, format,
+Clippy, full Rust suite serial, release build, dan shell syntax lulus lokal.
+Log: `target/m7-m8-ci-evidence/local-gates-capture-fix.log`. Penyebab awal
+silent failure M8 masih harus diperiksa setelah instrumentation diperbaiki.
+
 **Outcome:** standalone TTC binary selesai 100%, dapat dipasang sebagai release
 candidate, dan dibuktikan oleh artifact CI sebelum pekerjaan Codex dimulai.
 
