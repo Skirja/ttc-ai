@@ -61,6 +61,13 @@ pada TODO M9. PR #8 masih menunggu merge pengguna.
 - M10 menunggu clean successful master run M9 dan downloaded GNU artifact.
   Belum ada implementasi/instruksi integrasi Codex yang tersedia pada help M9.
 
+## Regresi gate yang diperbaiki
+
+Run evidence `36825391722` pada `52dd9be` menemukan race pidfile M2: file sudah
+ada tetapi isinya masih kosong. Test sekarang menunggu PID valid; regresi empty
+file dan 50 pengulangan signal suite lulus lokal. Perbaikan hanya readiness test,
+execution/filter core tetap sama. CI terakhir harus hijau sebelum merge.
+
 ## Batasan yang diketahui
 
 Parallel fixture test lokal pernah menemui `Text file busy`; log tersimpan

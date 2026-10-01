@@ -2,6 +2,7 @@ mod common;
 
 use std::fs;
 use std::os::unix::process::ExitStatusExt;
+use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -42,6 +43,39 @@ fn wait_for_exit(child: &mut Child, group: Pid) -> std::process::ExitStatus {
     }
 }
 
+fn wait_for_pid(path: &Path) -> i32 {
+    let deadline = Instant::now() + Duration::from_secs(5);
+    loop {
+        // Creation and writing are separate operations. An existing empty
+        // pidfile is not a readiness notification from the child.
+        if let Ok(text) = fs::read_to_string(path)
+            && let Ok(pid) = text.parse::<i32>()
+            && pid > 0
+        {
+            return pid;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "child did not publish a valid PID"
+        );
+        thread::sleep(Duration::from_millis(10));
+    }
+}
+
+#[test]
+fn pid_readiness_waits_for_contents_after_file_creation() {
+    let dir = TestDir::new();
+    let path = dir.path().join("pid");
+    fs::write(&path, b"").unwrap();
+    let writer_path = path.clone();
+    let writer = thread::spawn(move || {
+        thread::sleep(Duration::from_millis(40));
+        fs::write(writer_path, b"4242").unwrap();
+    });
+    assert_eq!(wait_for_pid(&path), 4242);
+    writer.join().unwrap();
+}
+
 #[test]
 fn signals_to_wrapper_reach_the_child_process_group() {
     for signal in [Signal::SIGINT, Signal::SIGTERM] {
@@ -57,12 +91,7 @@ fn signals_to_wrapper_reach_the_child_process_group() {
             .spawn()
             .unwrap();
 
-        let deadline = Instant::now() + Duration::from_secs(5);
-        while !pidfile.exists() {
-            assert!(Instant::now() < deadline, "child did not start");
-            thread::sleep(Duration::from_millis(10));
-        }
-        let child_pid: i32 = fs::read_to_string(&pidfile).unwrap().parse().unwrap();
+        let child_pid = wait_for_pid(&pidfile);
         kill(Pid::from_raw(child.id() as i32), signal).unwrap();
         let status = wait_for_exit(&mut child, Pid::from_raw(child_pid));
         assert_eq!(status.signal(), Some(signal as i32));

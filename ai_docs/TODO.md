@@ -1057,6 +1057,15 @@ tersebut lulus lokal. Run PR kandidat membuktikan implementasi; **M9 belum
 complete** sampai pengguna merge dan clean successful master run/artifact
 diperiksa. Tidak ada tag, public release atau Codex integration dibuat.
 
+Run berikutnya `36825391722` pada evidence commit `52dd9be` gagal di M2:
+`tests/signals.rs` membaca pidfile sesudah file dibuat tetapi sebelum PID ditulis
+(`ParseIntError { kind: Empty }`). Log diagnostik disimpan pada
+`target/m9-evidence/m2-signal-failure.log`. Readiness helper kini menunggu PID
+positif yang dapat diparse; regresi membuat file kosong lalu menulis PID setelah
+40ms. Tidak ada rerun child atau perubahan execution/filter core. Targeted
+signal suite, 50 pengulangan berturut-turut, format dan Clippy lulus. CI harus
+lulus lagi pada head perbaikan sebelum PR siap merge.
+
 ### Evidence
 
 - [x] Commit production hardening dicatat.
