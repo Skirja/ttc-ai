@@ -68,11 +68,9 @@ compare_in() {
   shift 4
   mkdir -p "$scratch/$label-direct-cache" "$scratch/$label-ttc-cache"
   set +e
-  (cd "$direct_directory" && XDG_CACHE_HOME="$scratch/$label-direct-cache" "$@") \
-    > "$scratch/$label-direct.out" 2> "$scratch/$label-direct.err"
+  m8_capture_in "$direct_directory" "$scratch/$label-direct" "$scratch/$label-direct-cache" "$@"
   direct_status=$?
-  (cd "$ttc_directory" && XDG_CACHE_HOME="$scratch/$label-ttc-cache" "$binary" "$@") \
-    > "$scratch/$label-ttc.out" 2> "$scratch/$label-ttc.err"
+  m8_capture_in "$ttc_directory" "$scratch/$label-ttc" "$scratch/$label-ttc-cache" "$binary" "$@"
   ttc_status=$?
   set -e
   for stream in out err; do

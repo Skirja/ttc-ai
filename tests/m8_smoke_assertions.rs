@@ -62,3 +62,35 @@ fn dot_meter_rejects_missing_direct_meter_and_retained_ttc_meter() {
     assert!(!assert_dot_meter(metadata, "summary\n", "summary\n"));
     assert!(!assert_dot_meter(metadata, "....\n", "....\nsummary\n"));
 }
+
+#[test]
+fn smoke_capture_preserves_streams_status_and_count_with_shell_trace_enabled() {
+    for trace in [false, true] {
+        let dir = TestDir::new();
+        let output = Command::new("sh")
+            .args([
+                if trace { "-eux" } else { "-eu" },
+                "-c",
+                ". \"$1\"; m8_capture_in \"$2\" \"$2/capture\" \"$2/cache\" sh -c 'printf x >> invocation.count; printf \"stdout\\000exact\\n\"; printf \"warning: stderr exact\\n\" >&2; exit 7'",
+                "m8-capture-regression",
+                concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/scripts/m8-smoke-assertions.sh"
+                ),
+            ])
+            .arg(dir.path())
+            .env("HOME", dir.path())
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(7));
+        assert_eq!(fs::read(dir.path().join("invocation.count")).unwrap(), b"x");
+        assert_eq!(
+            fs::read(dir.path().join("capture.out")).unwrap(),
+            b"stdout\0exact\n"
+        );
+        assert_eq!(
+            fs::read(dir.path().join("capture.err")).unwrap(),
+            b"warning: stderr exact\n"
+        );
+    }
+}
