@@ -982,6 +982,20 @@ Payload dynamic lokal memverifikasi stderr serta exit 17. Build static lokal
 tidak tersedia karena `glibc-static` tidak terpasang; pinned gcc/libc dan
 smoke container harus dibuktikan di Ubuntu CI. Shell syntax/diff check lulus.
 
+[Run `36816688598`](https://github.com/Skirja/ttc-ai/actions/runs/36816688598)
+pada `45ef30813d12cfa0c3fe3a9dc0d922dec14908b0` hijau untuk seluruh delapan
+job. Full pinned M7/M8 smoke lulus, termasuk security warning Podman dan
+status direct/TTC 17. Artifact diunduh ke
+`target/m7-m8-ci-evidence/run-36816688598/`; M7 report SHA-256
+`30fd164b637915e2423036c3034fe169d6ad9b00444a00e57631a94c8fe3eade`,
+M8 report SHA-256
+`d26f579423ddbe29f76aa2466ac026a4f33594d671922f1bb5cf4cd9951f8c74`.
+Seluruh entry checksum M7 dan semua capture/report M8 terverifikasi, tetapi
+checksum debug `smoke.log` M8 tidak cocok karena trace masih ditulis ketika
+script menghitung checksum. Workflow kini menghitung ulang dan memverifikasi
+seluruh checksum setelah proses smoke selesai, sebelum upload. Gate evidence
+M8 dan implementasi M9 tetap menunggu artifact finalized yang valid.
+
 **Outcome:** standalone TTC binary selesai 100%, dapat dipasang sebagai release
 candidate, dan dibuktikan oleh artifact CI sebelum pekerjaan Codex dimulai.
 
