@@ -443,6 +443,14 @@ jobs:
             exit 1
           fi
 
+      - name: Verify finalized M8 evidence checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd target/m8-evidence
+          find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+          sha256sum --check --status SHA256SUMS
+
       - name: Upload passing M8 evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
