@@ -923,6 +923,29 @@ sebelum build, dan parsing versi Rake lulus lokal. Build PHP lokal tidak
 dijalankan karena development headers belum tersedia; build dan smoke penuh
 menunggu Ubuntu CI. Checkbox acceptance M7/M8 tetap belum diubah.
 
+Commit `da31455c9a8b17841e6cd5190be6418ee37a7be4`,
+[run `36811966145`](https://github.com/Skirja/ttc-ai/actions/runs/36811966145),
+membuktikan baseline Rust serta seluruh job M2–M7 hijau, termasuk source
+build PHP dan full pinned smoke M7. Artifact `m7-php-jvm-dotnet-evidence`
+diunduh ke `target/m7-m8-ci-evidence/run-36811966145/m7/`; seluruh entry
+`SHA256SUMS` terverifikasi. SHA-256 `report.txt`:
+`89024d26b53d2425dcbacef9c59f538a83741a89803d3a577435b184653a7fbb`;
+SHA-256 `SHA256SUMS`:
+`d8dda2173644149c1a18471400086029db5a935a830b0d0e6eec8a600cfe24fc`.
+
+M8 masih gagal karena Make mencetak recipe `ctest --output-on-failure`, yang
+memicu default retain. Fixture clean Make kini memakai recipe senyap;
+regresi baru memastikan command echo berisi `failure` beserta passing output
+sesudahnya tetap raw. Targeted build fixture dan smoke assertions lulus.
+Format/Clippy lulus; dua percobaan full test lokal menemui `Text file busy`
+saat spawn executable fixture (raw command matrix dan M5 E2E). Seluruh suite
+lulus dengan `RUST_TEST_THREADS=1`, lalu release build lulus; konfigurasi
+test parallel CI tetap dipertahankan dan telah lulus pada run di atas.
+Log lokal: `target/m7-m8-ci-evidence/local-gates-serial.log`; kegagalan lokal
+disimpan pada `local-gates-transient-failure.log` dan
+`local-gates-parallel-failure.log`. Full PR CI tetap belum hijau sampai smoke
+M8 berikutnya lulus; checkbox M7/M8 yang mensyaratkan PR CI tetap pending.
+
 **Outcome:** standalone TTC binary selesai 100%, dapat dipasang sebagai release
 candidate, dan dibuktikan oleh artifact CI sebelum pekerjaan Codex dimulai.
 
