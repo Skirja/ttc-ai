@@ -42,6 +42,14 @@
   diperbaiki ke `21.0.12+101.0.LTS`; runtime tetap `21.0.12.1+1`.
 - Action Swift dipin ke SHA v2.4.0 untuk tetap memakai Swift `6.1.2`.
 - Perbaikan setup dan smoke penuh harus diverifikasi melalui PR CI.
+- PR #8 pada commit `1cefc50`, run `36811453352`, membuktikan baseline Rust,
+  M2, M3, M4, dan M6 hijau serta setup Java/Swift berhasil. Smoke M7 masih
+  gagal karena setup-php memasang PHP `8.4.26`, dan smoke M8 gagal pada
+  parsing versi Rake. Perbaikan berikutnya menambahkan build PHP `8.4.25`
+  dari archive resmi terverifikasi dan parsing Rake field ketiga.
+- Source build PHP belum diuji lokal karena development headers tidak
+  tersedia. Shell syntax, YAML parse, penolakan checksum rusak sebelum build,
+  dan parsing Rake lulus lokal; full smoke menunggu Ubuntu CI.
 
 ## Batasan yang diketahui
 

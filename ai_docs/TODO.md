@@ -910,6 +910,19 @@ log ada di `target/m7-m8-ci-evidence/local-gates.log`.
 Setup serta smoke CI masih harus dibuktikan. Implementasi M9 belum dimulai;
 seluruh checkbox M9 tetap menunggu dependency M1–M8 lengkap.
 
+PR prasyarat [#8](https://github.com/Skirja/ttc-ai/pull/8), commit `1cefc50`,
+[run `36811453352`](https://github.com/Skirja/ttc-ai/actions/runs/36811453352)
+membuktikan baseline Rust, M2, M3, M4, dan M6 hijau; setup Java/Swift juga
+berhasil. Smoke M7 menemukan bahwa setup-php memasang `8.4.26`, sedangkan
+smoke membutuhkan tepat `8.4.25`. Smoke M8 menemukan parsing `rake, version
+13.2.1` yang mengambil kata `version` sebagai angka versi.
+Perbaikan berikutnya membangun PHP `8.4.25` dari archive resmi dengan checksum
+tercatat pada `scripts/m7-tool-checksums.txt`, serta membaca field ketiga pada
+output versi Rake. Shell syntax, YAML parse, checksum-mismatch rejection
+sebelum build, dan parsing versi Rake lulus lokal. Build PHP lokal tidak
+dijalankan karena development headers belum tersedia; build dan smoke penuh
+menunggu Ubuntu CI. Checkbox acceptance M7/M8 tetap belum diubah.
+
 **Outcome:** standalone TTC binary selesai 100%, dapat dipasang sebagai release
 candidate, dan dibuktikan oleh artifact CI sebelum pekerjaan Codex dimulai.
 
