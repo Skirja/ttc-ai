@@ -971,6 +971,17 @@ Clippy, full Rust suite serial, release build, dan shell syntax lulus lokal.
 Log: `target/m7-m8-ci-evidence/local-gates-capture-fix.log`. Penyebab awal
 silent failure M8 masih harus diperiksa setelah instrumentation diperbaiki.
 
+Run `36815024069` pada `21c96bf` membuktikan seluruh job selain M8 hijau,
+serta Terraform success/failure byte-exact. M8 berhenti karena assertion
+meminta warning `security.capability` dari clean Podman baseline, padahal
+Ubuntu tidak menghasilkannya. Smoke kini memisahkan build Podman bersih dan
+kasus RUN yang menghasilkan security warning serta exit nonzero secara
+deterministik, memakai payload C static dan `--isolation=chroot` pada kedua
+invocation. Warning wajib ada pada direct/TTC dan status wajib sama.
+Payload dynamic lokal memverifikasi stderr serta exit 17. Build static lokal
+tidak tersedia karena `glibc-static` tidak terpasang; pinned gcc/libc dan
+smoke container harus dibuktikan di Ubuntu CI. Shell syntax/diff check lulus.
+
 **Outcome:** standalone TTC binary selesai 100%, dapat dipasang sebagai release
 candidate, dan dibuktikan oleh artifact CI sebelum pekerjaan Codex dimulai.
 
