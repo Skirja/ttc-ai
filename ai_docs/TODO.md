@@ -946,6 +946,13 @@ disimpan pada `local-gates-transient-failure.log` dan
 `local-gates-parallel-failure.log`. Full PR CI tetap belum hijau sampai smoke
 M8 berikutnya lulus; checkbox M7/M8 yang mensyaratkan PR CI tetap pending.
 
+Run PR `36812824994` pada commit `b4433f6` membuktikan smoke Make bersih
+berhasil. Smoke berikutnya berhenti pada baseline RuboCop large yang berisi
+file kosong dan mendapat status 1. Fixture large kini berisi source Ruby
+minimal dengan frozen-string header; kegagalan status smoke mencetak tail
+stdout/stderr direct dan TTC untuk diagnosis. Shell syntax dan diff check
+lulus; lint source serta smoke lanjutan menunggu versi RuboCop terpin di CI.
+
 **Outcome:** standalone TTC binary selesai 100%, dapat dipasang sebagai release
 candidate, dan dibuktikan oleh artifact CI sebelum pekerjaan Codex dimulai.
 

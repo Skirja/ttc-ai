@@ -75,6 +75,18 @@ compare_in() {
     > "$scratch/$label-ttc.out" 2> "$scratch/$label-ttc.err"
   ttc_status=$?
   set -e
+  for stream in out err; do
+    cp "$scratch/$label-direct.$stream" "$evidence/logs/$label-direct.$stream"
+    cp "$scratch/$label-ttc.$stream" "$evidence/logs/$label-ttc.$stream"
+  done
+  if [ "$direct_status" -ne "$expected" ] || [ "$ttc_status" -ne "$direct_status" ]; then
+    for side in direct ttc; do
+      for stream in out err; do
+        printf '%s %s %s (last 4000 bytes):\n' "$label" "$side" "$stream" >&2
+        tail -c 4000 "$scratch/$label-$side.$stream" >&2
+      done
+    done
+  fi
   test "$direct_status" -eq "$expected" || {
     printf '%s baseline status %s expected %s\n' "$label" "$direct_status" "$expected" >&2
     return 1
@@ -83,10 +95,6 @@ compare_in() {
     printf '%s TTC status %s differed from baseline %s\n' "$label" "$ttc_status" "$direct_status" >&2
     return 1
   }
-  for stream in out err; do
-    cp "$scratch/$label-direct.$stream" "$evidence/logs/$label-direct.$stream"
-    cp "$scratch/$label-ttc.$stream" "$evidence/logs/$label-ttc.$stream"
-  done
   printf '%s exit=%s bytes=%s/%s\n' "$label" "$ttc_status" \
     "$(($(wc -c < "$scratch/$label-direct.out") + $(wc -c < "$scratch/$label-direct.err")))" \
     "$(($(wc -c < "$scratch/$label-ttc.out") + $(wc -c < "$scratch/$label-ttc.err")))" >> "$evidence/smoke-report.txt"
@@ -163,7 +171,7 @@ printf "RSpec.describe 'TTC M8 smoke' do\n" > "$large_ruby_project/spec/large_sp
 index=0
 while [ "$index" -lt 1001 ]; do
   printf "  it('passes') { expect(2 + 2).to eq(4) }\n" >> "$large_ruby_project/spec/large_spec.rb"
-  : > "$scratch/rubocop-large/fixture-$index.rb"
+  printf "# frozen_string_literal: true\n\nputs 'TTC M8 smoke'\n" > "$scratch/rubocop-large/fixture-$index.rb"
   index=$((index + 1))
 done
 printf "end\n" >> "$large_ruby_project/spec/large_spec.rb"
