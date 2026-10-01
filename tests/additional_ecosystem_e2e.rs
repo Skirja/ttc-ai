@@ -258,13 +258,16 @@ fn filtered_ecosystem_command_preserves_signal_and_executes_once() {
         std::env::var("PATH").unwrap()
     );
     let direct = Command::new("phpunit")
+        .arg("--colors=never")
         .current_dir(dir.path())
         .env("PATH", &path)
         .env("COUNT_FILE", dir.path().join("direct.count"))
         .output()
         .unwrap();
     let wrapped = ttc_command()
-        .arg("phpunit")
+        // Two arguments select direct argv execution; a lone argument uses
+        // the native shell, whose child-signal exit status is shell-specific.
+        .args(["phpunit", "--colors=never"])
         .current_dir(dir.path())
         .env("PATH", &path)
         .env("COUNT_FILE", dir.path().join("wrapped.count"))

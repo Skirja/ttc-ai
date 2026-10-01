@@ -284,7 +284,8 @@ jobs:
         uses: actions/setup-java@f2beeb24e141e01a676f977032f5a29d81c9e27e # v5.1.0
         with:
           distribution: temurin
-          java-version: 21.0.12.1+1
+          # Adoptium SemVer for the pinned runtime 21.0.12.1+1.
+          java-version: 21.0.12+1.0.1
 
       - name: Install pinned .NET 10 LTS
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
@@ -361,7 +362,7 @@ jobs:
           bundler: 2.6.9
 
       - name: Install pinned Swift
-        uses: swift-actions/setup-swift@682457186b71c25a884c45c06f859febbe259240 # v2.3.0
+        uses: swift-actions/setup-swift@7ca6abe6b3b0e8b5421b88be48feee39cbf52c6a # v2.4.0
         with:
           swift-version: 6.1.2
 
