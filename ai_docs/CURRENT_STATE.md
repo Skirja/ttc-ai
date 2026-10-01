@@ -1,28 +1,26 @@
 # Current State
 
-**Diperbarui:** 2026-09-29 WIB
+**Diperbarui:** 2026-10-01 WIB
 
 ## Sedang dikerjakan
 
-- M7 — partial. Implementasi lengkap dan local verification lulus pada commit
-  `a8eba611fe9488c3097cc264102ce8c09d70384c`; branch
-  `feat/m7-php-jvm-dotnet`, PR #6 terbuka ke `master`.
-- Required GitHub CI belum berjalan: run `36550214966` pada commit awal, `36550562994` pada docs head `5eeef81`,
-  serta `36551949796` pada commit kode `a8eba61` gagal sebelum runner dialokasikan
-  karena notifikasi billing/spending limit akun. Tidak ada job step atau
-  artifact; jangan menandai M7 selesai sampai workflow berhasil.
+- Prasyarat M9 — partial. Branch `feat/m7-m8-ci-prerequisites` memperbaiki
+  setup Java/Swift CI dan test direct-argv signal M7.
+- Implementasi M9 belum dimulai; rencana pengguna mensyaratkan bukti M1–M8
+  lengkap terlebih dahulu.
 
 ## Terakhir selesai
 
-- M6 sudah merged ke `master` melalui PR #5 pada 2026-09-28.
-- Implementasi M7 mencakup PHP/Composer, Maven/Gradle/JUnit, .NET, bounded
-  static manifest hints, fixtures, pinned isolated smoke project, dan job CI.
-- Format, Clippy, seluruh Rust test target/fitur, release build, serta pinned
-  smoke nyata M7 lulus lokal. Smoke report SHA-256:
-  `76a150affbc59c04a4355d9638d46878bb7611b225c20e439e570488a097c335`.
-- Kode tersentuh: `src/core/classification.rs`, `src/core/filters/`,
-  `src/core/manifests.rs`, `tests/`, `scripts/m7-*`, `.github/workflows/ci.yml`,
-  dan `ai_docs/SPEC.md`.
+- M7 dan M8 telah merged ke `master` melalui PR #6/#7. Head master
+  `f55d434d1d9157a62dfd810b402cac1861d29adf`.
+- Rerun master CI `36699671621`, attempt 2, memperoleh runner pada 2026-10-01.
+  Billing tidak lagi menolak run ini. Job M7/M8 gagal pada setup tool, dan
+  baseline Rust gagal pada test signal M7 yang memakai single-string shell.
+- Perbaikan lokal lulus format, Clippy, seluruh-target/fitur Rust test,
+  release build, targeted M7 E2E/signal/shell, dan parse YAML workflow.
+  Log baseline: `target/m7-m8-ci-evidence/local-gates.log`.
+- Kode tersentuh: `.github/workflows/ci.yml`, `scripts/m7-tool-versions.txt`,
+  dan `tests/additional_ecosystem_e2e.rs`.
 
 ## Keputusan yang dikunci
 
@@ -33,28 +31,30 @@
   atau overflow membuat invocation raw.
 - Runner asli mengatur selection, dependency order, concurrency, cache, cwd,
   stdin, dan environment.
-- Jangan mulai Codex integration M10 sebelum M1–M9 dan evidence CI M9 lengkap.
-- Branch aktif `feat/m7-php-jvm-dotnet`, target PR `master`; pengguna yang
-  melakukan merge.
+- Jangan mulai M9 sebelum evidence wajib M1–M8 lengkap; jangan mulai Codex
+  integration M10 sebelum M1–M9 dan evidence CI M9 lengkap.
+- Pengguna melakukan merge PR ke `master`; agent tidak melakukan merge,
+  membuat tag, atau memublikasikan release pada tugas M9.
 
 ## Temuan / blocker terbuka
 
-- Runner GitHub Actions tidak dialokasikan karena masalah billing/spending
-  limit akun; tidak ada temuan code failure dari run tersebut.
-- Artifact `m7-php-jvm-dotnet-evidence` belum tersedia. Local smoke/report ada
-  di `target/m7-evidence/` dan tidak di-commit.
+- M7/M8 acceptance CI dan artifact masih belum lengkap. Pin Java action
+  diperbaiki ke `21.0.12+1.0.1`; runtime tetap `21.0.12.1+1`.
+- Action Swift dipin ke SHA v2.4.0 untuk tetap memakai Swift `6.1.2`.
+- Perbaikan setup dan smoke penuh harus diverifikasi melalui PR CI.
 
 ## Batasan yang diketahui
 
-- PR #6 masih terbuka; commit implementasi `71462d4`, perbaikan `a8eba61`, dan dokumentasi `5eeef81`
-  sudah dipush. Head: `a8eba611fe9488c3097cc264102ce8c09d70384c`.
-- M7 belum lengkap sampai required CI hijau dan artifact CI diperiksa.
-- Local M7 smoke report/log berada pada direktori ignored `target/`.
+- State lama yang menyebut PR #6 terbuka dan tidak ada runner sudah tidak
+  sesuai repo/run saat ini; PR #6/#7 telah merged dan rerun memperoleh runner.
+- Evidence lokal M7/M8 tetap berada pada direktori ignored `target/`;
+  keberhasilan lokal belum melengkapi gate CI.
+- Instalasi, uninstall global, dan distribusi M9 belum diimplementasikan.
 
 ## Next action
 
-- Setelah masalah billing GitHub dipulihkan, rerun workflow PR #6; periksa semua
-  job dan artifact, lalu perbarui TODO/state dengan run serta checksum aktual.
+- Jalankan dan periksa PR CI perbaikan prasyarat sampai evidence lengkap;
+  setelah pengguna merge, verifikasi master sebelum mulai M9.
 
 ## Arsip terakhir
 

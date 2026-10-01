@@ -891,6 +891,25 @@ dicentang. Perbaiki billing GitHub lalu rerun CI untuk commit perbaikan ini.
 
 ## M9 — Production binary dan distribution gate
 
+Catatan prasyarat 2026-10-01: M7/M8 telah merged melalui PR #6/#7, tetapi
+evidence wajib belum lengkap. Rerun master
+[run `36699671621`, attempt 2](https://github.com/Skirja/ttc-ai/actions/runs/36699671621/attempts/2)
+pada commit `f55d434d1d9157a62dfd810b402cac1861d29adf` memperoleh runner;
+billing tidak lagi menolak run ini. Job M7 menolak input Java
+`21.0.12.1+1` karena bukan SemVer action, dan job M8 memakai action Swift
+yang belum mengenali pin `6.1.2`. Baseline Rust juga menemukan test signal M7
+yang membandingkan direct executable dengan TTC single-string shell;
+status shell dapat berbeda dari status executable pada Ubuntu.
+
+Slice prasyarat `feat/m7-m8-ci-prerequisites` memakai Adoptium SemVer
+`21.0.12+1.0.1`, mempertahankan pin runtime `21.0.12.1+1`, menaikkan action
+Swift ke SHA v2.4.0 yang mengenali `6.1.2`, serta membuat test signal M7
+memakai direct argv eksplisit. Format, Clippy, seluruh-target/fitur Rust test,
+release build, targeted signal/shell/M7 E2E, dan YAML parse lulus lokal;
+log ada di `target/m7-m8-ci-evidence/local-gates.log`.
+Setup serta smoke CI masih harus dibuktikan. Implementasi M9 belum dimulai;
+seluruh checkbox M9 tetap menunggu dependency M1–M8 lengkap.
+
 **Outcome:** standalone TTC binary selesai 100%, dapat dipasang sebagai release
 candidate, dan dibuktikan oleh artifact CI sebelum pekerjaan Codex dimulai.
 
