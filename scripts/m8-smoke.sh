@@ -171,7 +171,7 @@ printf "RSpec.describe 'TTC M8 smoke' do\n" > "$large_ruby_project/spec/large_sp
 index=0
 while [ "$index" -lt 1001 ]; do
   printf "  it('passes') { expect(2 + 2).to eq(4) }\n" >> "$large_ruby_project/spec/large_spec.rb"
-  printf "# frozen_string_literal: true\n\nputs 'TTC M8 smoke'\n" > "$scratch/rubocop-large/fixture-$index.rb"
+  printf "# frozen_string_literal: true\n\nputs 'TTC M8 smoke'\n" > "$scratch/rubocop-large/fixture_$index.rb"
   index=$((index + 1))
 done
 printf "end\n" >> "$large_ruby_project/spec/large_spec.rb"
