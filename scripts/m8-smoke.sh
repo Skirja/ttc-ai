@@ -219,12 +219,12 @@ docker pull "$podman_image" > "$scratch/podman-pull.log"
 mkdir -p "$scratch/podman"
 cp "$repository_root/scripts/m8-smoke/container/Dockerfile" "$scratch/podman/Dockerfile"
 cp "$repository_root/scripts/m8-smoke/container/payload" "$scratch/podman/payload"
-docker run --rm --privileged \
+if docker run --rm --privileged \
   --tmpfs /var/lib/containers:size=512m \
   --tmpfs /home/podman/.local/share/containers:size=512m \
   --mount "type=bind,src=$binary,dst=/ttc,readonly" \
   --mount "type=bind,src=$scratch/podman,dst=/work" \
-  --workdir /work "$podman_image" sh -ec '
+  --workdir /work "$podman_image" sh -exc '
     podman --version | grep -Fx "podman version 5.4.2" >/dev/null
     podman build --no-cache -t ttc-m8-podman . > /tmp/podman-direct.log 2>&1
     /ttc podman build --no-cache -t ttc-m8-podman . > /tmp/podman-ttc.log 2>&1
@@ -232,8 +232,13 @@ docker run --rm --privileged \
     grep -F "Successfully tagged localhost/ttc-m8-podman:latest" /tmp/podman-ttc.log >/dev/null
     grep -F "security.capability" /tmp/podman-direct.log >/dev/null
     grep -F "security.capability" /tmp/podman-ttc.log >/dev/null
-  ' > "$scratch/podman.log" 2>&1
+  ' > "$scratch/podman.log" 2>&1; then
+  :
+else
+  tail -c 8000 "$scratch/podman.log" >&2
+  exit 1
+fi
 cp "$scratch/podman.log" "$evidence/logs/podman.log"
-printf 'podman exit=0 version=5.4.2 output=byte-exact\n' >> "$evidence/smoke-report.txt"
+printf 'podman exit=0 version=5.4.2 diagnostic-retention=verified\n' >> "$evidence/smoke-report.txt"
 
 (cd "$evidence" && find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS)

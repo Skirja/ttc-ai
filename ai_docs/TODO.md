@@ -953,6 +953,14 @@ minimal dengan frozen-string header; kegagalan status smoke mencetak tail
 stdout/stderr direct dan TTC untuk diagnosis. Shell syntax dan diff check
 lulus; lint source serta smoke lanjutan menunggu versi RuboCop terpin di CI.
 
+Run `36813411956` pada `8702228` mencapai smoke M8 lanjutan tetapi berhenti
+tanpa diagnostic status. Workflow kini menyimpan shell trace dalam log dan
+mencetak tail terbatas saat gagal; subprocess Podman juga mencetak tail
+log-nya saat gagal. Report Podman menyebut diagnostic retention yang benar-
+benar diasert, menggantikan klaim byte-exact yang belum dibandingkan di smoke
+tersebut. Byte-exact unknown output tetap diuji oleh raw command matrix.
+YAML parse, shell syntax, dan diff check lulus; seluruh gate tetap wajib lulus.
+
 **Outcome:** standalone TTC binary selesai 100%, dapat dipasang sebagai release
 candidate, dan dibuktikan oleh artifact CI sebelum pekerjaan Codex dimulai.
 
