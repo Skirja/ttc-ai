@@ -988,10 +988,13 @@ Rilis pertama:
 - checksum `SHA256SUMS`;
 - `install.sh` sebagai jalur install utama.
 
-Tag `vX.Y.Z` hanya boleh dibuat setelah seluruh acceptance binary dan Codex
-lulus. Tag menjalankan ulang CI, memverifikasi versi tag sama dengan versi
-package, membangun dan smoke-test release binary, membuat checksum, lalu
-memublikasikan GitHub Release otomatis.
+Tag stable `vX.Y.Z` hanya boleh dibuat dengan otorisasi pengguna setelah seluruh
+acceptance binary dan Codex lulus, pada commit yang terdapat dalam `master`.
+Tag menjalankan ulang seluruh gate dari checkout bersih, memverifikasi versi
+tag sama dengan versi package, membangun dan smoke-test release binary, serta
+membuat checksum. Workflow M9 hanya menghasilkan artifact kandidat; job
+publikasi GitHub Release ditambahkan pada M10 setelah gate rilisnya terpenuhi.
+Push biasa ke `master` tidak memublikasikan release.
 
 Installer utama:
 
@@ -1017,10 +1020,38 @@ Installer utama:
   managed block idempotent ke `~/.bashrc`;
 - mencetak instruksi `source` atau membuka shell baru karena installer tidak
   dapat mengubah environment parent shell;
-- mencetak `~/.local/bin/ttc install codex` sebagai next action yang langsung
-  dapat dipakai sebelum PATH direload;
+- pada M9, mencetak absolute path binary untuk command standalone sebelum
+  PATH direload; setelah command integrasi tersedia pada M10, mencetak
+  `~/.local/bin/ttc install codex` sebagai next action;
 - jika update shell config gagal, binary tetap terpasang dan installer mencetak
   instruksi PATH manual.
+
+Installer mengunci versi dari redirect `releases/latest` ke satu tag stable
+SemVer, lalu mengambil executable dan checksum dari tag yang sama. Versi
+executable terverifikasi harus cocok dengan tag. Override endpoint hanya
+tersedia pada flow test dengan opt-in eksplisit dan endpoint HTTP loopback;
+interface production tidak menyediakan version selector.
+
+Finalizer tersembunyi `ttc __install --sha256 HASH` melakukan operasi lokal
+tanpa jaringan dan tidak muncul pada help publik. Metadata schema versi 1
+mencatat owner `ttc`, version, SHA-256, installed path, ownership blok Bash,
+serta daftar `active_harnesses`. Operasi install/uninstall memakai lock file
+`XDG_DATA_HOME/ttc/install.lock`; file koordinasi ini dipertahankan setelah
+uninstall agar proses concurrent tidak memakai lock inode yang berbeda.
+Path administrasi instalasi harus absolute dan UTF-8; `XDG_DATA_HOME` kosong
+memakai default. Direktori HOME/data/bin harus milik user dan tidak writable
+oleh user lain. Kontrak argv/output core tetap mendukung byte non-UTF-8.
+
+File yang diganti harus regular, dimiliki user yang menjalankan TTC, dan
+bukan symlink. Metadata unknown/invalid, checksum binary existing berbeda,
+atau transaksi terputus menyebabkan penolakan sebelum replacement berikutnya.
+Marker `install.pending` dipertahankan bila interruption menyisakan state
+ambigu; tidak ada recovery otomatis yang menimpa file. Kegagalan commit
+metadata saat replacement mengembalikan binary sebelumnya. Config Bash
+read-only, symlink, invalid UTF-8, atau terlalu besar untuk edit bounded tetap
+dipertahankan dan menghasilkan instruksi PATH manual. Uninstall hanya
+menghapus blok yang masih cocok byte-exact dengan ownership metadata, serta
+mempertahankan config, raw capture, backup, dan penggunaan PATH lain.
 
 Pengguna manual dapat mengunduh executable dan checksum yang sama, menjalankan
 verifikasi, memberi permission dengan `chmod +x`, lalu memindahkan binary ke

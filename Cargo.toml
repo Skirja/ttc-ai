@@ -16,6 +16,7 @@ serde = "=1.0.229"
 globset = "=0.4.20"
 yaml-rust2 = "=0.13.0"
 quick-xml = "=0.42.0"
+sha2 = "=0.10.9"
 
 [dev-dependencies]
 nix = { version = "=0.31.3", default-features = false, features = ["signal", "term"] }

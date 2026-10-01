@@ -4,80 +4,68 @@
 
 ## Sedang dikerjakan
 
-- Prasyarat M9 — partial. Branch `feat/m7-m8-ci-prerequisites` memperbaiki
-  setup Java/Swift CI dan test direct-argv signal M7.
-- Implementasi M9 belum dimulai; rencana pengguna mensyaratkan bukti M1–M8
-  lengkap terlebih dahulu.
+M9 — production binary dan distribution gate pada
+`feat/m9-production-distribution`, dibuat dari `master` dengan perbaikan
+prasyarat CI yang sudah teruji. Installer/latest finalizer, metadata ownership,
+transaksi atomik dengan lock/rollback/pending marker, PATH backup/fallback,
+global uninstall, audit SPEC dan workflow kandidat GNU telah diimplementasikan.
+Seluruh gate lokal M9 lulus; PR CI sedang diselesaikan. M9 belum ditandai lengkap.
 
-## Terakhir selesai
+## Prasyarat yang sudah terbukti
 
-- M7 dan M8 telah merged ke `master` melalui PR #6/#7. Head master
-  `f55d434d1d9157a62dfd810b402cac1861d29adf`.
-- Rerun master CI `36699671621`, attempt 2, memperoleh runner pada 2026-10-01.
-  Billing tidak lagi menolak run ini. Job M7/M8 gagal pada setup tool, dan
-  baseline Rust gagal pada test signal M7 yang memakai single-string shell.
-- Perbaikan lokal lulus format, Clippy, seluruh-target/fitur Rust test,
-  release build, targeted M7 E2E/signal/shell, dan parse YAML workflow.
-  Log baseline: `target/m7-m8-ci-evidence/local-gates.log`.
-- Kode tersentuh: `.github/workflows/ci.yml`, `scripts/m7-tool-versions.txt`,
-  dan `tests/additional_ecosystem_e2e.rs`.
+M7/M8 telah merged melalui PR #6/#7; master `f55d434`. Perbaikan prasyarat dalam
+[PR #8](https://github.com/Skirja/ttc-ai/pull/8) lulus seluruh delapan job pada
+[run 36817828230](https://github.com/Skirja/ttc-ai/actions/runs/36817828230),
+head `b52fef6a7cdce4b88ed60e7b1f3f7cd5e68683b8`. Billing sudah memungkinkan
+runner. Full pinned smoke M7/M8 lulus; artifact diunduh dan seluruh checksum
+M7 (4 entry) serta M8 (91 entry) diperiksa. Checksum dan reduction detail ada
+pada TODO M9. PR #8 masih menunggu merge pengguna.
+
+## Verifikasi lokal M9
+
+- 11 unit test distribusi lulus, termasuk actual SIGKILL setelah replacement,
+  penolakan marker berikutnya, kegagalan rename/commit metadata, rollback,
+  foreign binary/config dan integrasi aktif.
+- Smoke production ELF di luar repository lulus untuk argv/shell byte-exact
+  stdout/stderr, env/cwd/stdin, exit13/7, SIGINT/SIGTERM, invocation count1,
+  TTY, raw replay, diagnostic dan representative reduction >=80%.
+- Installer E2E memakai HTTP loopback opt-in dan temporary HOME/XDG. Gate
+  terakhir mencakup concurrency installer/uninstaller serta default XDG; 17 E2E lulus.
+- Format/Clippy/full Rust test paralel/release GNU --locked lulus. Log lengkap
+  `target/m9-evidence/local-gates-final.log`; checksum/reduction pada TODO.
+- Gate tag menguji stable SemVer, mismatch dan containment master dalam repo
+  temporary. Audit coverage mengunci digest SPEC, semua section/clauses,
+  source/test references dan CI jobs; tidak mengklaim bukti semantik dari
+  keberadaan mapping saja.
 
 ## Keputusan yang dikunci
 
-- TTC tetap satu Rust binary crate; command asli dijalankan tepat satu kali.
-- Output default dipertahankan. Output ambigu, machine-readable tanpa parser
-  lossless, custom app, dan record multi-package tanpa prefix terdaftar raw.
-- Discovery manifest statis dan bounded; kegagalan parse, cycle, ambiguity,
-  atau overflow membuat invocation raw.
-- Runner asli mengatur selection, dependency order, concurrency, cache, cwd,
-  stdin, dan environment.
-- Jangan mulai M9 sebelum evidence wajib M1–M8 lengkap; jangan mulai Codex
-  integration M10 sebelum M1–M9 dan evidence CI M9 lengkap.
-- Pengguna melakukan merge PR ke `master`; agent tidak melakukan merge,
-  membuat tag, atau memublikasikan release pada tugas M9.
-
-## Temuan / blocker terbuka
-
-- M7/M8 acceptance CI dan artifact masih belum lengkap. Pin Java action
-  diperbaiki ke `21.0.12+101.0.LTS`; runtime tetap `21.0.12.1+1`.
-- Action Swift dipin ke SHA v2.4.0 untuk tetap memakai Swift `6.1.2`.
-- Perbaikan setup dan smoke penuh harus diverifikasi melalui PR CI.
-- PR #8 pada commit `1cefc50`, run `36811453352`, membuktikan baseline Rust,
-  M2, M3, M4, dan M6 hijau serta setup Java/Swift berhasil. Smoke M7 masih
-  gagal karena setup-php memasang PHP `8.4.26`, dan smoke M8 gagal pada
-  parsing versi Rake. Perbaikan berikutnya menambahkan build PHP `8.4.25`
-  dari archive resmi terverifikasi dan parsing Rake field ketiga.
-- Source build PHP belum diuji lokal karena development headers tidak
-  tersedia. Shell syntax, YAML parse, penolakan checksum rusak sebelum build,
-  dan parsing Rake lulus lokal; full smoke menunggu Ubuntu CI.
-- Run `36811966145` pada commit `da31455` membuktikan seluruh job M2–M7 dan
-  baseline Rust hijau. Full pinned smoke M7 serta source build PHP lulus;
-  artifact M7 diunduh dan seluruh entry checksum terverifikasi.
-  Report SHA-256: `89024d26b53d2425dcbacef9c59f538a83741a89803d3a577435b184653a7fbb`.
-- M8 masih gagal pada clean Make fixture karena echo command mengandung
-  `--output-on-failure`. Recipe fixture dibuat senyap; regresi memastikan
-  output echo itu tetap raw. Perbaikan ini masih menunggu PR CI berikutnya.
-- Run `36812824994` pada `b4433f6` telah melewati smoke Make; sekarang M8
-  berhenti pada RuboCop large dengan file kosong (baseline status 1).
-  Fixture diganti source Ruby minimal dan smoke mencetak tail stdout/stderr
-  pada status gagal. Shell syntax/diff check lulus; smoke masih menunggu CI.
-- Dua full test lokal menemui `Text file busy` pada executable fixture.
-  Full suite serial (`RUST_TEST_THREADS=1`) dan release build lulus.
-  Parallel baseline CI pada commit `da31455` lulus tanpa penyesuaian atau skip.
+- Satu Rust binary crate; child asli sekali, output default retain.
+- Static manifest bounded; cycle/overflow/ambiguous/unknown/structured output
+  raw. Runner asli menentukan selection, dependency order, cache, concurrency,
+  cwd/stdin/environment.
+- Distribusi terpisah dari core; `sha2 = =0.10.9` untuk checksum ownership
+  native tanpa menjalankan binary existing. Finalizer tidak mengakses jaringan.
+- Installer production latest-only; binary manual tidak diadopsi. Lock file
+  tetap ada setelah uninstall. State transaksi ambigu menolak mutasi berikutnya.
+- Pengguna merge PR; agent tidak merge, membuat tag atau publish pada M9.
+- M10 menunggu clean successful master run M9 dan downloaded GNU artifact.
+  Belum ada implementasi/instruksi integrasi Codex yang tersedia pada help M9.
 
 ## Batasan yang diketahui
 
-- State lama yang menyebut PR #6 terbuka dan tidak ada runner sudah tidak
-  sesuai repo/run saat ini; PR #6/#7 telah merged dan rerun memperoleh runner.
-- Evidence lokal M7/M8 tetap berada pada direktori ignored `target/`;
-  keberhasilan lokal belum melengkapi gate CI.
-- Instalasi, uninstall global, dan distribusi M9 belum diimplementasikan.
+Parallel fixture test lokal pernah menemui `Text file busy`; log tersimpan
+pada `target/m7-m8-ci-evidence/`. Suite serial lokal dan standard parallel Ubuntu
+CI lulus pada prasyarat. Full real-tool smoke M7/M8 dibuktikan CI, bukan host
+lokal yang tidak menyediakan seluruh build prerequisite.
 
 ## Next action
 
-- Jalankan dan periksa PR CI perbaikan prasyarat sampai evidence lengkap;
-  setelah pengguna merge, verifikasi master sebelum mulai M9.
+Selesaikan seluruh verifikasi M9, commit, push branch, buka PR ke master dan
+periksa seluruh required jobs serta downloaded candidate checksum. Setelah
+pengguna merge, periksa clean successful master artifact; baru lengkapi M9 dan
+mulai M10 pada tugas berikutnya.
 
 ## Arsip terakhir
 
-- `ai_docs/steps_done/07-m7-php-jvm-dotnet-local-implementation.md`
+`ai_docs/steps_done/07-m7-php-jvm-dotnet-local-implementation.md`

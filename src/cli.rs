@@ -9,14 +9,15 @@ use crate::core::raw_store::{self, Selection};
 const HELP: &str = "\
 TTC Automatic Bash Output Filter
 
-Usage: ttc [OPTIONS]
+Penggunaan: ttc [OPTIONS]
        ttc <program> [args...]
        ttc '<complete shell command>'
        ttc raw <id> [--stdout | --stderr] [--tail N]
+       ttc uninstall
 
-Options:
-  -h, --help     Print help
-  -V, --version  Print version
+Opsi:
+  -h, --help     Tampilkan bantuan
+  -V, --version  Tampilkan versi
 ";
 
 /// Runs the top-level CLI parser.
@@ -35,6 +36,23 @@ pub(crate) fn run(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
             ExitCode::SUCCESS
         }
         [argument, ..] if argument == OsStr::new("raw") => run_raw(&command[1..]),
+        [argument] if argument == OsStr::new("uninstall") => crate::distribution::uninstall(),
+        [argument, ..] if argument == OsStr::new("uninstall") => {
+            eprintln!("ttc: usage: ttc uninstall");
+            ExitCode::from(2)
+        }
+        [argument, option, hash]
+            if argument == OsStr::new("__install") && option == OsStr::new("--sha256") =>
+        {
+            match hash.to_str() {
+                Some(hash) => crate::distribution::install(hash),
+                None => ExitCode::from(2),
+            }
+        }
+        [argument, ..] if argument == OsStr::new("__install") => {
+            eprintln!("ttc: argumen finalizer instalasi internal tidak valid");
+            ExitCode::from(2)
+        }
         _ => execution::run(&command),
     }
 }
