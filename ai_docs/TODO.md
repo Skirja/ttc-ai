@@ -902,7 +902,7 @@ yang membandingkan direct executable dengan TTC single-string shell;
 status shell dapat berbeda dari status executable pada Ubuntu.
 
 Slice prasyarat `feat/m7-m8-ci-prerequisites` memakai Adoptium SemVer
-`21.0.12+1.0.1`, mempertahankan pin runtime `21.0.12.1+1`, menaikkan action
+`21.0.12+101.0.LTS`, mempertahankan pin runtime `21.0.12.1+1`, menaikkan action
 Swift ke SHA v2.4.0 yang mengenali `6.1.2`, serta membuat test signal M7
 memakai direct argv eksplisit. Format, Clippy, seluruh-target/fitur Rust test,
 release build, targeted signal/shell/M7 E2E, dan YAML parse lulus lokal;
