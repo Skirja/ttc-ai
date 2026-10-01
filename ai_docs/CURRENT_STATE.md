@@ -39,7 +39,7 @@
 ## Temuan / blocker terbuka
 
 - M7/M8 acceptance CI dan artifact masih belum lengkap. Pin Java action
-  diperbaiki ke `21.0.12+1.0.1`; runtime tetap `21.0.12.1+1`.
+  diperbaiki ke `21.0.12+101.0.LTS`; runtime tetap `21.0.12.1+1`.
 - Action Swift dipin ke SHA v2.4.0 untuk tetap memakai Swift `6.1.2`.
 - Perbaikan setup dan smoke penuh harus diverifikasi melalui PR CI.
 
