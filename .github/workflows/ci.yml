@@ -280,6 +280,22 @@ jobs:
           extensions: zip
           coverage: none
 
+      - name: Build exact checksum-verified PHP runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev libxml2-dev libonig-dev libssl-dev libzip-dev zlib1g-dev
+          tool_home="$RUNNER_TEMP/m7-tools"
+          mkdir -p target/m7-evidence
+          if M7_TOOL_HOME="$tool_home" sh scripts/m7-install-php.sh > target/m7-evidence/php-build.log 2>&1; then
+            "$tool_home/php-8.4.25/bin/php" --version
+          else
+            tail -c 12000 target/m7-evidence/php-build.log
+            exit 1
+          fi
+          printf '%s/php-8.4.25/bin\n' "$tool_home" >> "$GITHUB_PATH"
+
       - name: Install pinned Java 21 LTS
         uses: actions/setup-java@f2beeb24e141e01a676f977032f5a29d81c9e27e # v5.1.0
         with:

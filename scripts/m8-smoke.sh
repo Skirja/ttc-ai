@@ -45,7 +45,7 @@ export BUNDLE_GEMFILE="$repository_root/scripts/m8-smoke/ruby/Gemfile"
 version rspec "$(bundle exec ruby -e 'require "rubygems"; print Gem::Specification.find_by_name("rspec").version')" 3.13.0
 version rspec-core "$(bundle exec ruby -e 'require "rspec/core"; print RSpec::Core::Version::STRING')" 3.13.6
 version rubocop "$(bundle exec rubocop --version)" 1.75.5
-version rake "$(bundle exec rake --version | awk '{print $2}')" 13.2.1
+version rake "$(bundle exec rake --version | awk '/^rake, version / {print $3}')" 13.2.1
 swift --version | grep -F 'Swift version 6.1.2' >/dev/null
 version docker "$(docker --version | awk '{gsub(/,/, "", $3); print $3}')" 28.1.1
 version buildx "$(docker buildx version | awk '{print $2}')" v0.23.0
