@@ -121,7 +121,9 @@ lokal yang tidak menyediakan seluruh build prerequisite.
 
 ## Next action
 
-Squash merge PR #8, sinkronkan base PR #9, periksa CI fix, lalu squash merge #9.
+PR #8 sudah squash merged menjadi `2ad265f970f758b603dc9b706afe0b9b6351d559`
+pada 2026-10-02; base PR #9 disinkronkan tanpa perubahan kode produksi.
+Periksa CI fix ownership PR #9, lalu squash merge #9 sesuai otorisasi pengguna.
 Periksa clean successful master run dan downloaded GNU artifact; catat exact
 commit/run/checksum dan lengkapi M9. M10 tetap menunggu gate master tersebut.
 

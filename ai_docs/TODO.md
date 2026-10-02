@@ -930,8 +930,9 @@ log disimpan di `local-gates-transient-failure.log` dan
 melalui command standar, tanpa serialisasi atau skip.
 
 M9 kini mulai pada `feat/m9-production-distribution` dari `master`, membawa
-commit perbaikan CI yang sudah teruji. PR #8 belum merged; pengguna tetap
-melakukan merge PR di GitHub. Artifact master M9 tetap hard gate M10.
+commit perbaikan CI yang sudah teruji. PR #8 sudah squash merged pada
+2026-10-02 dengan otorisasi pengguna; commit master
+`2ad265f970f758b603dc9b706afe0b9b6351d559`. Artifact master M9 tetap hard gate M10.
 
 **Outcome:** standalone TTC binary selesai 100%, dapat dipasang sebagai release
 candidate, dan dibuktikan oleh artifact CI sebelum pekerjaan Codex dimulai.
@@ -1165,6 +1166,9 @@ Binary lokal SHA-256:
 Pengguna pada 2026-10-02 mengotorisasi agent memperbaiki semua temuan dan
 squash merge PR #8/#9 ke branch utama repo (`master`). CI fix terbaru dan
 clean master run/artifact tetap wajib diperiksa sebelum completion M9.
+PR #8 sudah squash merged sebagai `2ad265f970f758b603dc9b706afe0b9b6351d559`;
+tree master cocok dengan head PR #8 yang direview dan seluruh delapan gate
+[run 36817828230](https://github.com/Skirja/ttc-ai/actions/runs/36817828230) lulus.
 
 ### Evidence
 
