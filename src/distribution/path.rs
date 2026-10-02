@@ -111,6 +111,10 @@ pub(super) fn remove(ownership: &PathOwnership) -> Result<Option<Edit>> {
 
 impl Edit {
     pub fn apply(&mut self) -> Result<()> {
+        self.apply_with(|| Ok(()))
+    }
+
+    fn apply_with(&mut self, before_commit: impl FnOnce() -> Result<()>) -> Result<()> {
         if files::identity(&self.file)? != self.before_id
             || (self.before_id.is_some() && files::read(&self.file, LIMIT)? != self.before)
         {
@@ -120,6 +124,15 @@ impl Edit {
         let mut backup = Stage::bytes(parent, "bashrc-backup", &self.before, 0o600)?;
         backup.keep();
         let mut stage = Stage::bytes(parent, "bashrc", &self.after, self.mode)?;
+        // Backing up and syncing can give an editor time to save this file.
+        // Revalidate the actual destination after that I/O, immediately before
+        // the rename, so the prepared snapshot never replaces a newer edit.
+        before_commit()?;
+        if files::identity(&self.file)? != self.before_id
+            || (self.before_id.is_some() && files::read(&self.file, LIMIT)? != self.before)
+        {
+            return Err("Config Bash berubah selama staging; perubahan dipertahankan".into());
+        }
         self.applied = Some(stage.id());
         if self.before_id.is_some() {
             stage.replace(&self.file)
@@ -164,5 +177,45 @@ mod tests {
         assert!(edit.rollback().is_err());
         assert_eq!(fs::read(&file).unwrap(), b"user edited in place\n");
         fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn apply_preserves_user_changes_during_backup_and_staging() {
+        struct TestDirectory(PathBuf);
+        impl Drop for TestDirectory {
+            fn drop(&mut self) {
+                fs::remove_dir_all(&self.0).unwrap();
+            }
+        }
+
+        for atomic_save in [false, true] {
+            let root = TestDirectory(std::env::temp_dir().join(format!(
+                "ttc-path-staging-{}-{atomic_save}",
+                std::process::id()
+            )));
+            fs::create_dir(&root.0).unwrap();
+            let file = root.0.join(".bashrc");
+            let initial = b"export USER_SETTING=old\n";
+            let latest = b"export USER_SETTING=new\n";
+            fs::write(&file, initial).unwrap();
+            let (mut edit, _) = append(&file, &root.0.join("bin"), None).unwrap().unwrap();
+            let result = edit.apply_with(|| {
+                if atomic_save {
+                    let user_stage = root.0.join(".bashrc.user-save");
+                    fs::write(&user_stage, latest).map_err(|error| error.to_string())?;
+                    fs::rename(user_stage, &file).map_err(|error| error.to_string())?;
+                } else {
+                    fs::write(&file, latest).map_err(|error| error.to_string())?;
+                }
+                Ok(())
+            });
+            assert!(result.is_err(), "atomic save={atomic_save}");
+            assert_eq!(
+                fs::read(&file).unwrap(),
+                latest,
+                "atomic save={atomic_save}"
+            );
+            assert!(edit.rollback().is_ok(), "no TTC edit was committed");
+        }
     }
 }

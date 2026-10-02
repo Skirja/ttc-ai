@@ -68,6 +68,16 @@ ada tetapi isinya masih kosong. Test sekarang menunggu PID valid; regresi empty
 file dan 50 pengulangan signal suite lulus lokal. Perbaikan hanya readiness test,
 execution/filter core tetap sama. CI terakhir harus hijau sebelum merge.
 
+Review kode M9 kemudian menemukan `.bashrc` berubah selama backup/staging bisa
+ditimpa rename dari snapshot lama. `src/distribution/path.rs` sekarang
+memvalidasi identity dan byte config lagi setelah staging; konflik memakai
+fallback PATH manual tanpa mengganti config. Test baru meliputi save in-place
+dan atomic rename. Semua gate lokal M9 lulus pada perubahan ini:
+`target/m9-evidence/path-race-fix.log`; binary lokal SHA-256
+`7b22354748f1cebbe5707c0e32cae25f0c788029478f29e65e3740c4b287df98`.
+Candidate checksum yang tercatat sebelumnya tidak mencakup fix; CI PR harus
+membangun artifact baru.
+
 ## Batasan yang diketahui
 
 Parallel fixture test lokal pernah menemui `Text file busy`; log tersimpan

@@ -1066,6 +1066,18 @@ positif yang dapat diparse; regresi membuat file kosong lalu menulis PID setelah
 signal suite, 50 pengulangan berturut-turut, format dan Clippy lulus. CI harus
 lulus lagi pada head perbaikan sebelum PR siap merge.
 
+Review follow-up `src/distribution/path.rs`: validasi snapshot `.bashrc` kini
+diulang setelah backup dan staging disiapkan, langsung sebelum penggantian.
+Perubahan baru yang ditulis pengguna selama I/O staging menyebabkan fallback
+manual tanpa mengganti config. Regresi menguji save in-place dan save atomik
+yang mengganti inode.
+
+Gate lokal sesudah fix: verification commands M9 seluruhnya lulus; log
+`target/m9-evidence/path-race-fix.log`. Production ELF lokal kini SHA-256
+`7b22354748f1cebbe5707c0e32cae25f0c788029478f29e65e3740c4b287df98`.
+Artifact `36825865560` dan checksum yang dicatat sebelumnya mendahului fix ini,
+jadi CI PR harus membangun dan mengunggah kandidat baru sebelum merge.
+
 ### Evidence
 
 - [x] Commit production hardening dicatat.
