@@ -1094,6 +1094,32 @@ dan reduction `23999/254` byte.
 | SHA256SUMS | `31eda14a8d25c8f77ef0e2a6dad3158eb8e86dc97d6b62240479aa96a09711e8` |
 | EVIDENCE-SHA256SUMS | `75c26b92646655e4b391a2d480164ba373a7b74d899773388daa1d6fae9dd2a3` |
 
+### Perbaikan TOCTOU commit config — 2026-10-02
+
+Review ulang menemukan fix staging `6a5627c` belum melindungi save setelah
+validasi terakhir. Replacement config existing sekarang memakai
+`renameat2(RENAME_EXCHANGE)` dan memvalidasi file aktual yang tergeser, yang
+selalu dipertahankan sebagai backup. Konflik atau kegagalan sync mempertahankan
+kedua versi, lokasi recovery, dan marker; operasi berikutnya ditolak.
+Rollback memakai exchange/capture tanpa overwrite; uninstall mempertahankan
+tombstone binary/metadata dan marker bila edit PATH ambigu.
+
+Feature `fs` ditambahkan pada `nix = =0.31.3` yang sudah terpin untuk API syscall
+aman tanpa unsafe code/dependency baru. SPEC §13, README, dan audit coverage
+diperbarui. Regresi menyisipkan save setelah validasi terakhir: in-place,
+atomic rename, symlink, concurrent fresh creation, rollback fresh/existing,
+write melalui inode original, serta uninstall dan penolakan operasi berikutnya.
+20 unit test distribusi dan seluruh 214 test Rust lulus.
+
+Semua verification commands M9, baseline release build, build GNU `--locked`,
+release policy, coverage, dan `git diff --check` lulus pada
+`target/m9-evidence/path-exchange-fix.log`. Installer 17 E2E dan artifact smoke
+di luar source tree lulus; reduction representative `23999/254` byte.
+Binary lokal GNU SHA-256:
+`fe665b880f521e2976447a6a0f6c42aa76465c40c12eed2cef7ac22cff7493cd`.
+CI dan downloaded artifact pada commit perbaikan ini masih menunggu push/run;
+evidence CI di atas berasal dari kandidat sebelumnya.
+
 ### Evidence
 
 - [x] Commit production hardening dicatat.

@@ -8,14 +8,16 @@ kelengkapan pemetaan, bukan membuktikan semantik implementasi dengan pencarian
 string. Bukti perilaku berasal dari test dan pinned real-tool smoke pada run
 yang dicatat di TODO serta artifact kandidat yang sama.
 
-SPEC SHA-256: `6fc411ca22e3d0a1c9c2a288ea40004caa6d169ba32e5168611e9797253d9070`.
+SPEC SHA-256: `4dd1b53b557b5c36962fdb7ec3bae8ed3547522bd01e77cbb316cb5633fb9534`.
 
 ## Hasil audit dan batas penerimaan
 
 Core execution/filter M1–M8 dipertahankan. Gap distribusi ditutup oleh
 finalizer lokal, installer checksum, transaksi ownership, PATH backup/fallback,
-uninstall, tag policy dan smoke ELF di luar source. Rollback config menolak
-perubahan pengguna walaupun inode sama. SHA-256 memakai dependency produksi
+uninstall, tag policy dan smoke ELF di luar source. Pertukaran atomik config
+mempertahankan file aktual yang tergeser; konflik sesudah validasi terakhir
+menyimpan kedua versi dan marker recovery, termasuk pada rollback/uninstall.
+Feature fs dari nix terpin menyediakan renameat2 tanpa unsafe code di TTC. SHA-256 memakai dependency produksi
 `sha2 = =0.10.9` agar validasi ownership tidak mengeksekusi binary existing
 atau bergantung utility dari PATH. Seluruh failure installer menggunakan
 HOME/XDG temporary; mock HTTP loopback memerlukan opt-in eksplisit.
@@ -2467,7 +2469,7 @@ Untuk menonaktifkan integrasi, pengguna menjalankan `ttc uninstall codex`.
 
 ## 13. Distribution dan versioning
 
-Linux GNU stable latest dipin satu tag HTTPS+SHA; local finalizer bounded streaminghash, strict schema/ownership/no symlink, lock/staging/atomic rename/rollback/pending marker. PATH exact-owned backup/manualfallback; uninstall preserve integration/userconfig/raw/otherprogram. Tag stable matches Cargo/master; semua gates clean ulang, candidate saja.
+Linux GNU stable latest dipin satu tag HTTPS+SHA; local finalizer bounded streaminghash, strict schema/ownership/no symlink, lock/staging/atomic rename/rollback/pending marker. PATH exact-owned backup/manualfallback; uninstall preserve integration/userconfig/raw/otherprogram. Tag stable matches Cargo/master; semua gates clean ulang, candidate saja. Config existing memakai atomic exchange dan memeriksa file aktual yang tergeser; race sesudah validasi terakhir, rollback, dan uninstall mempertahankan recovery/marker.
 
 Implementasi: `install.sh`, `src/distribution/mod.rs`, `src/distribution/files.rs`, `src/distribution/metadata.rs`, `src/distribution/path.rs`, `.github/workflows/ci.yml`, `scripts/check-release-version.py`.
 
@@ -2477,7 +2479,7 @@ Evidence CI: `rust`, `release-policy`, `m9-distribution`.
 
 Batas tahap: Public releases/latest dan job publish baru M10 sesudah user-authorized tag; belum diklaim tersedia.
 
-Klausul yang dipetakan (14 kelompok; seluruh bullet/command di dalamnya):
+Klausul yang dipetakan (15 kelompok; seluruh bullet/command di dalamnya):
 
 <details><summary>Klausul 1, digest ac47e87bfecf</summary>
 
@@ -2621,7 +2623,23 @@ mempertahankan config, raw capture, backup, dan penggunaan PATH lain.
 
 </details>
 
-<details><summary>Klausul 12, digest b5d4d3e5c743</summary>
+<details><summary>Klausul 12, digest 033a7cbac9da</summary>
+
+```text
+Replacement dan rollback config Bash existing memakai pertukaran atomik yang
+mempertahankan file aktual yang tergeser sebagai backup, lalu memvalidasi
+identity dan byte snapshot pada file tersebut. Save pengguna setelah validasi
+terakhir tidak boleh hilang. Konflik setelah pertukaran atau kegagalan sync
+mempertahankan kedua versi, mencetak lokasi recovery, dan meninggalkan marker
+transaksi agar operasi berikutnya ditolak. Rollback config yang sebelumnya
+absent memindahkan file aktual ke lokasi recovery tanpa overwrite sebelum
+validasi. Filesystem yang tidak mendukung operasi atomik tersebut menghasilkan
+fallback PATH manual sebelum config disentuh.
+```
+
+</details>
+
+<details><summary>Klausul 13, digest b5d4d3e5c743</summary>
 
 ```text
 Pengguna manual dapat mengunduh executable dan checksum yang sama, menjalankan
@@ -2632,7 +2650,7 @@ path pilihannya. Jalur manual di luar `~/.local/bin/ttc` tidak didaftarkan oleh
 
 </details>
 
-<details><summary>Klausul 13, digest aa0fe28b4f38</summary>
+<details><summary>Klausul 14, digest aa0fe28b4f38</summary>
 
 ```text
 Update dilakukan dengan menjalankan ulang installer latest. Tidak ada
@@ -2641,7 +2659,7 @@ Update dilakukan dengan menjalankan ulang installer latest. Tidak ada
 
 </details>
 
-<details><summary>Klausul 14, digest 89da29cce9d0</summary>
+<details><summary>Klausul 15, digest 89da29cce9d0</summary>
 
 ```text
 CI utama berjalan pada branch `master`. Artifact release-mode Phase 1 harus
@@ -2848,7 +2866,7 @@ Assertions:
 
 ## 14.5 Distribution E2E
 
-Linux GNU stable latest dipin satu tag HTTPS+SHA; local finalizer bounded streaminghash, strict schema/ownership/no symlink, lock/staging/atomic rename/rollback/pending marker. PATH exact-owned backup/manualfallback; uninstall preserve integration/userconfig/raw/otherprogram. Tag stable matches Cargo/master; semua gates clean ulang, candidate saja.
+Linux GNU stable latest dipin satu tag HTTPS+SHA; local finalizer bounded streaminghash, strict schema/ownership/no symlink, lock/staging/atomic rename/rollback/pending marker. PATH exact-owned backup/manualfallback; uninstall preserve integration/userconfig/raw/otherprogram. Tag stable matches Cargo/master; semua gates clean ulang, candidate saja. Config existing memakai atomic exchange dan memeriksa file aktual yang tergeser; race sesudah validasi terakhir, rollback, dan uninstall mempertahankan recovery/marker.
 
 Implementasi: `install.sh`, `src/distribution/mod.rs`, `src/distribution/files.rs`, `src/distribution/metadata.rs`, `src/distribution/path.rs`, `.github/workflows/ci.yml`, `scripts/check-release-version.py`.
 

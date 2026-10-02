@@ -366,6 +366,10 @@ pub(crate) fn uninstall() -> ExitCode {
 }
 
 fn uninstall_from(paths: &Paths) -> Result<()> {
+    uninstall_with(paths, || Ok(()))
+}
+
+fn uninstall_with(paths: &Paths, before_path_commit: impl FnOnce() -> Result<()>) -> Result<()> {
     let _lock = paths.prepare()?;
     let previous = paths.load()?;
     let Some(previous) = previous else {
@@ -432,11 +436,22 @@ fn uninstall_from(paths: &Paths) -> Result<()> {
             Ok::<_, String>(found || Some(entry.path().as_path()) != excluded)
         })?;
     if !others && let Some(ownership) = &previous.meta.path {
-        match path::remove(ownership).and_then(|edit| match edit {
-            Some(mut edit) => edit.apply(),
-            None => Ok(()),
-        }) {
-            Ok(()) => {}
+        match path::remove(ownership) {
+            Ok(Some(mut edit)) => {
+                if let Err(error) = edit.apply_with(|| Ok(()), before_path_commit) {
+                    if let Err(recovery_error) = edit.rollback() {
+                        if let Some(stage) = &mut tombstone {
+                            stage.keep();
+                        }
+                        meta_tombstone.keep();
+                        return Err(format!(
+                            "{error}; {recovery_error}; marker transaksi dipertahankan"
+                        ));
+                    }
+                    eprintln!("ttc: blok PATH dipertahankan: {error}");
+                }
+            }
+            Ok(None) => {}
             Err(error) => eprintln!("ttc: blok PATH dipertahankan: {error}"),
         }
     }
@@ -560,6 +575,51 @@ mod tests {
         );
         assert_eq!(fs::read(&fixture.paths.manifest).unwrap(), before);
         assert!(!fixture.paths.pending.exists());
+    }
+
+    #[test]
+    fn uninstall_path_conflict_keeps_recovery_and_blocks_following_operations() {
+        let fixture = Fixture::new();
+        let file = fixture.paths.home.join(".bashrc");
+        fs::write(&file, b"user config\n").unwrap();
+        let (source, hash) = fixture.source("image", b"image");
+        fixture.install(&source, &hash);
+        let latest = b"user save after final validation\n";
+        let error = uninstall_with(&fixture.paths, || {
+            let save = fixture.paths.home.join("editor-save");
+            fs::write(&save, latest).unwrap();
+            fs::rename(save, &file).unwrap();
+            Ok(())
+        })
+        .unwrap_err();
+        assert!(error.contains("recovery"), "{error}");
+        assert!(fixture.paths.pending.exists());
+        assert!(fs::read_dir(&fixture.paths.home).unwrap().any(|entry| {
+            let path = entry.unwrap().path();
+            path.is_file() && fs::read(path).unwrap() == latest
+        }));
+        assert!(install_from(&fixture.paths, &source, &hash, || Ok(())).is_err());
+        assert!(uninstall_from(&fixture.paths).is_err());
+        // The removed installation also stays available for manual recovery.
+        assert!(
+            fs::read_dir(fixture.paths.binary.parent().unwrap())
+                .unwrap()
+                .any(|entry| { fs::read(entry.unwrap().path()).unwrap() == b"image" })
+        );
+        assert!(fs::read_dir(&fixture.paths.data).unwrap().any(|entry| {
+            let path = entry.unwrap().path();
+            path.file_name()
+                .unwrap()
+                .to_string_lossy()
+                .ends_with("uninstall-metadata")
+                && Metadata::parse(
+                    &fs::read(path).unwrap(),
+                    &fixture.paths.binary,
+                    &file,
+                    path::BLOCK,
+                )
+                .is_ok()
+        }));
     }
 
     #[test]

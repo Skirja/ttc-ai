@@ -1,6 +1,6 @@
 # Current State
 
-**Diperbarui:** 2026-10-01 WIB
+**Diperbarui:** 2026-10-02 WIB
 
 ## Sedang dikerjakan
 
@@ -9,9 +9,10 @@ M9 — production binary dan distribution gate pada
 prasyarat CI yang sudah teruji. Installer/latest finalizer, metadata ownership,
 transaksi atomik dengan lock/rollback/pending marker, PATH backup/fallback,
 global uninstall, audit SPEC dan workflow kandidat GNU telah diimplementasikan.
-Seluruh gate lokal dan 10 job PR CI M9 lulus. Candidate artifact diunduh,
-checksum asset/112 evidence entries serta smoke ulang lulus. PR #9 menunggu
-merge pengguna; M9 belum lengkap karena master artifact gate belum terpenuhi.
+Seluruh gate lokal perbaikan terakhir lulus. CI kandidat sebelumnya lulus
+10 job dan artifact terverifikasi; perbaikan TOCTOU commit config terbaru
+menunggu push/CI dan downloaded artifact. PR #9 tetap terbuka; M9 belum lengkap
+karena master artifact gate belum terpenuhi.
 
 ## Prasyarat yang sudah terbukti
 
@@ -83,6 +84,17 @@ Binary SHA-256
 Standalone smoke dan 17 installer E2E lulus lagi pada binary unduhan. Checksum
 lain dan detail replay dicatat pada TODO M9.
 
+Review berikutnya menemukan save setelah validasi terakhir masih bisa
+tertimpa. Fix terbaru memakai atomic exchange dan memeriksa file aktual yang
+tergeser, yang tetap disimpan sebagai backup. Konflik/sync gagal menyisakan
+kedua versi dan marker recovery. Rollback config memakai exchange/capture;
+uninstall ambigu mempertahankan tombstone binary/metadata dan marker.
+Feature fs dari nix terpin menyediakan renameat2 tanpa unsafe code baru.
+20 unit distribusi, semua 214 test Rust, baseline dan seluruh gate M9 lulus:
+`target/m9-evidence/path-exchange-fix.log`. Binary lokal GNU SHA-256
+`fe665b880f521e2976447a6a0f6c42aa76465c40c12eed2cef7ac22cff7493cd`.
+CI/artifact untuk fix terbaru belum diperiksa.
+
 ## Batasan yang diketahui
 
 Parallel fixture test lokal pernah menemui `Text file busy`; log tersimpan
@@ -92,7 +104,8 @@ lokal yang tidak menyediakan seluruh build prerequisite.
 
 ## Next action
 
-Selesaikan CI pada commit pencatatan evidence, lalu pengguna merge PR #9.
+Push fix atomic exchange ke PR #9, periksa seluruh CI dan downloaded artifact,
+lalu pengguna merge PR #9.
 Periksa clean successful master run dan downloaded GNU artifact; catat exact
 commit/run/checksum dan lengkapi M9. M10 tetap menunggu gate master tersebut.
 

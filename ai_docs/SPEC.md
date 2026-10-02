@@ -1053,6 +1053,16 @@ dipertahankan dan menghasilkan instruksi PATH manual. Uninstall hanya
 menghapus blok yang masih cocok byte-exact dengan ownership metadata, serta
 mempertahankan config, raw capture, backup, dan penggunaan PATH lain.
 
+Replacement dan rollback config Bash existing memakai pertukaran atomik yang
+mempertahankan file aktual yang tergeser sebagai backup, lalu memvalidasi
+identity dan byte snapshot pada file tersebut. Save pengguna setelah validasi
+terakhir tidak boleh hilang. Konflik setelah pertukaran atau kegagalan sync
+mempertahankan kedua versi, mencetak lokasi recovery, dan meninggalkan marker
+transaksi agar operasi berikutnya ditolak. Rollback config yang sebelumnya
+absent memindahkan file aktual ke lokasi recovery tanpa overwrite sebelum
+validasi. Filesystem yang tidak mendukung operasi atomik tersebut menghasilkan
+fallback PATH manual sebelum config disentuh.
+
 Pengguna manual dapat mengunduh executable dan checksum yang sama, menjalankan
 verifikasi, memberi permission dengan `chmod +x`, lalu memindahkan binary ke
 path pilihannya. Jalur manual di luar `~/.local/bin/ttc` tidak didaftarkan oleh

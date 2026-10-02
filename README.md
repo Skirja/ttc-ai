@@ -82,6 +82,12 @@ menolak state ambigu. Bandingkan binary, metadata, checksum, dan file staging/
 backup secara manual sebelum recovery; jangan menghapus marker tanpa memeriksa
 state. Finalizer lokal tidak mengakses jaringan.
 
+Edit dan rollback `.bashrc` mempertahankan file aktual yang tergeser melalui
+pertukaran atomik. Jika save pengguna beradu dengan commit, kedua versi tetap
+tersimpan dan pesan error menunjukkan lokasi recovery. Marker tetap ada sampai
+state diperiksa secara manual. Jika pertukaran atomik tidak tersedia, config
+existing dipertahankan dan installer memberi instruksi PATH manual.
+
 ## Penggunaan standalone
 
 ```sh

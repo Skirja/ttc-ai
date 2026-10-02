@@ -1,5 +1,5 @@
 {
-  "spec_sha256": "6fc411ca22e3d0a1c9c2a288ea40004caa6d169ba32e5168611e9797253d9070",
+  "spec_sha256": "4dd1b53b557b5c36962fdb7ec3bae8ed3547522bd01e77cbb316cb5633fb9534",
   "sections": {
     "1": {
       "perilaku": "Standalone sekali; default retain, tanpa daemon/network/harness dependency. Artifact GNU mendahului M10.",
@@ -952,7 +952,7 @@
       "cakupan_m10": "Uninstall integrasi Codex untuk disable hanya tersedia M10."
     },
     "13": {
-      "perilaku": "Linux GNU stable latest dipin satu tag HTTPS+SHA; local finalizer bounded streaminghash, strict schema/ownership/no symlink, lock/staging/atomic rename/rollback/pending marker. PATH exact-owned backup/manualfallback; uninstall preserve integration/userconfig/raw/otherprogram. Tag stable matches Cargo/master; semua gates clean ulang, candidate saja.",
+      "perilaku": "Linux GNU stable latest dipin satu tag HTTPS+SHA; local finalizer bounded streaminghash, strict schema/ownership/no symlink, lock/staging/atomic rename/rollback/pending marker. PATH exact-owned backup/manualfallback; uninstall preserve integration/userconfig/raw/otherprogram. Tag stable matches Cargo/master; semua gates clean ulang, candidate saja. Config existing memakai atomic exchange dan memeriksa file aktual yang tergeser; race sesudah validasi terakhir, rollback, dan uninstall mempertahankan recovery/marker.",
       "implementasi": [
         "install.sh",
         "src/distribution/mod.rs",
@@ -978,7 +978,7 @@
       "cakupan_m10": "Public releases/latest dan job publish baru M10 sesudah user-authorized tag; belum diklaim tersedia."
     },
     "14.5": {
-      "perilaku": "Linux GNU stable latest dipin satu tag HTTPS+SHA; local finalizer bounded streaminghash, strict schema/ownership/no symlink, lock/staging/atomic rename/rollback/pending marker. PATH exact-owned backup/manualfallback; uninstall preserve integration/userconfig/raw/otherprogram. Tag stable matches Cargo/master; semua gates clean ulang, candidate saja.",
+      "perilaku": "Linux GNU stable latest dipin satu tag HTTPS+SHA; local finalizer bounded streaminghash, strict schema/ownership/no symlink, lock/staging/atomic rename/rollback/pending marker. PATH exact-owned backup/manualfallback; uninstall preserve integration/userconfig/raw/otherprogram. Tag stable matches Cargo/master; semua gates clean ulang, candidate saja. Config existing memakai atomic exchange dan memeriksa file aktual yang tergeser; race sesudah validasi terakhir, rollback, dan uninstall mempertahankan recovery/marker.",
       "implementasi": [
         "install.sh",
         "src/distribution/mod.rs",

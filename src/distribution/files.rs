@@ -71,6 +71,57 @@ pub(super) fn sync_directory(path: &Path) -> Result<()> {
         .map_err(|error| format!("Sinkronisasi {}: {error}", path.display()))
 }
 
+#[cfg(all(target_os = "linux", target_env = "gnu"))]
+pub(super) fn exchange(left: &Path, right: &Path) -> Result<()> {
+    use nix::fcntl::{AT_FDCWD, RenameFlags, renameat2};
+    renameat2(
+        AT_FDCWD,
+        left,
+        AT_FDCWD,
+        right,
+        RenameFlags::RENAME_EXCHANGE,
+    )
+    .map_err(|error| format!("Pertukaran config atomik gagal: {error}"))
+}
+
+#[cfg(not(all(target_os = "linux", target_env = "gnu")))]
+pub(super) fn exchange(_left: &Path, _right: &Path) -> Result<()> {
+    Err("Pertukaran config atomik memerlukan Linux GNU".into())
+}
+
+// Capture the entry at the instant of rename; never unlink an editor's save
+// based on a preceding identity/content check.
+#[cfg(all(target_os = "linux", target_env = "gnu"))]
+pub(super) fn capture(path: &Path) -> Result<PathBuf> {
+    use nix::errno::Errno;
+    use nix::fcntl::{AT_FDCWD, RenameFlags, renameat2};
+    let parent = path.parent().ok_or("Parent config tidak ada")?;
+    for _ in 0..128 {
+        let recovery = parent.join(format!(
+            ".ttc-{}-{}-bashrc-recovery",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        match renameat2(
+            AT_FDCWD,
+            path,
+            AT_FDCWD,
+            &recovery,
+            RenameFlags::RENAME_NOREPLACE,
+        ) {
+            Ok(()) => return Ok(recovery),
+            Err(Errno::EEXIST) => {}
+            Err(error) => return Err(format!("Capture config atomik gagal: {error}")),
+        }
+    }
+    Err("Tidak dapat membuat lokasi recovery unik".into())
+}
+
+#[cfg(not(all(target_os = "linux", target_env = "gnu")))]
+pub(super) fn capture(_path: &Path) -> Result<PathBuf> {
+    Err("Capture config atomik memerlukan Linux GNU".into())
+}
+
 pub(super) fn directory(path: &Path) -> Result<()> {
     if !path.exists() {
         if let Some(parent) = path.parent() {
@@ -197,6 +248,17 @@ impl Stage {
         fs::rename(&self.path, destination).map_err(|error| error.to_string())?;
         self.clean = false;
         sync_directory(destination.parent().ok_or("Parent path tidak ada")?)
+    }
+
+    pub fn exchange(&mut self, destination: &Path) -> Result<()> {
+        if identity(&self.path)? != Some(self.id) {
+            return Err("Staging berubah".into());
+        }
+        exchange(&self.path, destination)?;
+        // The stage now contains the actual displaced user entry, including
+        // a racing symlink. Never let Drop delete it, even after a sync error.
+        self.keep();
+        Ok(())
     }
 
     // Publishing a fresh path must not overwrite a concurrently created file.
