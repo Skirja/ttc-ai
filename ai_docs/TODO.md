@@ -1139,6 +1139,33 @@ EVIDENCE-SHA256SUMS` dari root artifact, lalu kedua script M9 dengan
 | SHA256SUMS | `0182d3b7450786e21b19d9f8fb37806fadad82c7d687e2ab3666640ac0899d1c` |
 | EVIDENCE-SHA256SUMS | `720cba5546875135bd0a7d59ca55a6880d15e039fc6233685530b6e3511d406b` |
 
+### Perbaikan ownership binary/metadata sebelum squash merge
+
+Review penuh PR #9 menemukan check-then-rename pada binary. Transaksi baru
+memakai exchange/capture untuk binary, metadata, rollback, dan uninstall;
+validasi identity/SHA-256 dilakukan pada entry aktual yang tergeser dan hasil
+commit/rollback. Entry yang pernah dipublikasikan tetap diarchive agar write
+lewat FD lama tidak hilang. Marker diambil secara atomik; entry asing yang
+beradu dengan cleanup dipulihkan tanpa overwrite.
+
+Archive berada dalam `.ttc-distribution` privat pada filesystem bin/data.
+Receipt ownership wajib cocok; direktori existing tanpa receipt ditolak.
+Direktori administrasi ini dipertahankan setelah uninstall dan dikecualikan
+dari pemeriksaan program lain di bin. Metadata instalasi tetap schema 1.
+
+Seluruh 226 test Rust, format, Clippy, release build, GNU build `--locked`,
+17 installer E2E, standalone smoke, release policy, dan coverage lulus lokal.
+Log: `target/m9-evidence/ownership-race-fix-final.log` dan
+`target/m9-evidence/ownership-race-regressions-final.log`. Regresi meliputi
+commit binary/metadata, rollback, uninstall, save in-place/atomic, symlink,
+late FD write, syscall exchange gagal, namespace asing, dan marker recovery.
+Binary lokal SHA-256:
+`8d0807bd043273ba7a5ffab0c7570931ffb5205a17a4e06325fe8a600e80840f`.
+
+Pengguna pada 2026-10-02 mengotorisasi agent memperbaiki semua temuan dan
+squash merge PR #8/#9 ke branch utama repo (`master`). CI fix terbaru dan
+clean master run/artifact tetap wajib diperiksa sebelum completion M9.
+
 ### Evidence
 
 - [x] Commit production hardening dicatat.

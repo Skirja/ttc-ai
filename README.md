@@ -88,6 +88,12 @@ tersimpan dan pesan error menunjukkan lokasi recovery. Marker tetap ada sampai
 state diperiksa secara manual. Jika pertukaran atomik tidak tersedia, config
 existing dipertahankan dan installer memberi instruksi PATH manual.
 
+Binary dan metadata juga memeriksa entry aktual setelah commit atomik.
+Archive transaksi disimpan dalam direktori privat `.ttc-distribution` di
+direktori bin/data, dengan receipt ownership. Direktori existing tanpa receipt
+valid ditolak. Archive dipertahankan setelah uninstall untuk recovery, dan
+direktori administrasi TTC ini tidak dihitung sebagai program lain di PATH.
+
 ## Penggunaan standalone
 
 ```sh

@@ -1063,6 +1063,16 @@ absent memindahkan file aktual ke lokasi recovery tanpa overwrite sebelum
 validasi. Filesystem yang tidak mendukung operasi atomik tersebut menghasilkan
 fallback PATH manual sebelum config disentuh.
 
+Binary dan metadata memakai transaksi yang mempertahankan entry aktual pada
+commit, rollback, dan uninstall. Identity dan checksum entry yang tergeser
+divalidasi sebelum operasi diterima; konflik mempertahankan semua versi dan
+marker recovery. Entry yang pernah dipublikasikan tidak dihapus berdasarkan
+check-then-unlink. Archive transaksi disimpan pada direktori privat
+`.ttc-distribution` di direktori bin/data, pada filesystem yang sama dengan
+target. Direktori ini memiliki receipt ownership, ditolak bila existing tanpa
+receipt valid, dan dipertahankan setelah uninstall. Direktori administrasi TTC
+ini tidak dihitung sebagai program lain dalam pemeriksaan penggunaan PATH.
+
 Pengguna manual dapat mengunduh executable dan checksum yang sama, menjalankan
 verifikasi, memberi permission dengan `chmod +x`, lalu memindahkan binary ke
 path pilihannya. Jalur manual di luar `~/.local/bin/ttc` tidak didaftarkan oleh

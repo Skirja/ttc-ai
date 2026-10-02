@@ -2,7 +2,7 @@
 
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
-use std::os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt};
+use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -65,6 +65,57 @@ pub(super) fn hash(path: &Path) -> Result<String> {
     Ok(format!("{:x}", digest.finalize()))
 }
 
+pub(super) fn hash_bytes(bytes: &[u8]) -> String {
+    format!("{:x}", Sha256::digest(bytes))
+}
+
+// Archives must stay on the target filesystem, in a proven TTC namespace.
+// A pre-existing private directory alone is not evidence of TTC ownership.
+pub(super) fn workspace(path: &Path, installed: &Path) -> Result<()> {
+    let receipt = format!("ttc-distribution-workspace-v1\n{}\n", installed.display());
+    let created = match fs::DirBuilder::new().mode(0o700).create(path) {
+        Ok(()) => true,
+        Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => false,
+        Err(error) => return Err(error.to_string()),
+    };
+    owned_directory(path)?;
+    let meta = fs::metadata(path).map_err(|error| error.to_string())?;
+    let parent = path.parent().ok_or("Parent workspace tidak ada")?;
+    if meta.mode() & 0o077 != 0
+        || meta.dev()
+            != fs::metadata(parent)
+                .map_err(|error| error.to_string())?
+                .dev()
+    {
+        return Err("Workspace distribusi harus privat dan pada filesystem target".into());
+    }
+    let owner = path.join("owner");
+    if created {
+        Stage::bytes(path, "owner", receipt.as_bytes(), 0o600)?.publish(&owner)?;
+        sync_directory(parent)?;
+    }
+    if read(&owner, 16 * 1024)? != receipt.as_bytes()
+        || fs::metadata(&owner)
+            .map_err(|error| error.to_string())?
+            .mode()
+            & 0o077
+            != 0
+    {
+        return Err("Receipt ownership workspace distribusi tidak valid".into());
+    }
+    Ok(())
+}
+
+pub(super) fn sync_pair(left: &Path, right: &Path) -> Result<()> {
+    let left = left.parent().ok_or("Parent archive tidak ada")?;
+    let right = right.parent().ok_or("Parent target tidak ada")?;
+    sync_directory(left)?;
+    if left != right {
+        sync_directory(right)?;
+    }
+    Ok(())
+}
+
 pub(super) fn sync_directory(path: &Path) -> Result<()> {
     File::open(path)
         .and_then(|file| file.sync_all())
@@ -81,24 +132,32 @@ pub(super) fn exchange(left: &Path, right: &Path) -> Result<()> {
         right,
         RenameFlags::RENAME_EXCHANGE,
     )
-    .map_err(|error| format!("Pertukaran config atomik gagal: {error}"))
+    .map_err(|error| format!("Pertukaran file atomik gagal: {error}"))
 }
 
 #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
 pub(super) fn exchange(_left: &Path, _right: &Path) -> Result<()> {
-    Err("Pertukaran config atomik memerlukan Linux GNU".into())
+    Err("Pertukaran file atomik memerlukan Linux GNU".into())
 }
 
 // Capture the entry at the instant of rename; never unlink an editor's save
 // based on a preceding identity/content check.
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 pub(super) fn capture(path: &Path) -> Result<PathBuf> {
+    capture_in(
+        path,
+        path.parent().ok_or("Parent path tidak ada")?,
+        "bashrc-recovery",
+    )
+}
+
+#[cfg(all(target_os = "linux", target_env = "gnu"))]
+pub(super) fn capture_in(path: &Path, directory: &Path, purpose: &str) -> Result<PathBuf> {
     use nix::errno::Errno;
     use nix::fcntl::{AT_FDCWD, RenameFlags, renameat2};
-    let parent = path.parent().ok_or("Parent config tidak ada")?;
     for _ in 0..128 {
-        let recovery = parent.join(format!(
-            ".ttc-{}-{}-bashrc-recovery",
+        let recovery = directory.join(format!(
+            ".ttc-{}-{}-{purpose}",
             std::process::id(),
             NEXT.fetch_add(1, Ordering::Relaxed)
         ));
@@ -111,7 +170,7 @@ pub(super) fn capture(path: &Path) -> Result<PathBuf> {
         ) {
             Ok(()) => return Ok(recovery),
             Err(Errno::EEXIST) => {}
-            Err(error) => return Err(format!("Capture config atomik gagal: {error}")),
+            Err(error) => return Err(format!("Capture file atomik gagal: {error}")),
         }
     }
     Err("Tidak dapat membuat lokasi recovery unik".into())
@@ -120,6 +179,11 @@ pub(super) fn capture(path: &Path) -> Result<PathBuf> {
 #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
 pub(super) fn capture(_path: &Path) -> Result<PathBuf> {
     Err("Capture config atomik memerlukan Linux GNU".into())
+}
+
+#[cfg(not(all(target_os = "linux", target_env = "gnu")))]
+pub(super) fn capture_in(_path: &Path, _directory: &Path, _purpose: &str) -> Result<PathBuf> {
+    Err("Capture file atomik memerlukan Linux GNU".into())
 }
 
 pub(super) fn directory(path: &Path) -> Result<()> {
@@ -241,15 +305,6 @@ impl Stage {
         self.id
     }
 
-    pub fn replace(&mut self, destination: &Path) -> Result<()> {
-        if identity(&self.path)? != Some(self.id) {
-            return Err("Staging berubah".into());
-        }
-        fs::rename(&self.path, destination).map_err(|error| error.to_string())?;
-        self.clean = false;
-        sync_directory(destination.parent().ok_or("Parent path tidak ada")?)
-    }
-
     pub fn exchange(&mut self, destination: &Path) -> Result<()> {
         if identity(&self.path)? != Some(self.id) {
             return Err("Staging berubah".into());
@@ -267,15 +322,11 @@ impl Stage {
             return Err("Staging berubah".into());
         }
         fs::hard_link(&self.path, destination).map_err(|error| error.to_string())?;
-        sync_directory(destination.parent().ok_or("Parent path tidak ada")?)
+        sync_pair(&self.path, destination)
     }
 
     pub fn keep(&mut self) {
         self.clean = false;
-    }
-
-    pub fn adopt(&mut self, id: Identity) {
-        self.id = id;
     }
 }
 
@@ -287,10 +338,98 @@ impl Drop for Stage {
     }
 }
 
+#[cfg(all(target_os = "linux", target_env = "gnu"))]
+fn move_noreplace(from: &Path, to: &Path) -> Result<()> {
+    use nix::fcntl::{AT_FDCWD, RenameFlags, renameat2};
+    renameat2(AT_FDCWD, from, AT_FDCWD, to, RenameFlags::RENAME_NOREPLACE)
+        .map_err(|error| error.to_string())
+}
+
+#[cfg(not(all(target_os = "linux", target_env = "gnu")))]
+fn move_noreplace(_from: &Path, _to: &Path) -> Result<()> {
+    Err("Recovery atomik memerlukan Linux GNU".into())
+}
+
 pub(super) fn remove_owned(path: &Path, expected: Identity) -> Result<()> {
+    remove_owned_with(path, expected, || Ok(()))
+}
+
+fn remove_owned_with(
+    path: &Path,
+    expected: Identity,
+    before_capture: impl FnOnce() -> Result<()>,
+) -> Result<()> {
     if identity(path)? != Some(expected) {
         return Err(format!("{} berubah", path.display()));
     }
-    fs::remove_file(path).map_err(|error| error.to_string())?;
-    sync_directory(path.parent().ok_or("Parent path tidak ada")?)
+    before_capture()?;
+    let recovery = capture_in(
+        path,
+        path.parent().ok_or("Parent marker tidak ada")?,
+        "marker-recovery",
+    )?;
+    if identity(&recovery).ok().flatten() != Some(expected) {
+        // Restore without clobbering a newly-created marker. Keep the actual
+        // entry in recovery even when restoration cannot be completed.
+        move_noreplace(&recovery, path)
+            .map_err(|error| format!("Marker recovery {}: {error}", recovery.display()))?;
+        sync_pair(&recovery, path)?;
+        return Err(format!(
+            "Marker berubah; entry dipulihkan di {}",
+            path.display()
+        ));
+    }
+    sync_pair(&recovery, path)?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn marker_capture_restores_raced_entries_without_following_or_overwriting() {
+        for kind in ["file", "symlink", "directory"] {
+            let root = std::env::temp_dir().join(format!(
+                "ttc-marker-race-{}-{}",
+                std::process::id(),
+                NEXT.fetch_add(1, Ordering::Relaxed)
+            ));
+            fs::create_dir(&root).unwrap();
+            let marker = root.join("pending");
+            fs::write(&marker, b"owned marker").unwrap();
+            let id = identity(&marker).unwrap().unwrap();
+            let foreign = root.join("foreign");
+            fs::write(&foreign, b"user marker state").unwrap();
+            assert!(
+                remove_owned_with(&marker, id, || {
+                    fs::remove_file(&marker).unwrap();
+                    match kind {
+                        "file" => fs::rename(&foreign, &marker).unwrap(),
+                        "symlink" => std::os::unix::fs::symlink(&foreign, &marker).unwrap(),
+                        "directory" => {
+                            fs::create_dir(&marker).unwrap();
+                            fs::write(marker.join("user-data"), b"user marker state").unwrap();
+                        }
+                        _ => unreachable!(),
+                    }
+                    Ok(())
+                })
+                .is_err()
+            );
+            match kind {
+                "file" => assert_eq!(fs::read(&marker).unwrap(), b"user marker state"),
+                "symlink" => {
+                    assert_eq!(fs::read_link(&marker).unwrap(), foreign);
+                    assert_eq!(fs::read(&foreign).unwrap(), b"user marker state");
+                }
+                "directory" => assert_eq!(
+                    fs::read(marker.join("user-data")).unwrap(),
+                    b"user marker state"
+                ),
+                _ => unreachable!(),
+            }
+            fs::remove_dir_all(root).unwrap();
+        }
+    }
 }

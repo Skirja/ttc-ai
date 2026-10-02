@@ -8,7 +8,7 @@ kelengkapan pemetaan, bukan membuktikan semantik implementasi dengan pencarian
 string. Bukti perilaku berasal dari test dan pinned real-tool smoke pada run
 yang dicatat di TODO serta artifact kandidat yang sama.
 
-SPEC SHA-256: `4dd1b53b557b5c36962fdb7ec3bae8ed3547522bd01e77cbb316cb5633fb9534`.
+SPEC SHA-256: `6f668fe0631a4b2f24b30d2ce2cc436f6476111803c2e02cbe4f2dfb23f0a489`.
 
 ## Hasil audit dan batas penerimaan
 
@@ -2469,17 +2469,17 @@ Untuk menonaktifkan integrasi, pengguna menjalankan `ttc uninstall codex`.
 
 ## 13. Distribution dan versioning
 
-Linux GNU stable latest dipin satu tag HTTPS+SHA; local finalizer bounded streaminghash, strict schema/ownership/no symlink, lock/staging/atomic rename/rollback/pending marker. PATH exact-owned backup/manualfallback; uninstall preserve integration/userconfig/raw/otherprogram. Tag stable matches Cargo/master; semua gates clean ulang, candidate saja. Config existing memakai atomic exchange dan memeriksa file aktual yang tergeser; race sesudah validasi terakhir, rollback, dan uninstall mempertahankan recovery/marker.
+Linux GNU stable latest dipin satu tag HTTPS+SHA; local finalizer bounded streaminghash, strict schema/ownership/no symlink, lock/staging/atomic rename/rollback/pending marker. PATH exact-owned backup/manualfallback; uninstall preserve integration/userconfig/raw/otherprogram. Tag stable matches Cargo/master; semua gates clean ulang, candidate saja. Config existing memakai atomic exchange dan memeriksa file aktual yang tergeser; race sesudah validasi terakhir, rollback, dan uninstall mempertahankan recovery/marker. Binary/metadata commit, rollback, dan uninstall memakai archive aktual, checksum/identity, dan workspace privat dengan receipt; late FD write tidak hilang.
 
-Implementasi: `install.sh`, `src/distribution/mod.rs`, `src/distribution/files.rs`, `src/distribution/metadata.rs`, `src/distribution/path.rs`, `.github/workflows/ci.yml`, `scripts/check-release-version.py`.
+Implementasi: `install.sh`, `src/distribution/mod.rs`, `src/distribution/files.rs`, `src/distribution/metadata.rs`, `src/distribution/path.rs`, `.github/workflows/ci.yml`, `scripts/check-release-version.py`, `src/distribution/transaction.rs`.
 
-Test/verifikasi: `src/distribution/mod.rs`, `src/distribution/path.rs`, `scripts/m9-install-tests.py`, `scripts/m9-artifact-tests.py`, `scripts/test-release-policy.py`, `tests/cli.rs`.
+Test/verifikasi: `src/distribution/mod.rs`, `src/distribution/path.rs`, `scripts/m9-install-tests.py`, `scripts/m9-artifact-tests.py`, `scripts/test-release-policy.py`, `tests/cli.rs`, `src/distribution/transaction_tests.rs`.
 
 Evidence CI: `rust`, `release-policy`, `m9-distribution`.
 
 Batas tahap: Public releases/latest dan job publish baru M10 sesudah user-authorized tag; belum diklaim tersedia.
 
-Klausul yang dipetakan (15 kelompok; seluruh bullet/command di dalamnya):
+Klausul yang dipetakan (16 kelompok; seluruh bullet/command di dalamnya):
 
 <details><summary>Klausul 1, digest ac47e87bfecf</summary>
 
@@ -2639,7 +2639,23 @@ fallback PATH manual sebelum config disentuh.
 
 </details>
 
-<details><summary>Klausul 13, digest b5d4d3e5c743</summary>
+<details><summary>Klausul 13, digest ae67bbd18bcd</summary>
+
+```text
+Binary dan metadata memakai transaksi yang mempertahankan entry aktual pada
+commit, rollback, dan uninstall. Identity dan checksum entry yang tergeser
+divalidasi sebelum operasi diterima; konflik mempertahankan semua versi dan
+marker recovery. Entry yang pernah dipublikasikan tidak dihapus berdasarkan
+check-then-unlink. Archive transaksi disimpan pada direktori privat
+`.ttc-distribution` di direktori bin/data, pada filesystem yang sama dengan
+target. Direktori ini memiliki receipt ownership, ditolak bila existing tanpa
+receipt valid, dan dipertahankan setelah uninstall. Direktori administrasi TTC
+ini tidak dihitung sebagai program lain dalam pemeriksaan penggunaan PATH.
+```
+
+</details>
+
+<details><summary>Klausul 14, digest b5d4d3e5c743</summary>
 
 ```text
 Pengguna manual dapat mengunduh executable dan checksum yang sama, menjalankan
@@ -2650,7 +2666,7 @@ path pilihannya. Jalur manual di luar `~/.local/bin/ttc` tidak didaftarkan oleh
 
 </details>
 
-<details><summary>Klausul 14, digest aa0fe28b4f38</summary>
+<details><summary>Klausul 15, digest aa0fe28b4f38</summary>
 
 ```text
 Update dilakukan dengan menjalankan ulang installer latest. Tidak ada
@@ -2659,7 +2675,7 @@ Update dilakukan dengan menjalankan ulang installer latest. Tidak ada
 
 </details>
 
-<details><summary>Klausul 15, digest 89da29cce9d0</summary>
+<details><summary>Klausul 16, digest 89da29cce9d0</summary>
 
 ```text
 CI utama berjalan pada branch `master`. Artifact release-mode Phase 1 harus
@@ -2866,11 +2882,11 @@ Assertions:
 
 ## 14.5 Distribution E2E
 
-Linux GNU stable latest dipin satu tag HTTPS+SHA; local finalizer bounded streaminghash, strict schema/ownership/no symlink, lock/staging/atomic rename/rollback/pending marker. PATH exact-owned backup/manualfallback; uninstall preserve integration/userconfig/raw/otherprogram. Tag stable matches Cargo/master; semua gates clean ulang, candidate saja. Config existing memakai atomic exchange dan memeriksa file aktual yang tergeser; race sesudah validasi terakhir, rollback, dan uninstall mempertahankan recovery/marker.
+Linux GNU stable latest dipin satu tag HTTPS+SHA; local finalizer bounded streaminghash, strict schema/ownership/no symlink, lock/staging/atomic rename/rollback/pending marker. PATH exact-owned backup/manualfallback; uninstall preserve integration/userconfig/raw/otherprogram. Tag stable matches Cargo/master; semua gates clean ulang, candidate saja. Config existing memakai atomic exchange dan memeriksa file aktual yang tergeser; race sesudah validasi terakhir, rollback, dan uninstall mempertahankan recovery/marker. Binary/metadata commit, rollback, dan uninstall memakai archive aktual, checksum/identity, dan workspace privat dengan receipt; late FD write tidak hilang.
 
-Implementasi: `install.sh`, `src/distribution/mod.rs`, `src/distribution/files.rs`, `src/distribution/metadata.rs`, `src/distribution/path.rs`, `.github/workflows/ci.yml`, `scripts/check-release-version.py`.
+Implementasi: `install.sh`, `src/distribution/mod.rs`, `src/distribution/files.rs`, `src/distribution/metadata.rs`, `src/distribution/path.rs`, `.github/workflows/ci.yml`, `scripts/check-release-version.py`, `src/distribution/transaction.rs`.
 
-Test/verifikasi: `src/distribution/mod.rs`, `src/distribution/path.rs`, `scripts/m9-install-tests.py`, `scripts/m9-artifact-tests.py`, `scripts/test-release-policy.py`, `tests/cli.rs`.
+Test/verifikasi: `src/distribution/mod.rs`, `src/distribution/path.rs`, `scripts/m9-install-tests.py`, `scripts/m9-artifact-tests.py`, `scripts/test-release-policy.py`, `tests/cli.rs`, `src/distribution/transaction_tests.rs`.
 
 Evidence CI: `rust`, `release-policy`, `m9-distribution`.
 

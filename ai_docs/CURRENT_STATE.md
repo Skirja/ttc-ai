@@ -9,10 +9,11 @@ M9 — production binary dan distribution gate pada
 prasyarat CI yang sudah teruji. Installer/latest finalizer, metadata ownership,
 transaksi atomik dengan lock/rollback/pending marker, PATH backup/fallback,
 global uninstall, audit SPEC dan workflow kandidat GNU telah diimplementasikan.
-Seluruh gate lokal perbaikan terakhir lulus. Fix TOCTOU commit config `8277e31`
-lulus 10 job CI dan artifact terverifikasi. PR #9 tetap terbuka; pengguna merge
-setelah CI pada head terakhir lulus. M9 belum lengkap karena master artifact
-gate belum terpenuhi.
+Seluruh gate lokal fix ownership binary/metadata terbaru lulus (226 Rust test,
+17 installer E2E dan standalone smoke). CI fix config sebelumnya sudah lulus;
+fix ownership terbaru masih menunggu PR CI. Pengguna mengotorisasi squash merge
+PR #8/#9 ke branch utama repo (`master`) pada 2026-10-02. M9 belum lengkap
+karena clean master run/artifact masih harus diperiksa setelah merge.
 
 ## Prasyarat yang sudah terbukti
 
@@ -58,7 +59,8 @@ pada TODO M9. PR #8 masih menunggu merge pengguna.
   native tanpa menjalankan binary existing. Finalizer tidak mengakses jaringan.
 - Installer production latest-only; binary manual tidak diadopsi. Lock file
   tetap ada setelah uninstall. State transaksi ambigu menolak mutasi berikutnya.
-- Pengguna merge PR; agent tidak merge, membuat tag atau publish pada M9.
+- Squash merge PR #8/#9 diotorisasi pengguna pada 2026-10-02. Tidak ada
+  otorisasi tag/release atau implementasi M10 pada tugas ini.
 - M10 menunggu clean successful master run M9 dan downloaded GNU artifact.
   Belum ada implementasi/instruksi integrasi Codex yang tersedia pada help M9.
 
@@ -101,6 +103,15 @@ kedua manifest checksum dan 112 evidence entries cocok. Binary SHA-256
 Standalone smoke dan 17 installer E2E lulus pada binary unduhan; log
 `target/m9-evidence/artifact-36959752141.log`. Detail checksum/command pada TODO.
 
+Review penuh PR #9 kemudian menemukan race yang sama pada binary. Fix terbaru
+memakai transaksi binary/metadata dengan archive aktual, validasi identity/hash
+setelah commit dan rollback, capture uninstall, serta cleanup marker atomik.
+Archive privat `.ttc-distribution` memakai receipt ownership dan tetap tersedia
+setelah uninstall, termasuk untuk write lewat FD lama. Namespace existing yang
+tidak terbukti dimiliki TTC ditolak. 226 test Rust dan semua gate lokal M9
+lulus; log `target/m9-evidence/ownership-race-fix-final.log` dan
+`target/m9-evidence/ownership-race-regressions-final.log`.
+
 ## Batasan yang diketahui
 
 Parallel fixture test lokal pernah menemui `Text file busy`; log tersimpan
@@ -110,7 +121,7 @@ lokal yang tidak menyediakan seluruh build prerequisite.
 
 ## Next action
 
-Pengguna merge PR #9 setelah seluruh required CI pada head terakhir lulus.
+Squash merge PR #8, sinkronkan base PR #9, periksa CI fix, lalu squash merge #9.
 Periksa clean successful master run dan downloaded GNU artifact; catat exact
 commit/run/checksum dan lengkapi M9. M10 tetap menunggu gate master tersebut.
 

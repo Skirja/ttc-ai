@@ -3,16 +3,17 @@
 mod files;
 mod metadata;
 mod path;
+mod transaction;
 
 use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::os::unix::fs::OpenOptionsExt;
-use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use files::{Identity, Result, Stage};
 use metadata::Metadata;
+use transaction::{Expected, Removal, Replacement};
 
 struct Paths {
     home: PathBuf,
@@ -62,7 +63,20 @@ impl Paths {
                 self.pending.display()
             ));
         }
+        files::workspace(&self.binary_workspace(), &self.binary)?;
+        files::workspace(&self.metadata_workspace(), &self.binary)?;
         Ok(lock)
+    }
+
+    fn binary_workspace(&self) -> PathBuf {
+        self.binary
+            .parent()
+            .expect("absolute binary path")
+            .join(".ttc-distribution")
+    }
+
+    fn metadata_workspace(&self) -> PathBuf {
+        self.data.join(".ttc-distribution")
     }
 
     fn load(&self) -> Result<Option<Snapshot>> {
@@ -159,24 +173,31 @@ fn install_from(
     expected: &str,
     before_metadata: impl FnOnce() -> Result<()>,
 ) -> Result<()> {
+    install_with(paths, source, expected, || Ok(()), before_metadata)
+}
+
+fn install_with(
+    paths: &Paths,
+    source: &Path,
+    expected: &str,
+    before_binary: impl FnOnce() -> Result<()>,
+    before_metadata: impl FnOnce() -> Result<()>,
+) -> Result<()> {
     let _lock = paths.prepare()?;
     let previous = paths.load()?;
     let previous_id = binary_owned(paths, previous.as_ref(), false)?;
-    let directory = paths.binary.parent().ok_or("Parent binary tidak ada")?;
-    let mut image = Stage::copy(directory, "image", source, 0o755)?;
+    let image = Stage::copy(&paths.binary_workspace(), "image", source, 0o755)?;
     if files::hash(&image.path)? != expected {
         return Err("Checksum candidate tidak cocok".into());
     }
-    let mut backup = if previous_id.is_some() {
-        let mode = fs::metadata(&paths.binary)
-            .map_err(|error| error.to_string())?
-            .permissions()
-            .mode()
-            & 0o777;
-        Some(Stage::copy(directory, "rollback", &paths.binary, mode)?)
-    } else {
-        None
-    };
+    let binary_before = previous
+        .as_ref()
+        .zip(previous_id)
+        .map(|(snapshot, id)| Expected {
+            id,
+            hash: snapshot.meta.sha256.clone(),
+        });
+    let mut image = Replacement::new(image, &paths.binary, binary_before)?;
     let mut meta = Metadata {
         version: env!("CARGO_PKG_VERSION").into(),
         sha256: expected.into(),
@@ -187,60 +208,35 @@ fn install_from(
             .unwrap_or_default(),
         path: previous.as_ref().and_then(|p| p.meta.path.clone()),
     };
-    let mut manifest = Stage::bytes(&paths.data, "manifest", &meta.encode()?, 0o600)?;
-    let manifest_hash = files::hash(&manifest.path)?;
-    let mut meta_backup = previous
-        .as_ref()
-        .map(|p| Stage::bytes(&paths.data, "metadata-rollback", &p.bytes, 0o600))
-        .transpose()?;
+    let manifest = Stage::bytes(
+        &paths.metadata_workspace(),
+        "manifest",
+        &meta.encode()?,
+        0o600,
+    )?;
+    let metadata_before = previous.as_ref().map(|snapshot| Expected {
+        id: snapshot.id,
+        hash: files::hash_bytes(&snapshot.bytes),
+    });
+    let mut manifest = Replacement::new(manifest, &paths.manifest, metadata_before)?;
     paths.unchanged(previous.as_ref())?;
     if binary_owned(paths, previous.as_ref(), false)? != previous_id {
         return Err("Binary berubah sebelum replacement".into());
     }
     let marker = paths.marker("install")?;
-    let committed = (|| {
-        if previous_id.is_some() {
-            image.replace(&paths.binary)?;
-        } else {
-            image.publish(&paths.binary)?;
-        }
-        before_metadata()?;
-        paths.unchanged(previous.as_ref())?;
-        if previous.is_some() {
-            manifest.replace(&paths.manifest)
-        } else {
-            manifest.publish(&paths.manifest)
-        }
-    })();
+    let committed = image
+        .apply_with(before_binary)
+        .and_then(|()| manifest.apply_with(before_metadata));
     if let Err(error) = committed {
-        let result = restore(
-            &paths.binary,
-            image.id(),
-            expected,
-            previous_id,
-            &mut backup,
-        )
-        .and_then(|()| {
-            restore(
-                &paths.manifest,
-                manifest.id(),
-                &manifest_hash,
-                previous.as_ref().map(|p| p.id),
-                &mut meta_backup,
-            )
-        });
-        if result.is_ok() {
+        let recovery = image.rollback().and_then(|()| manifest.rollback());
+        if recovery.is_ok() {
             files::remove_owned(&paths.pending, marker)?;
-        } else {
-            if let Some(stage) = &mut backup {
-                stage.keep();
-            }
-            if let Some(stage) = &mut meta_backup {
-                stage.keep();
-            }
-            return Err(format!("{error}; rollback ambigu, marker dipertahankan"));
+            return Err(error);
         }
-        return Err(error);
+        return Err(format!(
+            "{error}; {}; marker dipertahankan",
+            recovery.unwrap_err()
+        ));
     }
     let path_result = update_path(paths, &mut meta);
     if let Err(PathFailure::Ambiguous(error)) = &path_result {
@@ -256,27 +252,6 @@ fn install_from(
         );
     }
     files::remove_owned(&paths.pending, marker)
-}
-
-fn restore(
-    target: &Path,
-    new: Identity,
-    expected_hash: &str,
-    previous: Option<Identity>,
-    backup: &mut Option<Stage>,
-) -> Result<()> {
-    let current = files::identity(target)?;
-    if current == previous {
-        return Ok(());
-    }
-    if current != Some(new) || files::hash(target)? != expected_hash {
-        return Err("File berubah di luar transaksi".into());
-    }
-    if let Some(backup) = backup {
-        backup.replace(target)
-    } else {
-        files::remove_owned(target, new)
-    }
 }
 
 enum PathFailure {
@@ -309,52 +284,30 @@ fn update_path(paths: &Paths, meta: &mut Metadata) -> std::result::Result<(), Pa
     let previous_path = meta.path.clone();
     let mut updated = meta.clone();
     updated.path = Some(ownership);
-    let mut stage = Stage::bytes(
-        &paths.data,
+    let stage = Stage::bytes(
+        &paths.metadata_workspace(),
         "path-metadata",
         &updated.encode().map_err(PathFailure::Manual)?,
         0o600,
     )
     .map_err(PathFailure::Manual)?;
-    let stage_hash = files::hash(&stage.path).map_err(PathFailure::Manual)?;
-    let mut backup = Some(
-        Stage::bytes(
-            &paths.data,
-            "path-metadata-rollback",
-            &previous_bytes,
-            0o600,
-        )
-        .map_err(PathFailure::Manual)?,
-    );
+    let mut manifest = Replacement::new(
+        stage,
+        &paths.manifest,
+        Some(Expected {
+            id: previous_id,
+            hash: files::hash_bytes(&previous_bytes),
+        }),
+    )
+    .map_err(PathFailure::Manual)?;
     if let Err(error) = edit.apply() {
         edit.rollback().map_err(PathFailure::Ambiguous)?;
         return Err(PathFailure::Manual(error));
     }
-    let result: Result<()> = (|| {
-        if files::identity(&paths.manifest)? != Some(previous_id)
-            || files::read(&paths.manifest, metadata::MAX_METADATA)? != previous_bytes
-        {
-            return Err("Metadata berubah selama edit PATH".into());
-        }
-        stage.replace(&paths.manifest)
-    })();
-    if let Err(error) = result {
-        // A sync error can occur after rename; restore the original ownership
-        // record together with the config before offering the manual fallback.
+    if let Err(error) = manifest.apply() {
         meta.path = previous_path;
         edit.rollback().map_err(PathFailure::Ambiguous)?;
-        if let Err(restore_error) = restore(
-            &paths.manifest,
-            stage.id(),
-            &stage_hash,
-            Some(previous_id),
-            &mut backup,
-        ) {
-            if let Some(backup) = &mut backup {
-                backup.keep();
-            }
-            return Err(PathFailure::Ambiguous(restore_error));
-        }
+        manifest.rollback().map_err(PathFailure::Ambiguous)?;
         return Err(PathFailure::Manual(error));
     }
     *meta = updated;
@@ -370,6 +323,15 @@ fn uninstall_from(paths: &Paths) -> Result<()> {
 }
 
 fn uninstall_with(paths: &Paths, before_path_commit: impl FnOnce() -> Result<()>) -> Result<()> {
+    uninstall_transaction(paths, || Ok(()), || Ok(()), before_path_commit)
+}
+
+fn uninstall_transaction(
+    paths: &Paths,
+    before_binary: impl FnOnce() -> Result<()>,
+    before_metadata: impl FnOnce() -> Result<()>,
+    before_path_commit: impl FnOnce() -> Result<()>,
+) -> Result<()> {
     let _lock = paths.prepare()?;
     let previous = paths.load()?;
     let Some(previous) = previous else {
@@ -382,68 +344,64 @@ fn uninstall_with(paths: &Paths, before_path_commit: impl FnOnce() -> Result<()>
     }
     let binary = binary_owned(paths, Some(&previous), true)?;
     let directory = paths.binary.parent().ok_or("Parent binary tidak ada")?;
-    let mut tombstone = binary
-        .map(|_| Stage::bytes(directory, "uninstall", &[], 0o600))
-        .transpose()?;
-    let mut meta_tombstone = Stage::bytes(&paths.data, "uninstall-metadata", &[], 0o600)?;
+    let mut image = binary.map(|id| {
+        Removal::new(
+            &paths.binary,
+            &paths.binary_workspace(),
+            Expected {
+                id,
+                hash: previous.meta.sha256.clone(),
+            },
+        )
+    });
+    let mut manifest = Removal::new(
+        &paths.manifest,
+        &paths.metadata_workspace(),
+        Expected {
+            id: previous.id,
+            hash: files::hash_bytes(&previous.bytes),
+        },
+    );
     let marker = paths.marker("uninstall")?;
     let result = (|| {
         paths.unchanged(Some(&previous))?;
         if binary_owned(paths, Some(&previous), true)? != binary {
             return Err("Binary berubah sebelum uninstall".into());
         }
-        if let Some(tombstone) = &mut tombstone {
-            fs::rename(&paths.binary, &tombstone.path).map_err(|error| error.to_string())?;
-            // The tombstone now owns the original inode.
-            tombstone.adopt(binary.ok_or("Identity binary tidak ada")?);
+        if let Some(image) = &mut image {
+            image.apply_with(before_binary)?;
         }
-        fs::rename(&paths.manifest, &meta_tombstone.path).map_err(|error| error.to_string())?;
-        meta_tombstone.adopt(previous.id);
-        files::sync_directory(directory)?;
-        files::sync_directory(&paths.data)
+        manifest.apply_with(before_metadata)
     })();
     if let Err(error) = result {
-        let recovery: Result<()> = (|| {
-            if files::identity(&paths.binary)?.is_none() {
-                if let Some(tombstone) = &tombstone {
-                    tombstone.publish(&paths.binary)?;
-                }
-            } else if files::identity(&paths.binary)? != binary {
-                return Err("Binary berubah selama rollback".into());
+        let recovery = (|| {
+            if let Some(image) = &mut image {
+                image.rollback()?;
             }
-            if files::identity(&paths.manifest)?.is_none() {
-                meta_tombstone.publish(&paths.manifest)?;
-            } else if files::identity(&paths.manifest)? != Some(previous.id) {
-                return Err("Metadata berubah selama rollback".into());
-            }
-            Ok(())
+            manifest.rollback()
         })();
         if recovery.is_ok() {
             files::remove_owned(&paths.pending, marker)?;
-        } else {
-            if let Some(stage) = &mut tombstone {
-                stage.keep();
-            }
-            meta_tombstone.keep();
         }
-        return Err(format!("{error}; uninstall belum selesai"));
+        return Err(format!(
+            "{error}; uninstall belum selesai; {}",
+            recovery
+                .err()
+                .unwrap_or_else(|| "rollback selesai, archive dipertahankan".into())
+        ));
     }
-    let excluded = tombstone.as_ref().map(|p| p.path.as_path());
+    let workspace = paths.binary_workspace();
     let others = fs::read_dir(directory)
         .map_err(|error| error.to_string())?
         .try_fold(false, |found, entry| {
             let entry = entry.map_err(|error| error.to_string())?;
-            Ok::<_, String>(found || Some(entry.path().as_path()) != excluded)
+            Ok::<_, String>(found || entry.path() != workspace)
         })?;
     if !others && let Some(ownership) = &previous.meta.path {
         match path::remove(ownership) {
             Ok(Some(mut edit)) => {
                 if let Err(error) = edit.apply_with(|| Ok(()), before_path_commit) {
                     if let Err(recovery_error) = edit.rollback() {
-                        if let Some(stage) = &mut tombstone {
-                            stage.keep();
-                        }
-                        meta_tombstone.keep();
                         return Err(format!(
                             "{error}; {recovery_error}; marker transaksi dipertahankan"
                         ));
@@ -455,10 +413,6 @@ fn uninstall_with(paths: &Paths, before_path_commit: impl FnOnce() -> Result<()>
             Err(error) => eprintln!("ttc: blok PATH dipertahankan: {error}"),
         }
     }
-    if let (Some(tombstone), Some(id)) = (&tombstone, binary) {
-        files::remove_owned(&tombstone.path, id)?;
-    }
-    files::remove_owned(&meta_tombstone.path, previous.id)?;
     files::remove_owned(&paths.pending, marker)?;
     println!("Instalasi global TTC dihapus");
     Ok(())
@@ -477,6 +431,7 @@ fn status(result: Result<()>) -> ExitCode {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::os::unix::fs::PermissionsExt;
     use std::time::{SystemTime, UNIX_EPOCH};
 
     struct Fixture {
@@ -521,6 +476,122 @@ mod tests {
         fn drop(&mut self) {
             fs::remove_dir_all(&self.root).unwrap();
         }
+    }
+
+    fn save_user_entry(path: &Path, atomic: bool, bytes: &[u8]) -> Result<()> {
+        if atomic {
+            let temp = path.with_extension("user-save");
+            fs::write(&temp, bytes).unwrap();
+            fs::rename(temp, path).unwrap();
+        } else {
+            fs::write(path, bytes).unwrap();
+        }
+        Ok(())
+    }
+
+    fn archive_contains(directory: &Path, bytes: &[u8]) -> bool {
+        fs::read_dir(directory)
+            .unwrap()
+            .any(|entry| fs::read(entry.unwrap().path()).unwrap() == bytes)
+    }
+
+    #[test]
+    fn commit_races_preserve_binary_metadata_and_pending_marker() {
+        for metadata in [false, true] {
+            for atomic in [false, true] {
+                let fixture = Fixture::new();
+                let (first, hash) = fixture.source("first", b"original image");
+                fixture.install(&first, &hash);
+                let (second, hash) = fixture.source("second", b"new image");
+                let latest = b"user save after final ownership validation";
+                let result = install_with(
+                    &fixture.paths,
+                    &second,
+                    &hash,
+                    || {
+                        if metadata {
+                            Ok(())
+                        } else {
+                            save_user_entry(&fixture.paths.binary, atomic, latest)
+                        }
+                    },
+                    || {
+                        if metadata {
+                            save_user_entry(&fixture.paths.manifest, atomic, latest)
+                        } else {
+                            Ok(())
+                        }
+                    },
+                );
+                assert!(result.is_err());
+                assert!(result.unwrap_err().contains("recovery"));
+                assert!(fixture.paths.pending.exists());
+                let directory = if metadata {
+                    fixture.paths.metadata_workspace()
+                } else {
+                    fixture.paths.binary_workspace()
+                };
+                assert!(archive_contains(&directory, latest));
+                assert!(install_from(&fixture.paths, &second, &hash, || Ok(())).is_err());
+                assert!(uninstall_from(&fixture.paths).is_err());
+                assert!(archive_contains(&directory, latest));
+            }
+        }
+    }
+
+    #[test]
+    fn uninstall_races_preserve_binary_metadata_and_pending_marker() {
+        for metadata in [false, true] {
+            for atomic in [false, true] {
+                let fixture = Fixture::new();
+                let (source, hash) = fixture.source("image", b"original image");
+                fixture.install(&source, &hash);
+                let latest = b"user save during uninstall commit";
+                assert!(
+                    uninstall_transaction(
+                        &fixture.paths,
+                        || if metadata {
+                            Ok(())
+                        } else {
+                            save_user_entry(&fixture.paths.binary, atomic, latest)
+                        },
+                        || if metadata {
+                            save_user_entry(&fixture.paths.manifest, atomic, latest)
+                        } else {
+                            Ok(())
+                        },
+                        || Ok(())
+                    )
+                    .is_err()
+                );
+                assert!(fixture.paths.pending.exists());
+                let directory = if metadata {
+                    fixture.paths.metadata_workspace()
+                } else {
+                    fixture.paths.binary_workspace()
+                };
+                assert!(archive_contains(&directory, latest));
+                assert!(install_from(&fixture.paths, &source, &hash, || Ok(())).is_err());
+                assert!(uninstall_from(&fixture.paths).is_err());
+            }
+        }
+    }
+
+    #[test]
+    fn existing_unowned_workspace_is_not_adopted_or_modified() {
+        let fixture = Fixture::new();
+        let directory = fixture.paths.binary_workspace();
+        fs::create_dir_all(&directory).unwrap();
+        fs::set_permissions(&directory, fs::Permissions::from_mode(0o700)).unwrap();
+        fs::write(directory.join("user-data"), b"unrelated program data").unwrap();
+        let (source, hash) = fixture.source("image", b"candidate");
+        assert!(install_from(&fixture.paths, &source, &hash, || Ok(())).is_err());
+        assert!(!fixture.paths.binary.exists());
+        assert!(!directory.join("owner").exists());
+        assert_eq!(
+            fs::read(directory.join("user-data")).unwrap(),
+            b"unrelated program data"
+        );
     }
 
     #[test]
@@ -602,24 +673,28 @@ mod tests {
         assert!(uninstall_from(&fixture.paths).is_err());
         // The removed installation also stays available for manual recovery.
         assert!(
-            fs::read_dir(fixture.paths.binary.parent().unwrap())
+            fs::read_dir(fixture.paths.binary_workspace())
                 .unwrap()
                 .any(|entry| { fs::read(entry.unwrap().path()).unwrap() == b"image" })
         );
-        assert!(fs::read_dir(&fixture.paths.data).unwrap().any(|entry| {
-            let path = entry.unwrap().path();
-            path.file_name()
+        assert!(
+            fs::read_dir(fixture.paths.metadata_workspace())
                 .unwrap()
-                .to_string_lossy()
-                .ends_with("uninstall-metadata")
-                && Metadata::parse(
-                    &fs::read(path).unwrap(),
-                    &fixture.paths.binary,
-                    &file,
-                    path::BLOCK,
-                )
-                .is_ok()
-        }));
+                .any(|entry| {
+                    let path = entry.unwrap().path();
+                    path.file_name()
+                        .unwrap()
+                        .to_string_lossy()
+                        .ends_with("uninstall")
+                        && Metadata::parse(
+                            &fs::read(path).unwrap(),
+                            &fixture.paths.binary,
+                            &file,
+                            path::BLOCK,
+                        )
+                        .is_ok()
+                })
+        );
     }
 
     #[test]
@@ -791,13 +866,15 @@ mod tests {
         let destination = fixture.root.join("destination");
         fs::create_dir(&destination).unwrap();
         fs::write(destination.join("user-data"), b"user-owned content").unwrap();
-        let mut stage = Stage::bytes(&fixture.root, "rename-failure", b"candidate", 0o755).unwrap();
-        assert!(stage.replace(&destination).is_err());
+        let stage = Stage::bytes(&fixture.root, "rename-failure", b"candidate", 0o755).unwrap();
+        let stage_path = stage.path.clone();
+        let mut replacement = Replacement::new(stage, &destination, None).unwrap();
+        assert!(replacement.apply().is_err());
         assert_eq!(
             fs::read(destination.join("user-data")).unwrap(),
             b"user-owned content"
         );
-        assert_eq!(fs::read(&stage.path).unwrap(), b"candidate");
+        assert_eq!(fs::read(&stage_path).unwrap(), b"candidate");
     }
 
     #[test]

@@ -1,5 +1,5 @@
 {
-  "spec_sha256": "4dd1b53b557b5c36962fdb7ec3bae8ed3547522bd01e77cbb316cb5633fb9534",
+  "spec_sha256": "6f668fe0631a4b2f24b30d2ce2cc436f6476111803c2e02cbe4f2dfb23f0a489",
   "sections": {
     "1": {
       "perilaku": "Standalone sekali; default retain, tanpa daemon/network/harness dependency. Artifact GNU mendahului M10.",
@@ -952,7 +952,7 @@
       "cakupan_m10": "Uninstall integrasi Codex untuk disable hanya tersedia M10."
     },
     "13": {
-      "perilaku": "Linux GNU stable latest dipin satu tag HTTPS+SHA; local finalizer bounded streaminghash, strict schema/ownership/no symlink, lock/staging/atomic rename/rollback/pending marker. PATH exact-owned backup/manualfallback; uninstall preserve integration/userconfig/raw/otherprogram. Tag stable matches Cargo/master; semua gates clean ulang, candidate saja. Config existing memakai atomic exchange dan memeriksa file aktual yang tergeser; race sesudah validasi terakhir, rollback, dan uninstall mempertahankan recovery/marker.",
+      "perilaku": "Linux GNU stable latest dipin satu tag HTTPS+SHA; local finalizer bounded streaminghash, strict schema/ownership/no symlink, lock/staging/atomic rename/rollback/pending marker. PATH exact-owned backup/manualfallback; uninstall preserve integration/userconfig/raw/otherprogram. Tag stable matches Cargo/master; semua gates clean ulang, candidate saja. Config existing memakai atomic exchange dan memeriksa file aktual yang tergeser; race sesudah validasi terakhir, rollback, dan uninstall mempertahankan recovery/marker. Binary/metadata commit, rollback, dan uninstall memakai archive aktual, checksum/identity, dan workspace privat dengan receipt; late FD write tidak hilang.",
       "implementasi": [
         "install.sh",
         "src/distribution/mod.rs",
@@ -960,7 +960,8 @@
         "src/distribution/metadata.rs",
         "src/distribution/path.rs",
         ".github/workflows/ci.yml",
-        "scripts/check-release-version.py"
+        "scripts/check-release-version.py",
+        "src/distribution/transaction.rs"
       ],
       "test": [
         "src/distribution/mod.rs",
@@ -968,7 +969,8 @@
         "scripts/m9-install-tests.py",
         "scripts/m9-artifact-tests.py",
         "scripts/test-release-policy.py",
-        "tests/cli.rs"
+        "tests/cli.rs",
+        "src/distribution/transaction_tests.rs"
       ],
       "gate": [
         "rust",
@@ -978,7 +980,7 @@
       "cakupan_m10": "Public releases/latest dan job publish baru M10 sesudah user-authorized tag; belum diklaim tersedia."
     },
     "14.5": {
-      "perilaku": "Linux GNU stable latest dipin satu tag HTTPS+SHA; local finalizer bounded streaminghash, strict schema/ownership/no symlink, lock/staging/atomic rename/rollback/pending marker. PATH exact-owned backup/manualfallback; uninstall preserve integration/userconfig/raw/otherprogram. Tag stable matches Cargo/master; semua gates clean ulang, candidate saja. Config existing memakai atomic exchange dan memeriksa file aktual yang tergeser; race sesudah validasi terakhir, rollback, dan uninstall mempertahankan recovery/marker.",
+      "perilaku": "Linux GNU stable latest dipin satu tag HTTPS+SHA; local finalizer bounded streaminghash, strict schema/ownership/no symlink, lock/staging/atomic rename/rollback/pending marker. PATH exact-owned backup/manualfallback; uninstall preserve integration/userconfig/raw/otherprogram. Tag stable matches Cargo/master; semua gates clean ulang, candidate saja. Config existing memakai atomic exchange dan memeriksa file aktual yang tergeser; race sesudah validasi terakhir, rollback, dan uninstall mempertahankan recovery/marker. Binary/metadata commit, rollback, dan uninstall memakai archive aktual, checksum/identity, dan workspace privat dengan receipt; late FD write tidak hilang.",
       "implementasi": [
         "install.sh",
         "src/distribution/mod.rs",
@@ -986,7 +988,8 @@
         "src/distribution/metadata.rs",
         "src/distribution/path.rs",
         ".github/workflows/ci.yml",
-        "scripts/check-release-version.py"
+        "scripts/check-release-version.py",
+        "src/distribution/transaction.rs"
       ],
       "test": [
         "src/distribution/mod.rs",
@@ -994,7 +997,8 @@
         "scripts/m9-install-tests.py",
         "scripts/m9-artifact-tests.py",
         "scripts/test-release-policy.py",
-        "tests/cli.rs"
+        "tests/cli.rs",
+        "src/distribution/transaction_tests.rs"
       ],
       "gate": [
         "rust",
