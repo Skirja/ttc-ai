@@ -75,8 +75,13 @@ fallback PATH manual tanpa mengganti config. Test baru meliputi save in-place
 dan atomic rename. Semua gate lokal M9 lulus pada perubahan ini:
 `target/m9-evidence/path-race-fix.log`; binary lokal SHA-256
 `7b22354748f1cebbe5707c0e32cae25f0c788029478f29e65e3740c4b287df98`.
-Candidate checksum yang tercatat sebelumnya tidak mencakup fix; CI PR harus
-membangun artifact baru.
+Fix commit `6a5627c` lulus 10 job pada
+[run 36955336106](https://github.com/Skirja/ttc-ai/actions/runs/36955336106).
+Artifact final diunduh; 112 evidence entries dan kedua checksum manifest cocok.
+Binary SHA-256
+`2ceac28857697143a5f67bf96950be2252238daa56228f7517846fc2d635ef63`.
+Standalone smoke dan 17 installer E2E lulus lagi pada binary unduhan. Checksum
+lain dan detail replay dicatat pada TODO M9.
 
 ## Batasan yang diketahui
 

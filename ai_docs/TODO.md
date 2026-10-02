@@ -1073,10 +1073,26 @@ manual tanpa mengganti config. Regresi menguji save in-place dan save atomik
 yang mengganti inode.
 
 Gate lokal sesudah fix: verification commands M9 seluruhnya lulus; log
-`target/m9-evidence/path-race-fix.log`. Production ELF lokal kini SHA-256
-`7b22354748f1cebbe5707c0e32cae25f0c788029478f29e65e3740c4b287df98`.
-Artifact `36825865560` dan checksum yang dicatat sebelumnya mendahului fix ini,
-jadi CI PR harus membangun dan mengunggah kandidat baru sebelum merge.
+`target/m9-evidence/path-race-fix.log`. Narrow ulang sesudah cleanup test lulus:
+`cargo fmt --all -- --check`, `cargo test --bin ttc distribution::path::tests
+-- --test-threads=1`, Clippy, dan `git diff --check`.
+
+Fix commit `6a5627c62415510b9f95216b2ac0e003c521e0b1` lulus semua 10 CI jobs pada
+[run `36955336106`](https://github.com/Skirja/ttc-ai/actions/runs/36955336106),
+checkout merge `f734afe099b0be01ac8ab62788dcee62902104e8`. Artifact
+`ttc-m9-x86_64-unknown-linux-gnu` diunduh ke
+`target/m9-evidence/run-36955336106/`; kedua manifest checksum lulus. **112**
+evidence entries M1–M8/M9 terverifikasi; installer 17 E2E lulus pada CI dan
+binary unduhan. Standalone smoke binary unduhan lulus ulang untuk argv/shell
+stdout/stderr, cwd/env/stdin, status/signal, count1, TTY, diagnostic, raw replay
+dan reduction `23999/254` byte.
+
+| File artifact setelah fix | SHA-256 |
+|---|---|
+| ttc-x86_64-unknown-linux-gnu | `2ceac28857697143a5f67bf96950be2252238daa56228f7517846fc2d635ef63` |
+| install.sh | `19e0e744ec83a0e4e29934b47f522eecba37dcdd95ad899b5193f6c8a9cebda7` |
+| SHA256SUMS | `31eda14a8d25c8f77ef0e2a6dad3158eb8e86dc97d6b62240479aa96a09711e8` |
+| EVIDENCE-SHA256SUMS | `75c26b92646655e4b391a2d480164ba373a7b74d899773388daa1d6fae9dd2a3` |
 
 ### Evidence
 
