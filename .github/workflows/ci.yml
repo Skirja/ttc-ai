@@ -280,11 +280,28 @@ jobs:
           extensions: zip
           coverage: none
 
+      - name: Build exact checksum-verified PHP runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y libcurl4-openssl-dev libxml2-dev libonig-dev libssl-dev libzip-dev zlib1g-dev
+          tool_home="$RUNNER_TEMP/m7-tools"
+          mkdir -p target/m7-evidence
+          if M7_TOOL_HOME="$tool_home" sh scripts/m7-install-php.sh > target/m7-evidence/php-build.log 2>&1; then
+            "$tool_home/php-8.4.25/bin/php" --version
+          else
+            tail -c 12000 target/m7-evidence/php-build.log
+            exit 1
+          fi
+          printf '%s/php-8.4.25/bin\n' "$tool_home" >> "$GITHUB_PATH"
+
       - name: Install pinned Java 21 LTS
         uses: actions/setup-java@f2beeb24e141e01a676f977032f5a29d81c9e27e # v5.1.0
         with:
           distribution: temurin
-          java-version: 21.0.12.1+1
+          # Adoptium SemVer for the pinned runtime 21.0.12.1+1.
+          java-version: 21.0.12+101.0.LTS
 
       - name: Install pinned .NET 10 LTS
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
@@ -361,7 +378,7 @@ jobs:
           bundler: 2.6.9
 
       - name: Install pinned Swift
-        uses: swift-actions/setup-swift@682457186b71c25a884c45c06f859febbe259240 # v2.3.0
+        uses: swift-actions/setup-swift@7ca6abe6b3b0e8b5421b88be48feee39cbf52c6a # v2.4.0
         with:
           swift-version: 6.1.2
 
@@ -416,7 +433,23 @@ jobs:
         run: cargo build --release
 
       - name: Run pinned build, Ruby, Swift, Docker, Podman, and infrastructure smoke tests
-        run: sh scripts/m8-smoke.sh target/release/ttc target/m8-evidence
+        shell: bash
+        run: |
+          mkdir -p target/m8-evidence
+          if sh -x scripts/m8-smoke.sh target/release/ttc target/m8-evidence > target/m8-evidence/smoke.log 2>&1; then
+            tail -n 24 target/m8-evidence/smoke-report.txt
+          else
+            tail -c 12000 target/m8-evidence/smoke.log
+            exit 1
+          fi
+
+      - name: Verify finalized M8 evidence checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd target/m8-evidence
+          find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+          sha256sum --check --status SHA256SUMS
 
       - name: Upload passing M8 evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
