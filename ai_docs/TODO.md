@@ -1117,8 +1117,27 @@ release policy, coverage, dan `git diff --check` lulus pada
 di luar source tree lulus; reduction representative `23999/254` byte.
 Binary lokal GNU SHA-256:
 `fe665b880f521e2976447a6a0f6c42aa76465c40c12eed2cef7ac22cff7493cd`.
-CI dan downloaded artifact pada commit perbaikan ini masih menunggu push/run;
-evidence CI di atas berasal dari kandidat sebelumnya.
+Fix commit `8277e31b51fc4a29f5cbebca1b03822aa7c5eb82` lulus seluruh 10 job pada
+[run `36959752141`](https://github.com/Skirja/ttc-ai/actions/runs/36959752141).
+Provenance artifact mencatat checkout merge
+`e75efe9393c4a71ebfef8c712c0ea126fdfb7c14`; parent sesuai `master` dan fix head.
+Artifact diunduh ke `target/m9-evidence/run-36959752141/`. Kedua manifest
+checksum dan seluruh 112 evidence entries cocok. Standalone smoke serta 17
+installer E2E lulus ulang pada binary unduhan. Log pemeriksaan:
+`target/m9-evidence/artifact-36959752141.log`.
+
+Command pemeriksaan artifact: `gh run download 36959752141 --name
+ttc-m9-x86_64-unknown-linux-gnu --dir target/m9-evidence/run-36959752141`,
+`sha256sum --check --status SHA256SUMS` dan `sha256sum --check --status
+EVIDENCE-SHA256SUMS` dari root artifact, lalu kedua script M9 dengan
+`TTC_M9_BINARY` menunjuk executable unduhan.
+
+| File artifact atomic exchange | SHA-256 |
+|---|---|
+| ttc-x86_64-unknown-linux-gnu | `773a36057a958699598bb9613667c60fef79d49166c58eded57e4daf06709b48` |
+| install.sh | `19e0e744ec83a0e4e29934b47f522eecba37dcdd95ad899b5193f6c8a9cebda7` |
+| SHA256SUMS | `0182d3b7450786e21b19d9f8fb37806fadad82c7d687e2ab3666640ac0899d1c` |
+| EVIDENCE-SHA256SUMS | `720cba5546875135bd0a7d59ca55a6880d15e039fc6233685530b6e3511d406b` |
 
 ### Evidence
 

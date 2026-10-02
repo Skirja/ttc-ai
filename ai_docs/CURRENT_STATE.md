@@ -9,10 +9,10 @@ M9 — production binary dan distribution gate pada
 prasyarat CI yang sudah teruji. Installer/latest finalizer, metadata ownership,
 transaksi atomik dengan lock/rollback/pending marker, PATH backup/fallback,
 global uninstall, audit SPEC dan workflow kandidat GNU telah diimplementasikan.
-Seluruh gate lokal perbaikan terakhir lulus. CI kandidat sebelumnya lulus
-10 job dan artifact terverifikasi; perbaikan TOCTOU commit config terbaru
-menunggu push/CI dan downloaded artifact. PR #9 tetap terbuka; M9 belum lengkap
-karena master artifact gate belum terpenuhi.
+Seluruh gate lokal perbaikan terakhir lulus. Fix TOCTOU commit config `8277e31`
+lulus 10 job CI dan artifact terverifikasi. PR #9 tetap terbuka; pengguna merge
+setelah CI pada head terakhir lulus. M9 belum lengkap karena master artifact
+gate belum terpenuhi.
 
 ## Prasyarat yang sudah terbukti
 
@@ -93,7 +93,13 @@ Feature fs dari nix terpin menyediakan renameat2 tanpa unsafe code baru.
 20 unit distribusi, semua 214 test Rust, baseline dan seluruh gate M9 lulus:
 `target/m9-evidence/path-exchange-fix.log`. Binary lokal GNU SHA-256
 `fe665b880f521e2976447a6a0f6c42aa76465c40c12eed2cef7ac22cff7493cd`.
-CI/artifact untuk fix terbaru belum diperiksa.
+Fix commit `8277e31b51fc4a29f5cbebca1b03822aa7c5eb82` lulus 10 job pada
+[run 36959752141](https://github.com/Skirja/ttc-ai/actions/runs/36959752141).
+Artifact checkout merge `e75efe9393c4a71ebfef8c712c0ea126fdfb7c14` diunduh;
+kedua manifest checksum dan 112 evidence entries cocok. Binary SHA-256
+`773a36057a958699598bb9613667c60fef79d49166c58eded57e4daf06709b48`.
+Standalone smoke dan 17 installer E2E lulus pada binary unduhan; log
+`target/m9-evidence/artifact-36959752141.log`. Detail checksum/command pada TODO.
 
 ## Batasan yang diketahui
 
@@ -104,8 +110,7 @@ lokal yang tidak menyediakan seluruh build prerequisite.
 
 ## Next action
 
-Push fix atomic exchange ke PR #9, periksa seluruh CI dan downloaded artifact,
-lalu pengguna merge PR #9.
+Pengguna merge PR #9 setelah seluruh required CI pada head terakhir lulus.
 Periksa clean successful master run dan downloaded GNU artifact; catat exact
 commit/run/checksum dan lengkapi M9. M10 tetap menunggu gate master tersebut.
 
