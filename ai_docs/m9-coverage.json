@@ -1,0 +1,1245 @@
+{
+  "spec_sha256": "6f668fe0631a4b2f24b30d2ce2cc436f6476111803c2e02cbe4f2dfb23f0a489",
+  "sections": {
+    "1": {
+      "perilaku": "Standalone sekali; default retain, tanpa daemon/network/harness dependency. Artifact GNU mendahului M10.",
+      "implementasi": [
+        "src/main.rs",
+        "src/core/execution.rs",
+        "src/core/streaming.rs",
+        "Cargo.toml"
+      ],
+      "test": [
+        "tests/execution.rs",
+        "tests/passthrough.rs",
+        "tests/filter_safety.rs",
+        "scripts/m9-artifact-tests.py"
+      ],
+      "gate": [
+        "rust",
+        "m2-passthrough",
+        "m9-distribution"
+      ],
+      "cakupan_m10": "Hook semua Bash, kontrak permission resmi, minimum Codex dan penggunaan full-access dibuktikan pada M10."
+    },
+    "2": {
+      "perilaku": "Standalone sekali; default retain, tanpa daemon/network/harness dependency. Artifact GNU mendahului M10.",
+      "implementasi": [
+        "src/main.rs",
+        "src/core/execution.rs",
+        "src/core/streaming.rs",
+        "Cargo.toml"
+      ],
+      "test": [
+        "tests/execution.rs",
+        "tests/passthrough.rs",
+        "tests/filter_safety.rs",
+        "scripts/m9-artifact-tests.py"
+      ],
+      "gate": [
+        "rust",
+        "m2-passthrough",
+        "m9-distribution"
+      ],
+      "cakupan_m10": "Hook semua Bash, kontrak permission resmi, minimum Codex dan penggunaan full-access dibuktikan pada M10."
+    },
+    "3": {
+      "perilaku": "Standalone sekali; default retain, tanpa daemon/network/harness dependency. Artifact GNU mendahului M10.",
+      "implementasi": [
+        "src/main.rs",
+        "src/core/execution.rs",
+        "src/core/streaming.rs",
+        "Cargo.toml"
+      ],
+      "test": [
+        "tests/execution.rs",
+        "tests/passthrough.rs",
+        "tests/filter_safety.rs",
+        "scripts/m9-artifact-tests.py"
+      ],
+      "gate": [
+        "rust",
+        "m2-passthrough",
+        "m9-distribution"
+      ],
+      "cakupan_m10": "Hook semua Bash, kontrak permission resmi, minimum Codex dan penggunaan full-access dibuktikan pada M10."
+    },
+    "Phase 1": {
+      "perilaku": "Standalone sekali; default retain, tanpa daemon/network/harness dependency. Artifact GNU mendahului M10.",
+      "implementasi": [
+        "src/main.rs",
+        "src/core/execution.rs",
+        "src/core/streaming.rs",
+        "Cargo.toml"
+      ],
+      "test": [
+        "tests/execution.rs",
+        "tests/passthrough.rs",
+        "tests/filter_safety.rs",
+        "scripts/m9-artifact-tests.py"
+      ],
+      "gate": [
+        "rust",
+        "m2-passthrough",
+        "m9-distribution"
+      ],
+      "cakupan_m10": "Hook semua Bash, kontrak permission resmi, minimum Codex dan penggunaan full-access dibuktikan pada M10."
+    },
+    "Phase 2": {
+      "perilaku": "Kontrak harness terdokumentasi; entrypoint hook/install/uninstall Codex tidak tersedia pada M9.",
+      "implementasi": [
+        "src/cli.rs"
+      ],
+      "test": [
+        "tests/cli.rs"
+      ],
+      "gate": [
+        "rust"
+      ],
+      "cakupan_m10": "Seluruh kontrak hook, serializer/quoting hook, recursive wrapper, config/trust, auth E2E ephemeral, token reduction, sandbox Codex dan publikasi menunggu M10. Global uninstall sudah dipetakan pada §13."
+    },
+    "5": {
+      "perilaku": "Kontrak harness terdokumentasi; entrypoint hook/install/uninstall Codex tidak tersedia pada M9.",
+      "implementasi": [
+        "src/cli.rs"
+      ],
+      "test": [
+        "tests/cli.rs"
+      ],
+      "gate": [
+        "rust"
+      ],
+      "cakupan_m10": "Seluruh kontrak hook, serializer/quoting hook, recursive wrapper, config/trust, auth E2E ephemeral, token reduction, sandbox Codex dan publikasi menunggu M10. Global uninstall sudah dipetakan pada §13."
+    },
+    "5.1": {
+      "perilaku": "Kontrak harness terdokumentasi; entrypoint hook/install/uninstall Codex tidak tersedia pada M9.",
+      "implementasi": [
+        "src/cli.rs"
+      ],
+      "test": [
+        "tests/cli.rs"
+      ],
+      "gate": [
+        "rust"
+      ],
+      "cakupan_m10": "Seluruh kontrak hook, serializer/quoting hook, recursive wrapper, config/trust, auth E2E ephemeral, token reduction, sandbox Codex dan publikasi menunggu M10. Global uninstall sudah dipetakan pada §13."
+    },
+    "5.2": {
+      "perilaku": "Kontrak harness terdokumentasi; entrypoint hook/install/uninstall Codex tidak tersedia pada M9.",
+      "implementasi": [
+        "src/cli.rs"
+      ],
+      "test": [
+        "tests/cli.rs"
+      ],
+      "gate": [
+        "rust"
+      ],
+      "cakupan_m10": "Seluruh kontrak hook, serializer/quoting hook, recursive wrapper, config/trust, auth E2E ephemeral, token reduction, sandbox Codex dan publikasi menunggu M10. Global uninstall sudah dipetakan pada §13."
+    },
+    "5.3": {
+      "perilaku": "Kontrak harness terdokumentasi; entrypoint hook/install/uninstall Codex tidak tersedia pada M9.",
+      "implementasi": [
+        "src/cli.rs"
+      ],
+      "test": [
+        "tests/cli.rs"
+      ],
+      "gate": [
+        "rust"
+      ],
+      "cakupan_m10": "Seluruh kontrak hook, serializer/quoting hook, recursive wrapper, config/trust, auth E2E ephemeral, token reduction, sandbox Codex dan publikasi menunggu M10. Global uninstall sudah dipetakan pada §13."
+    },
+    "5.4": {
+      "perilaku": "Kontrak harness terdokumentasi; entrypoint hook/install/uninstall Codex tidak tersedia pada M9.",
+      "implementasi": [
+        "src/cli.rs"
+      ],
+      "test": [
+        "tests/cli.rs"
+      ],
+      "gate": [
+        "rust"
+      ],
+      "cakupan_m10": "Seluruh kontrak hook, serializer/quoting hook, recursive wrapper, config/trust, auth E2E ephemeral, token reduction, sandbox Codex dan publikasi menunggu M10. Global uninstall sudah dipetakan pada §13."
+    },
+    "5.5": {
+      "perilaku": "Kontrak harness terdokumentasi; entrypoint hook/install/uninstall Codex tidak tersedia pada M9.",
+      "implementasi": [
+        "src/cli.rs"
+      ],
+      "test": [
+        "tests/cli.rs"
+      ],
+      "gate": [
+        "rust"
+      ],
+      "cakupan_m10": "Seluruh kontrak hook, serializer/quoting hook, recursive wrapper, config/trust, auth E2E ephemeral, token reduction, sandbox Codex dan publikasi menunggu M10. Global uninstall sudah dipetakan pada §13."
+    },
+    "14.6": {
+      "perilaku": "Kontrak harness terdokumentasi; entrypoint hook/install/uninstall Codex tidak tersedia pada M9.",
+      "implementasi": [
+        "src/cli.rs"
+      ],
+      "test": [
+        "tests/cli.rs"
+      ],
+      "gate": [
+        "rust"
+      ],
+      "cakupan_m10": "Seluruh kontrak hook, serializer/quoting hook, recursive wrapper, config/trust, auth E2E ephemeral, token reduction, sandbox Codex dan publikasi menunggu M10. Global uninstall sudah dipetakan pada §13."
+    },
+    "18": {
+      "perilaku": "Kontrak harness terdokumentasi; entrypoint hook/install/uninstall Codex tidak tersedia pada M9.",
+      "implementasi": [
+        "src/cli.rs"
+      ],
+      "test": [
+        "tests/cli.rs"
+      ],
+      "gate": [
+        "rust"
+      ],
+      "cakupan_m10": "Seluruh kontrak hook, serializer/quoting hook, recursive wrapper, config/trust, auth E2E ephemeral, token reduction, sandbox Codex dan publikasi menunggu M10. Global uninstall sudah dipetakan pada §13."
+    },
+    "4": {
+      "perilaku": "Argv asli atau tepat satu shell string; stdin/cwd/env/TTY diwariskan, per-stream bytes/order, exit/signal dipertahankan, tanpa rerun.",
+      "implementasi": [
+        "src/cli.rs",
+        "src/core/execution.rs",
+        "src/core/streaming.rs"
+      ],
+      "test": [
+        "tests/cli.rs",
+        "tests/execution.rs",
+        "tests/passthrough.rs",
+        "tests/signals.rs",
+        "tests/shell_contract.rs",
+        "tests/storage_failure.rs",
+        "scripts/m9-artifact-tests.py"
+      ],
+      "gate": [
+        "rust",
+        "m2-passthrough",
+        "m3-streaming",
+        "m9-distribution"
+      ],
+      "cakupan_m10": "Command install/uninstall/hook Codex dalam daftar CLI baru diimplementasikan M10; help M9 tidak mengiklankannya."
+    },
+    "4.1": {
+      "perilaku": "Argv asli atau tepat satu shell string; stdin/cwd/env/TTY diwariskan, per-stream bytes/order, exit/signal dipertahankan, tanpa rerun.",
+      "implementasi": [
+        "src/cli.rs",
+        "src/core/execution.rs",
+        "src/core/streaming.rs"
+      ],
+      "test": [
+        "tests/cli.rs",
+        "tests/execution.rs",
+        "tests/passthrough.rs",
+        "tests/signals.rs",
+        "tests/shell_contract.rs",
+        "tests/storage_failure.rs",
+        "scripts/m9-artifact-tests.py"
+      ],
+      "gate": [
+        "rust",
+        "m2-passthrough",
+        "m3-streaming",
+        "m9-distribution"
+      ],
+      "cakupan_m10": "Command install/uninstall/hook Codex dalam daftar CLI baru diimplementasikan M10; help M9 tidak mengiklankannya."
+    },
+    "4.2": {
+      "perilaku": "Argv asli atau tepat satu shell string; stdin/cwd/env/TTY diwariskan, per-stream bytes/order, exit/signal dipertahankan, tanpa rerun.",
+      "implementasi": [
+        "src/cli.rs",
+        "src/core/execution.rs",
+        "src/core/streaming.rs"
+      ],
+      "test": [
+        "tests/cli.rs",
+        "tests/execution.rs",
+        "tests/passthrough.rs",
+        "tests/signals.rs",
+        "tests/shell_contract.rs",
+        "tests/storage_failure.rs",
+        "scripts/m9-artifact-tests.py"
+      ],
+      "gate": [
+        "rust",
+        "m2-passthrough",
+        "m3-streaming",
+        "m9-distribution"
+      ],
+      "cakupan_m10": "Command install/uninstall/hook Codex dalam daftar CLI baru diimplementasikan M10; help M9 tidak mengiklankannya."
+    },
+    "4.3": {
+      "perilaku": "Argv asli atau tepat satu shell string; stdin/cwd/env/TTY diwariskan, per-stream bytes/order, exit/signal dipertahankan, tanpa rerun.",
+      "implementasi": [
+        "src/cli.rs",
+        "src/core/execution.rs",
+        "src/core/streaming.rs"
+      ],
+      "test": [
+        "tests/cli.rs",
+        "tests/execution.rs",
+        "tests/passthrough.rs",
+        "tests/signals.rs",
+        "tests/shell_contract.rs",
+        "tests/storage_failure.rs",
+        "scripts/m9-artifact-tests.py"
+      ],
+      "gate": [
+        "rust",
+        "m2-passthrough",
+        "m3-streaming",
+        "m9-distribution"
+      ],
+      "cakupan_m10": "Command install/uninstall/hook Codex dalam daftar CLI baru diimplementasikan M10; help M9 tidak mengiklankannya."
+    },
+    "6": {
+      "perilaku": "Argv asli atau tepat satu shell string; stdin/cwd/env/TTY diwariskan, per-stream bytes/order, exit/signal dipertahankan, tanpa rerun.",
+      "implementasi": [
+        "src/cli.rs",
+        "src/core/execution.rs",
+        "src/core/streaming.rs"
+      ],
+      "test": [
+        "tests/cli.rs",
+        "tests/execution.rs",
+        "tests/passthrough.rs",
+        "tests/signals.rs",
+        "tests/shell_contract.rs",
+        "tests/storage_failure.rs",
+        "scripts/m9-artifact-tests.py"
+      ],
+      "gate": [
+        "rust",
+        "m2-passthrough",
+        "m3-streaming",
+        "m9-distribution"
+      ],
+      "cakupan_m10": "Command install/uninstall/hook Codex dalam daftar CLI baru diimplementasikan M10; help M9 tidak mengiklankannya."
+    },
+    "7": {
+      "perilaku": "Recognizer grammar spesifik + confidence; diagnostic/unknown/structured/binary/long-line raw. Watch/dev/TTY inherited. Summary/hint hanya bila compact. Go JSON exception memakai input event bytes.",
+      "implementasi": [
+        "src/core/classification.rs",
+        "src/core/streaming.rs",
+        "src/core/filters/mod.rs",
+        "src/core/filters/ecosystems.rs"
+      ],
+      "test": [
+        "tests/filter_safety.rs",
+        "tests/passthrough.rs",
+        "tests/streaming.rs",
+        "tests/raw_command_matrix.rs",
+        "tests/go_fixtures.rs",
+        "tests/reduction.rs",
+        "tests/shell_contract.rs"
+      ],
+      "gate": [
+        "rust",
+        "m2-passthrough",
+        "m3-streaming",
+        "m4-javascript",
+        "m5-core-ecosystems",
+        "m8-remaining-ecosystems"
+      ],
+      "cakupan_m10": ""
+    },
+    "7.1": {
+      "perilaku": "Recognizer grammar spesifik + confidence; diagnostic/unknown/structured/binary/long-line raw. Watch/dev/TTY inherited. Summary/hint hanya bila compact. Go JSON exception memakai input event bytes.",
+      "implementasi": [
+        "src/core/classification.rs",
+        "src/core/streaming.rs",
+        "src/core/filters/mod.rs",
+        "src/core/filters/ecosystems.rs"
+      ],
+      "test": [
+        "tests/filter_safety.rs",
+        "tests/passthrough.rs",
+        "tests/streaming.rs",
+        "tests/raw_command_matrix.rs",
+        "tests/go_fixtures.rs",
+        "tests/reduction.rs",
+        "tests/shell_contract.rs"
+      ],
+      "gate": [
+        "rust",
+        "m2-passthrough",
+        "m3-streaming",
+        "m4-javascript",
+        "m5-core-ecosystems",
+        "m8-remaining-ecosystems"
+      ],
+      "cakupan_m10": ""
+    },
+    "7.2": {
+      "perilaku": "Recognizer grammar spesifik + confidence; diagnostic/unknown/structured/binary/long-line raw. Watch/dev/TTY inherited. Summary/hint hanya bila compact. Go JSON exception memakai input event bytes.",
+      "implementasi": [
+        "src/core/classification.rs",
+        "src/core/streaming.rs",
+        "src/core/filters/mod.rs",
+        "src/core/filters/ecosystems.rs"
+      ],
+      "test": [
+        "tests/filter_safety.rs",
+        "tests/passthrough.rs",
+        "tests/streaming.rs",
+        "tests/raw_command_matrix.rs",
+        "tests/go_fixtures.rs",
+        "tests/reduction.rs",
+        "tests/shell_contract.rs"
+      ],
+      "gate": [
+        "rust",
+        "m2-passthrough",
+        "m3-streaming",
+        "m4-javascript",
+        "m5-core-ecosystems",
+        "m8-remaining-ecosystems"
+      ],
+      "cakupan_m10": ""
+    },
+    "7.3": {
+      "perilaku": "Recognizer grammar spesifik + confidence; diagnostic/unknown/structured/binary/long-line raw. Watch/dev/TTY inherited. Summary/hint hanya bila compact. Go JSON exception memakai input event bytes.",
+      "implementasi": [
+        "src/core/classification.rs",
+        "src/core/streaming.rs",
+        "src/core/filters/mod.rs",
+        "src/core/filters/ecosystems.rs"
+      ],
+      "test": [
+        "tests/filter_safety.rs",
+        "tests/passthrough.rs",
+        "tests/streaming.rs",
+        "tests/raw_command_matrix.rs",
+        "tests/go_fixtures.rs",
+        "tests/reduction.rs",
+        "tests/shell_contract.rs"
+      ],
+      "gate": [
+        "rust",
+        "m2-passthrough",
+        "m3-streaming",
+        "m4-javascript",
+        "m5-core-ecosystems",
+        "m8-remaining-ecosystems"
+      ],
+      "cakupan_m10": ""
+    },
+    "7.4": {
+      "perilaku": "Recognizer grammar spesifik + confidence; diagnostic/unknown/structured/binary/long-line raw. Watch/dev/TTY inherited. Summary/hint hanya bila compact. Go JSON exception memakai input event bytes.",
+      "implementasi": [
+        "src/core/classification.rs",
+        "src/core/streaming.rs",
+        "src/core/filters/mod.rs",
+        "src/core/filters/ecosystems.rs"
+      ],
+      "test": [
+        "tests/filter_safety.rs",
+        "tests/passthrough.rs",
+        "tests/streaming.rs",
+        "tests/raw_command_matrix.rs",
+        "tests/go_fixtures.rs",
+        "tests/reduction.rs",
+        "tests/shell_contract.rs"
+      ],
+      "gate": [
+        "rust",
+        "m2-passthrough",
+        "m3-streaming",
+        "m4-javascript",
+        "m5-core-ecosystems",
+        "m8-remaining-ecosystems"
+      ],
+      "cakupan_m10": ""
+    },
+    "7.5": {
+      "perilaku": "Recognizer grammar spesifik + confidence; diagnostic/unknown/structured/binary/long-line raw. Watch/dev/TTY inherited. Summary/hint hanya bila compact. Go JSON exception memakai input event bytes.",
+      "implementasi": [
+        "src/core/classification.rs",
+        "src/core/streaming.rs",
+        "src/core/filters/mod.rs",
+        "src/core/filters/ecosystems.rs"
+      ],
+      "test": [
+        "tests/filter_safety.rs",
+        "tests/passthrough.rs",
+        "tests/streaming.rs",
+        "tests/raw_command_matrix.rs",
+        "tests/go_fixtures.rs",
+        "tests/reduction.rs",
+        "tests/shell_contract.rs"
+      ],
+      "gate": [
+        "rust",
+        "m2-passthrough",
+        "m3-streaming",
+        "m4-javascript",
+        "m5-core-ecosystems",
+        "m8-remaining-ecosystems"
+      ],
+      "cakupan_m10": ""
+    },
+    "8": {
+      "perilaku": "Package/wrapper memilih family statis. Test/pass/progress grammar compact; error/diff/stack/warning/summary retain. Format/check diagnostic-only tidak wajib menghapus byte; TAP/alternative reporter raw.",
+      "implementasi": [
+        "src/core/classification.rs",
+        "src/core/filters/mod.rs",
+        "src/core/manifests.rs"
+      ],
+      "test": [
+        "tests/classifier.rs",
+        "tests/javascript_fixtures.rs",
+        "tests/javascript_e2e.rs",
+        "tests/package_scripts.rs",
+        "tests/filter_safety.rs",
+        "tests/reduction.rs",
+        "scripts/m4-smoke.sh",
+        "scripts/m6-smoke.sh"
+      ],
+      "gate": [
+        "rust",
+        "m4-javascript",
+        "m6-package-monorepo"
+      ],
+      "cakupan_m10": ""
+    },
+    "8.1": {
+      "perilaku": "Package/wrapper memilih family statis. Test/pass/progress grammar compact; error/diff/stack/warning/summary retain. Format/check diagnostic-only tidak wajib menghapus byte; TAP/alternative reporter raw.",
+      "implementasi": [
+        "src/core/classification.rs",
+        "src/core/filters/mod.rs",
+        "src/core/manifests.rs"
+      ],
+      "test": [
+        "tests/classifier.rs",
+        "tests/javascript_fixtures.rs",
+        "tests/javascript_e2e.rs",
+        "tests/package_scripts.rs",
+        "tests/filter_safety.rs",
+        "tests/reduction.rs",
+        "scripts/m4-smoke.sh",
+        "scripts/m6-smoke.sh"
+      ],
+      "gate": [
+        "rust",
+        "m4-javascript",
+        "m6-package-monorepo"
+      ],
+      "cakupan_m10": ""
+    },
+    "8.2": {
+      "perilaku": "Package/wrapper memilih family statis. Test/pass/progress grammar compact; error/diff/stack/warning/summary retain. Format/check diagnostic-only tidak wajib menghapus byte; TAP/alternative reporter raw.",
+      "implementasi": [
+        "src/core/classification.rs",
+        "src/core/filters/mod.rs",
+        "src/core/manifests.rs"
+      ],
+      "test": [
+        "tests/classifier.rs",
+        "tests/javascript_fixtures.rs",
+        "tests/javascript_e2e.rs",
+        "tests/package_scripts.rs",
+        "tests/filter_safety.rs",
+        "tests/reduction.rs",
+        "scripts/m4-smoke.sh",
+        "scripts/m6-smoke.sh"
+      ],
+      "gate": [
+        "rust",
+        "m4-javascript",
+        "m6-package-monorepo"
+      ],
+      "cakupan_m10": ""
+    },
+    "8.3": {
+      "perilaku": "Manifest lazy statis bounded; cycle/overflow/dynamic/ambiguous raw. Root runner authoritative; selector candidate dan prefix terdaftar, confidence stream/project/task/recognizer, unknown diagnostic mematikan stream. Mixed family tanpa child tambahan.",
+      "implementasi": [
+        "src/core/manifests.rs",
+        "src/core/classification.rs",
+        "src/core/filters/mod.rs",
+        "src/core/filters/mod.rs"
+      ],
+      "test": [
+        "tests/manifests.rs",
+        "tests/package_scripts.rs",
+        "tests/monorepo.rs",
+        "tests/mixed_monorepo.rs",
+        "tests/classifier.rs",
+        "scripts/m6-smoke.sh"
+      ],
+      "gate": [
+        "rust",
+        "m6-package-monorepo"
+      ],
+      "cakupan_m10": ""
+    },
+    "9": {
+      "perilaku": "Manifest lazy statis bounded; cycle/overflow/dynamic/ambiguous raw. Root runner authoritative; selector candidate dan prefix terdaftar, confidence stream/project/task/recognizer, unknown diagnostic mematikan stream. Mixed family tanpa child tambahan.",
+      "implementasi": [
+        "src/core/manifests.rs",
+        "src/core/classification.rs",
+        "src/core/filters/mod.rs",
+        "src/core/filters/mod.rs"
+      ],
+      "test": [
+        "tests/manifests.rs",
+        "tests/package_scripts.rs",
+        "tests/monorepo.rs",
+        "tests/mixed_monorepo.rs",
+        "tests/classifier.rs",
+        "scripts/m6-smoke.sh"
+      ],
+      "gate": [
+        "rust",
+        "m6-package-monorepo"
+      ],
+      "cakupan_m10": ""
+    },
+    "9.1": {
+      "perilaku": "Manifest lazy statis bounded; cycle/overflow/dynamic/ambiguous raw. Root runner authoritative; selector candidate dan prefix terdaftar, confidence stream/project/task/recognizer, unknown diagnostic mematikan stream. Mixed family tanpa child tambahan.",
+      "implementasi": [
+        "src/core/manifests.rs",
+        "src/core/classification.rs",
+        "src/core/filters/mod.rs",
+        "src/core/filters/mod.rs"
+      ],
+      "test": [
+        "tests/manifests.rs",
+        "tests/package_scripts.rs",
+        "tests/monorepo.rs",
+        "tests/mixed_monorepo.rs",
+        "tests/classifier.rs",
+        "scripts/m6-smoke.sh"
+      ],
+      "gate": [
+        "rust",
+        "m6-package-monorepo"
+      ],
+      "cakupan_m10": ""
+    },
+    "9.2": {
+      "perilaku": "Manifest lazy statis bounded; cycle/overflow/dynamic/ambiguous raw. Root runner authoritative; selector candidate dan prefix terdaftar, confidence stream/project/task/recognizer, unknown diagnostic mematikan stream. Mixed family tanpa child tambahan.",
+      "implementasi": [
+        "src/core/manifests.rs",
+        "src/core/classification.rs",
+        "src/core/filters/mod.rs",
+        "src/core/filters/mod.rs"
+      ],
+      "test": [
+        "tests/manifests.rs",
+        "tests/package_scripts.rs",
+        "tests/monorepo.rs",
+        "tests/mixed_monorepo.rs",
+        "tests/classifier.rs",
+        "scripts/m6-smoke.sh"
+      ],
+      "gate": [
+        "rust",
+        "m6-package-monorepo"
+      ],
+      "cakupan_m10": ""
+    },
+    "9.2.1": {
+      "perilaku": "Manifest lazy statis bounded; cycle/overflow/dynamic/ambiguous raw. Root runner authoritative; selector candidate dan prefix terdaftar, confidence stream/project/task/recognizer, unknown diagnostic mematikan stream. Mixed family tanpa child tambahan.",
+      "implementasi": [
+        "src/core/manifests.rs",
+        "src/core/classification.rs",
+        "src/core/filters/mod.rs",
+        "src/core/filters/mod.rs"
+      ],
+      "test": [
+        "tests/manifests.rs",
+        "tests/package_scripts.rs",
+        "tests/monorepo.rs",
+        "tests/mixed_monorepo.rs",
+        "tests/classifier.rs",
+        "scripts/m6-smoke.sh"
+      ],
+      "gate": [
+        "rust",
+        "m6-package-monorepo"
+      ],
+      "cakupan_m10": ""
+    },
+    "9.3": {
+      "perilaku": "Manifest lazy statis bounded; cycle/overflow/dynamic/ambiguous raw. Root runner authoritative; selector candidate dan prefix terdaftar, confidence stream/project/task/recognizer, unknown diagnostic mematikan stream. Mixed family tanpa child tambahan.",
+      "implementasi": [
+        "src/core/manifests.rs",
+        "src/core/classification.rs",
+        "src/core/filters/mod.rs",
+        "src/core/filters/mod.rs"
+      ],
+      "test": [
+        "tests/manifests.rs",
+        "tests/package_scripts.rs",
+        "tests/monorepo.rs",
+        "tests/mixed_monorepo.rs",
+        "tests/classifier.rs",
+        "scripts/m6-smoke.sh"
+      ],
+      "gate": [
+        "rust",
+        "m6-package-monorepo"
+      ],
+      "cakupan_m10": ""
+    },
+    "9.4": {
+      "perilaku": "Manifest lazy statis bounded; cycle/overflow/dynamic/ambiguous raw. Root runner authoritative; selector candidate dan prefix terdaftar, confidence stream/project/task/recognizer, unknown diagnostic mematikan stream. Mixed family tanpa child tambahan.",
+      "implementasi": [
+        "src/core/manifests.rs",
+        "src/core/classification.rs",
+        "src/core/filters/mod.rs",
+        "src/core/filters/mod.rs"
+      ],
+      "test": [
+        "tests/manifests.rs",
+        "tests/package_scripts.rs",
+        "tests/monorepo.rs",
+        "tests/mixed_monorepo.rs",
+        "tests/classifier.rs",
+        "scripts/m6-smoke.sh"
+      ],
+      "gate": [
+        "rust",
+        "m6-package-monorepo"
+      ],
+      "cakupan_m10": ""
+    },
+    "8.4": {
+      "perilaku": "Libtest/nextest PASS dan compiler progress dikenal compact setelah tiga record aman; workspace/package tetap command asli; compiler/failure/summary retain.",
+      "implementasi": [
+        "src/core/classification.rs",
+        "src/core/filters/ecosystems.rs"
+      ],
+      "test": [
+        "tests/classifier.rs",
+        "tests/rust_fixtures.rs",
+        "tests/core_ecosystem_e2e.rs",
+        "tests/reduction.rs",
+        "scripts/m5-smoke.sh"
+      ],
+      "gate": [
+        "rust",
+        "m5-core-ecosystems"
+      ],
+      "cakupan_m10": ""
+    },
+    "8.5": {
+      "perilaku": "Wrapper Python statis; pytest/unittest passing dan pip download grammar compact; diagnostic-only/tabel/summary/aplikasi generic raw.",
+      "implementasi": [
+        "src/core/classification.rs",
+        "src/core/filters/ecosystems.rs"
+      ],
+      "test": [
+        "tests/classifier.rs",
+        "tests/python_fixtures.rs",
+        "tests/core_ecosystem_e2e.rs",
+        "tests/reduction.rs",
+        "scripts/m5-smoke.sh"
+      ],
+      "gate": [
+        "rust",
+        "m5-core-ecosystems"
+      ],
+      "cakupan_m10": ""
+    },
+    "8.6": {
+      "perilaku": "Go PASS frame compact; lifecycle JSON event byte-exact. Duplicate/new/malformed event mematikan parser, compound JSON raw. Generate/vet/build diagnostic retain.",
+      "implementasi": [
+        "src/core/classification.rs",
+        "src/core/filters/ecosystems.rs"
+      ],
+      "test": [
+        "tests/classifier.rs",
+        "tests/go_fixtures.rs",
+        "tests/core_ecosystem_e2e.rs",
+        "tests/reduction.rs",
+        "scripts/m5-smoke.sh"
+      ],
+      "gate": [
+        "rust",
+        "m5-core-ecosystems"
+      ],
+      "cakupan_m10": ""
+    },
+    "8.7": {
+      "perilaku": "Composer static hints; PHPUnit/Pest/progress PHPCS/PHPStan/Composer grammar compact. PHP callback/dynamic/custom reporter/mutating fixer raw; audit/warning/failure retain.",
+      "implementasi": [
+        "src/core/classification.rs",
+        "src/core/manifests.rs",
+        "src/core/filters/php.rs"
+      ],
+      "test": [
+        "tests/classifier.rs",
+        "tests/manifests.rs",
+        "tests/php_fixtures.rs",
+        "tests/additional_ecosystem_e2e.rs",
+        "tests/reduction.rs",
+        "scripts/m7-smoke.sh"
+      ],
+      "gate": [
+        "rust",
+        "m7-php-jvm-dotnet"
+      ],
+      "cakupan_m10": ""
+    },
+    "8.8": {
+      "perilaku": "Maven download/Gradle task/JUnit tree PASS compact; javac diagnostic-only raw. Wrapper/goal/run count/unknown reporter dan structural output tetap aman.",
+      "implementasi": [
+        "src/core/classification.rs",
+        "src/core/filters/jvm.rs",
+        "src/core/manifests.rs"
+      ],
+      "test": [
+        "tests/classifier.rs",
+        "tests/manifests.rs",
+        "tests/jvm_fixtures.rs",
+        "tests/additional_ecosystem_e2e.rs",
+        "tests/reduction.rs",
+        "scripts/m7-smoke.sh"
+      ],
+      "gate": [
+        "rust",
+        "m7-php-jvm-dotnet"
+      ],
+      "cakupan_m10": ""
+    },
+    "8.9": {
+      "perilaku": "VSTest PASS/restore/build grammar compact; diagnostic code/failure/stack/summary retain. Mutating format/unknown logger raw.",
+      "implementasi": [
+        "src/core/classification.rs",
+        "src/core/filters/dotnet.rs"
+      ],
+      "test": [
+        "tests/classifier.rs",
+        "tests/dotnet_fixtures.rs",
+        "tests/additional_ecosystem_e2e.rs",
+        "tests/reduction.rs",
+        "scripts/m7-smoke.sh"
+      ],
+      "gate": [
+        "rust",
+        "m7-php-jvm-dotnet"
+      ],
+      "cakupan_m10": ""
+    },
+    "8.10": {
+      "perilaku": "Known CMake/Ninja progress/CTest passing, Swift compile/pass, Ruby meter compact. Dynamic targets/custom make/raw flags/correction/reporter raw. Semua diagnostic dan target/test summary retain.",
+      "implementasi": [
+        "src/core/classification.rs",
+        "src/core/filters/m8.rs",
+        "src/core/filters/m8.rs"
+      ],
+      "test": [
+        "tests/classifier.rs",
+        "tests/build_tool_fixtures.rs",
+        "tests/ruby_swift_fixtures.rs",
+        "tests/remaining_ecosystem_e2e.rs",
+        "tests/reduction.rs",
+        "scripts/m8-smoke.sh"
+      ],
+      "gate": [
+        "rust",
+        "m8-remaining-ecosystems"
+      ],
+      "cakupan_m10": ""
+    },
+    "8.11": {
+      "perilaku": "BuildKit internal metadata dan Helm banner saja compact; RUN/COPY/app/security/resource/diff/summary retain. Terraform diagnostic-only; unknown Podman full retain; follow/Compose up raw streaming.",
+      "implementasi": [
+        "src/core/classification.rs",
+        "src/core/filters/m8.rs"
+      ],
+      "test": [
+        "tests/classifier.rs",
+        "tests/infrastructure_fixtures.rs",
+        "tests/raw_command_matrix.rs",
+        "tests/remaining_ecosystem_e2e.rs",
+        "tests/m8_smoke_assertions.rs",
+        "scripts/m8-smoke.sh"
+      ],
+      "gate": [
+        "rust",
+        "m8-remaining-ecosystems"
+      ],
+      "cakupan_m10": ""
+    },
+    "8.12": {
+      "perilaku": "Semua reader/network/database/aplikasi unknown/git diff/show raw byte-exact; bukan bypass manual.",
+      "implementasi": [
+        "src/core/classification.rs",
+        "src/core/execution.rs"
+      ],
+      "test": [
+        "tests/raw_command_matrix.rs",
+        "tests/passthrough.rs",
+        "tests/classifier.rs",
+        "scripts/m9-artifact-tests.py"
+      ],
+      "gate": [
+        "rust",
+        "m2-passthrough",
+        "m8-remaining-ecosystems",
+        "m9-distribution"
+      ],
+      "cakupan_m10": ""
+    },
+    "10": {
+      "perilaku": "Concurrent stdout/stderr readers, bounded channel/framing/memory, pending line 1MiB, non-UTF8 raw, per-stream order. Binary readable/executable mode755; tidak mengatur writable root.",
+      "implementasi": [
+        "src/core/execution.rs",
+        "src/core/streaming.rs",
+        "src/distribution/files.rs"
+      ],
+      "test": [
+        "tests/streaming.rs",
+        "tests/passthrough.rs",
+        "tests/shell_contract.rs",
+        "scripts/m3-evidence.sh",
+        "scripts/m9-install-tests.py"
+      ],
+      "gate": [
+        "rust",
+        "m2-passthrough",
+        "m3-streaming",
+        "m9-distribution"
+      ],
+      "cakupan_m10": "Eksekusi actual Codex read-only/workspace-write/danger-full-access dibuktikan manual M10."
+    },
+    "11": {
+      "perilaku": "Tagged original streams, random ID, storage privat XDG/fallback stabil, tail32MiB/dropped count, cleanup24h, tanpa capture bila tidak compact; failure raw tanpa rerun, staged valid replay.",
+      "implementasi": [
+        "src/core/raw_store.rs",
+        "src/cli.rs",
+        "src/core/streaming.rs"
+      ],
+      "test": [
+        "tests/raw_store.rs",
+        "tests/raw_cli.rs",
+        "tests/storage_failure.rs",
+        "tests/streaming.rs",
+        "scripts/m3-evidence.sh",
+        "scripts/m9-artifact-tests.py"
+      ],
+      "gate": [
+        "rust",
+        "m3-streaming",
+        "m9-distribution"
+      ],
+      "cakupan_m10": ""
+    },
+    "12": {
+      "perilaku": "Config TOML optional batas32MiB/24h; invalid raw sekali. Tidak ada network/config remote/bypass/telemetry.",
+      "implementasi": [
+        "src/core/config.rs",
+        "src/core/execution.rs",
+        "Cargo.toml"
+      ],
+      "test": [
+        "tests/config.rs",
+        "tests/storage_failure.rs",
+        "tests/cli.rs"
+      ],
+      "gate": [
+        "rust",
+        "m3-streaming"
+      ],
+      "cakupan_m10": "Uninstall integrasi Codex untuk disable hanya tersedia M10."
+    },
+    "13": {
+      "perilaku": "Linux GNU stable latest dipin satu tag HTTPS+SHA; local finalizer bounded streaminghash, strict schema/ownership/no symlink, lock/staging/atomic rename/rollback/pending marker. PATH exact-owned backup/manualfallback; uninstall preserve integration/userconfig/raw/otherprogram. Tag stable matches Cargo/master; semua gates clean ulang, candidate saja. Config existing memakai atomic exchange dan memeriksa file aktual yang tergeser; race sesudah validasi terakhir, rollback, dan uninstall mempertahankan recovery/marker. Binary/metadata commit, rollback, dan uninstall memakai archive aktual, checksum/identity, dan workspace privat dengan receipt; late FD write tidak hilang.",
+      "implementasi": [
+        "install.sh",
+        "src/distribution/mod.rs",
+        "src/distribution/files.rs",
+        "src/distribution/metadata.rs",
+        "src/distribution/path.rs",
+        ".github/workflows/ci.yml",
+        "scripts/check-release-version.py",
+        "src/distribution/transaction.rs"
+      ],
+      "test": [
+        "src/distribution/mod.rs",
+        "src/distribution/path.rs",
+        "scripts/m9-install-tests.py",
+        "scripts/m9-artifact-tests.py",
+        "scripts/test-release-policy.py",
+        "tests/cli.rs",
+        "src/distribution/transaction_tests.rs"
+      ],
+      "gate": [
+        "rust",
+        "release-policy",
+        "m9-distribution"
+      ],
+      "cakupan_m10": "Public releases/latest dan job publish baru M10 sesudah user-authorized tag; belum diklaim tersedia."
+    },
+    "14.5": {
+      "perilaku": "Linux GNU stable latest dipin satu tag HTTPS+SHA; local finalizer bounded streaminghash, strict schema/ownership/no symlink, lock/staging/atomic rename/rollback/pending marker. PATH exact-owned backup/manualfallback; uninstall preserve integration/userconfig/raw/otherprogram. Tag stable matches Cargo/master; semua gates clean ulang, candidate saja. Config existing memakai atomic exchange dan memeriksa file aktual yang tergeser; race sesudah validasi terakhir, rollback, dan uninstall mempertahankan recovery/marker. Binary/metadata commit, rollback, dan uninstall memakai archive aktual, checksum/identity, dan workspace privat dengan receipt; late FD write tidak hilang.",
+      "implementasi": [
+        "install.sh",
+        "src/distribution/mod.rs",
+        "src/distribution/files.rs",
+        "src/distribution/metadata.rs",
+        "src/distribution/path.rs",
+        ".github/workflows/ci.yml",
+        "scripts/check-release-version.py",
+        "src/distribution/transaction.rs"
+      ],
+      "test": [
+        "src/distribution/mod.rs",
+        "src/distribution/path.rs",
+        "scripts/m9-install-tests.py",
+        "scripts/m9-artifact-tests.py",
+        "scripts/test-release-policy.py",
+        "tests/cli.rs",
+        "src/distribution/transaction_tests.rs"
+      ],
+      "gate": [
+        "rust",
+        "release-policy",
+        "m9-distribution"
+      ],
+      "cakupan_m10": "Public releases/latest dan job publish baru M10 sesudah user-authorized tag; belum diklaim tersedia."
+    },
+    "14": {
+      "perilaku": "Full test unit/integration/safety/fixture/monorepo, pinned real tools dan large >=80% bytes termasuk metadata. CI Linux artifact+installer master final acceptance; command exit/signals/env/once dan raw storage isolasi. Tidak mengklaim token/sandbox Codex dari fixture.",
+      "implementasi": [
+        "tests/common/mod.rs",
+        ".github/workflows/ci.yml"
+      ],
+      "test": [
+        "tests/reduction.rs",
+        "tests/execution.rs",
+        "tests/raw_command_matrix.rs",
+        "tests/filter_safety.rs",
+        "tests/mixed_monorepo.rs",
+        "scripts/m3-evidence.sh",
+        "scripts/m4-smoke.sh",
+        "scripts/m5-smoke.sh",
+        "scripts/m6-smoke.sh",
+        "scripts/m7-smoke.sh",
+        "scripts/m8-smoke.sh",
+        "scripts/m9-artifact-tests.py"
+      ],
+      "gate": [
+        "rust",
+        "m2-passthrough",
+        "m3-streaming",
+        "m4-javascript",
+        "m5-core-ecosystems",
+        "m6-package-monorepo",
+        "m7-php-jvm-dotnet",
+        "m8-remaining-ecosystems",
+        "m9-distribution"
+      ],
+      "cakupan_m10": "Quoting/recursive prevention hook pada §14.1 serta seluruh Phase2 DoD hanya M10. Final master run menunggu merge pengguna."
+    },
+    "14.1": {
+      "perilaku": "Full test unit/integration/safety/fixture/monorepo, pinned real tools dan large >=80% bytes termasuk metadata. CI Linux artifact+installer master final acceptance; command exit/signals/env/once dan raw storage isolasi. Tidak mengklaim token/sandbox Codex dari fixture.",
+      "implementasi": [
+        "tests/common/mod.rs",
+        ".github/workflows/ci.yml"
+      ],
+      "test": [
+        "tests/reduction.rs",
+        "tests/execution.rs",
+        "tests/raw_command_matrix.rs",
+        "tests/filter_safety.rs",
+        "tests/mixed_monorepo.rs",
+        "scripts/m3-evidence.sh",
+        "scripts/m4-smoke.sh",
+        "scripts/m5-smoke.sh",
+        "scripts/m6-smoke.sh",
+        "scripts/m7-smoke.sh",
+        "scripts/m8-smoke.sh",
+        "scripts/m9-artifact-tests.py"
+      ],
+      "gate": [
+        "rust",
+        "m2-passthrough",
+        "m3-streaming",
+        "m4-javascript",
+        "m5-core-ecosystems",
+        "m6-package-monorepo",
+        "m7-php-jvm-dotnet",
+        "m8-remaining-ecosystems",
+        "m9-distribution"
+      ],
+      "cakupan_m10": "Quoting/recursive prevention hook pada §14.1 serta seluruh Phase2 DoD hanya M10. Final master run menunggu merge pengguna."
+    },
+    "14.2": {
+      "perilaku": "Full test unit/integration/safety/fixture/monorepo, pinned real tools dan large >=80% bytes termasuk metadata. CI Linux artifact+installer master final acceptance; command exit/signals/env/once dan raw storage isolasi. Tidak mengklaim token/sandbox Codex dari fixture.",
+      "implementasi": [
+        "tests/common/mod.rs",
+        ".github/workflows/ci.yml"
+      ],
+      "test": [
+        "tests/reduction.rs",
+        "tests/execution.rs",
+        "tests/raw_command_matrix.rs",
+        "tests/filter_safety.rs",
+        "tests/mixed_monorepo.rs",
+        "scripts/m3-evidence.sh",
+        "scripts/m4-smoke.sh",
+        "scripts/m5-smoke.sh",
+        "scripts/m6-smoke.sh",
+        "scripts/m7-smoke.sh",
+        "scripts/m8-smoke.sh",
+        "scripts/m9-artifact-tests.py"
+      ],
+      "gate": [
+        "rust",
+        "m2-passthrough",
+        "m3-streaming",
+        "m4-javascript",
+        "m5-core-ecosystems",
+        "m6-package-monorepo",
+        "m7-php-jvm-dotnet",
+        "m8-remaining-ecosystems",
+        "m9-distribution"
+      ],
+      "cakupan_m10": "Quoting/recursive prevention hook pada §14.1 serta seluruh Phase2 DoD hanya M10. Final master run menunggu merge pengguna."
+    },
+    "14.3": {
+      "perilaku": "Full test unit/integration/safety/fixture/monorepo, pinned real tools dan large >=80% bytes termasuk metadata. CI Linux artifact+installer master final acceptance; command exit/signals/env/once dan raw storage isolasi. Tidak mengklaim token/sandbox Codex dari fixture.",
+      "implementasi": [
+        "tests/common/mod.rs",
+        ".github/workflows/ci.yml"
+      ],
+      "test": [
+        "tests/reduction.rs",
+        "tests/execution.rs",
+        "tests/raw_command_matrix.rs",
+        "tests/filter_safety.rs",
+        "tests/mixed_monorepo.rs",
+        "scripts/m3-evidence.sh",
+        "scripts/m4-smoke.sh",
+        "scripts/m5-smoke.sh",
+        "scripts/m6-smoke.sh",
+        "scripts/m7-smoke.sh",
+        "scripts/m8-smoke.sh",
+        "scripts/m9-artifact-tests.py"
+      ],
+      "gate": [
+        "rust",
+        "m2-passthrough",
+        "m3-streaming",
+        "m4-javascript",
+        "m5-core-ecosystems",
+        "m6-package-monorepo",
+        "m7-php-jvm-dotnet",
+        "m8-remaining-ecosystems",
+        "m9-distribution"
+      ],
+      "cakupan_m10": "Quoting/recursive prevention hook pada §14.1 serta seluruh Phase2 DoD hanya M10. Final master run menunggu merge pengguna."
+    },
+    "14.4": {
+      "perilaku": "Full test unit/integration/safety/fixture/monorepo, pinned real tools dan large >=80% bytes termasuk metadata. CI Linux artifact+installer master final acceptance; command exit/signals/env/once dan raw storage isolasi. Tidak mengklaim token/sandbox Codex dari fixture.",
+      "implementasi": [
+        "tests/common/mod.rs",
+        ".github/workflows/ci.yml"
+      ],
+      "test": [
+        "tests/reduction.rs",
+        "tests/execution.rs",
+        "tests/raw_command_matrix.rs",
+        "tests/filter_safety.rs",
+        "tests/mixed_monorepo.rs",
+        "scripts/m3-evidence.sh",
+        "scripts/m4-smoke.sh",
+        "scripts/m5-smoke.sh",
+        "scripts/m6-smoke.sh",
+        "scripts/m7-smoke.sh",
+        "scripts/m8-smoke.sh",
+        "scripts/m9-artifact-tests.py"
+      ],
+      "gate": [
+        "rust",
+        "m2-passthrough",
+        "m3-streaming",
+        "m4-javascript",
+        "m5-core-ecosystems",
+        "m6-package-monorepo",
+        "m7-php-jvm-dotnet",
+        "m8-remaining-ecosystems",
+        "m9-distribution"
+      ],
+      "cakupan_m10": "Quoting/recursive prevention hook pada §14.1 serta seluruh Phase2 DoD hanya M10. Final master run menunggu merge pengguna."
+    },
+    "15": {
+      "perilaku": "Full test unit/integration/safety/fixture/monorepo, pinned real tools dan large >=80% bytes termasuk metadata. CI Linux artifact+installer master final acceptance; command exit/signals/env/once dan raw storage isolasi. Tidak mengklaim token/sandbox Codex dari fixture.",
+      "implementasi": [
+        "tests/common/mod.rs",
+        ".github/workflows/ci.yml"
+      ],
+      "test": [
+        "tests/reduction.rs",
+        "tests/execution.rs",
+        "tests/raw_command_matrix.rs",
+        "tests/filter_safety.rs",
+        "tests/mixed_monorepo.rs",
+        "scripts/m3-evidence.sh",
+        "scripts/m4-smoke.sh",
+        "scripts/m5-smoke.sh",
+        "scripts/m6-smoke.sh",
+        "scripts/m7-smoke.sh",
+        "scripts/m8-smoke.sh",
+        "scripts/m9-artifact-tests.py"
+      ],
+      "gate": [
+        "rust",
+        "m2-passthrough",
+        "m3-streaming",
+        "m4-javascript",
+        "m5-core-ecosystems",
+        "m6-package-monorepo",
+        "m7-php-jvm-dotnet",
+        "m8-remaining-ecosystems",
+        "m9-distribution"
+      ],
+      "cakupan_m10": "Quoting/recursive prevention hook pada §14.1 serta seluruh Phase2 DoD hanya M10. Final master run menunggu merge pengguna."
+    },
+    "16": {
+      "perilaku": "Satu binary crate, modul kecil core/distribution inward; tidak restore historical code, daemon/LLM/network/telemetry/harness premature.",
+      "implementasi": [
+        "Cargo.toml",
+        "src/main.rs",
+        "src/core/mod.rs",
+        "src/distribution/mod.rs"
+      ],
+      "test": [
+        "tests/cli.rs",
+        "scripts/check-spec-coverage.py"
+      ],
+      "gate": [
+        "rust",
+        "m9-distribution"
+      ],
+      "cakupan_m10": ""
+    },
+    "17": {
+      "perilaku": "Satu binary crate, modul kecil core/distribution inward; tidak restore historical code, daemon/LLM/network/telemetry/harness premature.",
+      "implementasi": [
+        "Cargo.toml",
+        "src/main.rs",
+        "src/core/mod.rs",
+        "src/distribution/mod.rs"
+      ],
+      "test": [
+        "tests/cli.rs",
+        "scripts/check-spec-coverage.py"
+      ],
+      "gate": [
+        "rust",
+        "m9-distribution"
+      ],
+      "cakupan_m10": ""
+    }
+  }
+}

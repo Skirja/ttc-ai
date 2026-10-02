@@ -718,7 +718,7 @@ cargo test --test additional_ecosystem_e2e
 - [x] Commit implementasi `a8eba611fe9488c3097cc264102ce8c09d70384c` dicatat.
 - [x] Tool version matrix dan smoke logs lokal dicatat.
 - [x] Retention/reduction report lokal disimpan.
-- [ ] Required PR CI lulus dan artifact `m7-php-jvm-dotnet-evidence` tersedia.
+- [x] Required PR CI lulus dan artifact `m7-php-jvm-dotnet-evidence` tersedia.
 
 Bukti lokal pada branch `feat/m7-php-jvm-dotnet`, PR
 [#6](https://github.com/Skirja/ttc-ai/pull/6):
@@ -780,7 +780,7 @@ yang eksplisit dan teruji.
   mengaktifkan filter family.
 - [x] Tambahkan success/failure/warning/unknown/large fixtures untuk setiap
   family filterable serta pinned tool matrix dan smoke project.
-- [ ] Jalankan pinned real-tool smoke tests pada Ubuntu CI dan periksa output,
+- [x] Jalankan pinned real-tool smoke tests pada Ubuntu CI dan periksa output,
   status, retention, serta evidence artifact.
 
 ### Acceptance criteria
@@ -791,7 +791,7 @@ yang eksplisit dan teruji.
 - [x] Infrastructure diff/change/security content tidak pernah dikompaksi.
 - [x] Large repetitive fixture tiap filterable family mengurangi byte minimum
   80%.
-- [ ] Representative build, Ruby, Swift, container, dan infrastructure smoke
+- [x] Representative build, Ruby, Swift, container, dan infrastructure smoke
   tests lulus pada versi pin.
 
 ### Verification commands
@@ -884,117 +884,55 @@ dicentang. Perbaiki billing GitHub lalu rerun CI untuk commit perbaikan ini.
 - [x] Command coverage matrix dilampirkan di `scripts/m8-command-coverage.md`.
 - [x] Tool version pins, checksum, retention, dan local reduction results
   dicatat di files serta report di atas.
-- [ ] Pinned real-tool smoke log dan checksum tersedia pada artifact
+- [x] Pinned real-tool smoke log dan checksum tersedia pada artifact
   `m8-remaining-ecosystem-evidence` untuk PR CI yang berhasil.
 
 ---
 
 ## M9 — Production binary dan distribution gate
 
-Catatan prasyarat 2026-10-01: M7/M8 telah merged melalui PR #6/#7, tetapi
-evidence wajib belum lengkap. Rerun master
-[run `36699671621`, attempt 2](https://github.com/Skirja/ttc-ai/actions/runs/36699671621/attempts/2)
-pada commit `f55d434d1d9157a62dfd810b402cac1861d29adf` memperoleh runner;
-billing tidak lagi menolak run ini. Job M7 menolak input Java
-`21.0.12.1+1` karena bukan SemVer action, dan job M8 memakai action Swift
-yang belum mengenali pin `6.1.2`. Baseline Rust juga menemukan test signal M7
-yang membandingkan direct executable dengan TTC single-string shell;
-status shell dapat berbeda dari status executable pada Ubuntu.
+Prasyarat M1–M8 lengkap pada 2026-10-01 setelah perbaikan CI dalam
+[PR #8](https://github.com/Skirja/ttc-ai/pull/8). [Run `36817828230`](https://github.com/Skirja/ttc-ai/actions/runs/36817828230)
+pada `b52fef6a7cdce4b88ed60e7b1f3f7cd5e68683b8` hijau untuk seluruh delapan
+job; full pinned smoke M7/M8 dan seluruh checksum artifact telah diperiksa.
+Checkout merge PR yang tercatat pada report M8:
+`3bc94258a80346be6d9bf607e6be4b8a78376fcf`.
 
-Slice prasyarat `feat/m7-m8-ci-prerequisites` memakai Adoptium SemVer
-`21.0.12+101.0.LTS`, mempertahankan pin runtime `21.0.12.1+1`, menaikkan action
-Swift ke SHA v2.4.0 yang mengenali `6.1.2`, serta membuat test signal M7
-memakai direct argv eksplisit. Format, Clippy, seluruh-target/fitur Rust test,
-release build, targeted signal/shell/M7 E2E, dan YAML parse lulus lokal;
-log ada di `target/m7-m8-ci-evidence/local-gates.log`.
-Setup serta smoke CI masih harus dibuktikan. Implementasi M9 belum dimulai;
-seluruh checkbox M9 tetap menunggu dependency M1–M8 lengkap.
+Perbaikan mempertahankan pin runtime: Java memakai Adoptium SemVer
+`21.0.12+101.0.LTS`; Swift action v2.4.0 mengenali `6.1.2`; PHP `8.4.25`
+dibangun dari source terverifikasi. Test signal M7 memakai direct argv.
+Fixture Make bersih memakai recipe senyap; RuboCop memakai source dan nama
+file lint-clean. Capture helper memisahkan trace dari stdout/stderr command.
+Podman security smoke memakai payload static yang menghasilkan warning dan
+exit 17 pada direct/TTC; tidak bergantung warning host Ubuntu/Fedora.
+Checksum evidence dihitung ulang setelah trace berhenti dan diverifikasi
+sebelum upload. Execution/filter core tidak diubah oleh slice prasyarat.
 
-PR prasyarat [#8](https://github.com/Skirja/ttc-ai/pull/8), commit `1cefc50`,
-[run `36811453352`](https://github.com/Skirja/ttc-ai/actions/runs/36811453352)
-membuktikan baseline Rust, M2, M3, M4, dan M6 hijau; setup Java/Swift juga
-berhasil. Smoke M7 menemukan bahwa setup-php memasang `8.4.26`, sedangkan
-smoke membutuhkan tepat `8.4.25`. Smoke M8 menemukan parsing `rake, version
-13.2.1` yang mengambil kata `version` sebagai angka versi.
-Perbaikan berikutnya membangun PHP `8.4.25` dari archive resmi dengan checksum
-tercatat pada `scripts/m7-tool-checksums.txt`, serta membaca field ketiga pada
-output versi Rake. Shell syntax, YAML parse, checksum-mismatch rejection
-sebelum build, dan parsing versi Rake lulus lokal. Build PHP lokal tidak
-dijalankan karena development headers belum tersedia; build dan smoke penuh
-menunggu Ubuntu CI. Checkbox acceptance M7/M8 tetap belum diubah.
+Artifact diunduh ke `target/m7-m8-ci-evidence/run-36817828230/`:
 
-Commit `da31455c9a8b17841e6cd5190be6418ee37a7be4`,
-[run `36811966145`](https://github.com/Skirja/ttc-ai/actions/runs/36811966145),
-membuktikan baseline Rust serta seluruh job M2–M7 hijau, termasuk source
-build PHP dan full pinned smoke M7. Artifact `m7-php-jvm-dotnet-evidence`
-diunduh ke `target/m7-m8-ci-evidence/run-36811966145/m7/`; seluruh entry
-`SHA256SUMS` terverifikasi. SHA-256 `report.txt`:
-`89024d26b53d2425dcbacef9c59f538a83741a89803d3a577435b184653a7fbb`;
-SHA-256 `SHA256SUMS`:
-`d8dda2173644149c1a18471400086029db5a935a830b0d0e6eec8a600cfe24fc`.
+| Artifact | File | SHA-256 |
+|---|---|---|
+| M7 | report.txt | `c1ff99d01cae4231e1e3424e53982b47882c4bed5b53c9326377f2f05713ca05` |
+| M7 | SHA256SUMS | `986223b2cd6412cefc9c97a77a60e0f4b59010fa8d0912c32f187f3bf74e18ba` |
+| M8 | smoke-report.txt | `917749d535187dfafade1cb65d42363f4747fd97bc52b49fc2c5481b764e2669` |
+| M8 | SHA256SUMS | `07d40df029dfe045ab3c70f80b06420195660980fffb3c4201c707e919c1523b` |
 
-M8 masih gagal karena Make mencetak recipe `ctest --output-on-failure`, yang
-memicu default retain. Fixture clean Make kini memakai recipe senyap;
-regresi baru memastikan command echo berisi `failure` beserta passing output
-sesudahnya tetap raw. Targeted build fixture dan smoke assertions lulus.
-Format/Clippy lulus; dua percobaan full test lokal menemui `Text file busy`
-saat spawn executable fixture (raw command matrix dan M5 E2E). Seluruh suite
-lulus dengan `RUST_TEST_THREADS=1`, lalu release build lulus; konfigurasi
-test parallel CI tetap dipertahankan dan telah lulus pada run di atas.
-Log lokal: `target/m7-m8-ci-evidence/local-gates-serial.log`; kegagalan lokal
-disimpan pada `local-gates-transient-failure.log` dan
-`local-gates-parallel-failure.log`. Full PR CI tetap belum hijau sampai smoke
-M8 berikutnya lulus; checkbox M7/M8 yang mensyaratkan PR CI tetap pending.
+Semua empat entry M7 dan 91 entry M8 cocok dengan checksum. Source/pin files
+M7 dibandingkan dengan checkout lokal. M8 report mencakup status, warning,
+failure, summary, dan capture per-stream; Terraform success/failure byte-exact.
+Real large RSpec `1095/195` byte dan RuboCop `1068/168` byte, termasuk metadata.
 
-Run PR `36812824994` pada commit `b4433f6` membuktikan smoke Make bersih
-berhasil. Smoke berikutnya berhenti pada baseline RuboCop large yang berisi
-file kosong dan mendapat status 1. Fixture large kini berisi source Ruby
-minimal dengan frozen-string header; kegagalan status smoke mencetak tail
-stdout/stderr direct dan TTC untuk diagnosis. Shell syntax dan diff check
-lulus; lint source serta smoke lanjutan menunggu versi RuboCop terpin di CI.
+Gate lokal format/Clippy/full Rust suite serial/release build lulus; log terakhir
+`target/m7-m8-ci-evidence/local-gates-capture-fix.log`. Dua percobaan parallel
+lokal sebelumnya gagal dengan `Text file busy` pada executable fixture;
+log disimpan di `local-gates-transient-failure.log` dan
+`local-gates-parallel-failure.log`. Parallel Rust baseline Ubuntu CI lulus
+melalui command standar, tanpa serialisasi atau skip.
 
-Run `36813411956` pada `8702228` mencapai smoke M8 lanjutan tetapi berhenti
-tanpa diagnostic status. Workflow kini menyimpan shell trace dalam log dan
-mencetak tail terbatas saat gagal; subprocess Podman juga mencetak tail
-log-nya saat gagal. Report Podman menyebut diagnostic retention yang benar-
-benar diasert, menggantikan klaim byte-exact yang belum dibandingkan di smoke
-tersebut. Byte-exact unknown output tetap diuji oleh raw command matrix.
-YAML parse, shell syntax, dan diff check lulus; seluruh gate tetap wajib lulus.
-
-Trace run `36814092707` pada `f4217d9` membuktikan build/Ruby/Swift dan
-Docker/Compose melewati assertion status. Instrumentation `sh -x` sendiri
-masuk ke stderr subprocess dan mengganggu perbandingan byte-exact Terraform.
-Capture helper kini menonaktifkan trace di dalam subprocess; regresi menguji
-stdout dengan NUL, stderr warning, exit 7, dan invocation count satu pada
-mode trace aktif maupun nonaktif. Targeted `m8_smoke_assertions`, format,
-Clippy, full Rust suite serial, release build, dan shell syntax lulus lokal.
-Log: `target/m7-m8-ci-evidence/local-gates-capture-fix.log`. Penyebab awal
-silent failure M8 masih harus diperiksa setelah instrumentation diperbaiki.
-
-Run `36815024069` pada `21c96bf` membuktikan seluruh job selain M8 hijau,
-serta Terraform success/failure byte-exact. M8 berhenti karena assertion
-meminta warning `security.capability` dari clean Podman baseline, padahal
-Ubuntu tidak menghasilkannya. Smoke kini memisahkan build Podman bersih dan
-kasus RUN yang menghasilkan security warning serta exit nonzero secara
-deterministik, memakai payload C static dan `--isolation=chroot` pada kedua
-invocation. Warning wajib ada pada direct/TTC dan status wajib sama.
-Payload dynamic lokal memverifikasi stderr serta exit 17. Build static lokal
-tidak tersedia karena `glibc-static` tidak terpasang; pinned gcc/libc dan
-smoke container harus dibuktikan di Ubuntu CI. Shell syntax/diff check lulus.
-
-[Run `36816688598`](https://github.com/Skirja/ttc-ai/actions/runs/36816688598)
-pada `45ef30813d12cfa0c3fe3a9dc0d922dec14908b0` hijau untuk seluruh delapan
-job. Full pinned M7/M8 smoke lulus, termasuk security warning Podman dan
-status direct/TTC 17. Artifact diunduh ke
-`target/m7-m8-ci-evidence/run-36816688598/`; M7 report SHA-256
-`30fd164b637915e2423036c3034fe169d6ad9b00444a00e57631a94c8fe3eade`,
-M8 report SHA-256
-`d26f579423ddbe29f76aa2466ac026a4f33594d671922f1bb5cf4cd9951f8c74`.
-Seluruh entry checksum M7 dan semua capture/report M8 terverifikasi, tetapi
-checksum debug `smoke.log` M8 tidak cocok karena trace masih ditulis ketika
-script menghitung checksum. Workflow kini menghitung ulang dan memverifikasi
-seluruh checksum setelah proses smoke selesai, sebelum upload. Gate evidence
-M8 dan implementasi M9 tetap menunggu artifact finalized yang valid.
+M9 kini mulai pada `feat/m9-production-distribution` dari `master`, membawa
+commit perbaikan CI yang sudah teruji. PR #8 sudah squash merged pada
+2026-10-02 dengan otorisasi pengguna; commit master
+`2ad265f970f758b603dc9b706afe0b9b6351d559`. Artifact master M9 tetap hard gate M10.
 
 **Outcome:** standalone TTC binary selesai 100%, dapat dipasang sebagai release
 candidate, dan dibuktikan oleh artifact CI sebelum pekerjaan Codex dimulai.
@@ -1003,41 +941,41 @@ candidate, dan dibuktikan oleh artifact CI sebelum pekerjaan Codex dimulai.
 
 ### Implementation checklist
 
-- [ ] Jalankan full unit, integration, fixture, monorepo, real-tool, safety, dan
+- [x] Jalankan full unit, integration, fixture, monorepo, real-tool, safety, dan
   reduction suite dalam pinned CI matrix.
-- [ ] Audit seluruh requirement SPEC terhadap test/implementation; tidak boleh
+- [x] Audit seluruh requirement SPEC terhadap test/implementation; tidak boleh
   ada command atau failure mode tanpa mapping.
-- [ ] Tambahkan release workflow target `x86_64-unknown-linux-gnu` pada branch
+- [x] Tambahkan release workflow target `x86_64-unknown-linux-gnu` pada branch
   `master` dan tag `v*`.
-- [ ] Pastikan tag version harus sama dengan Cargo package version.
-- [ ] Build release binary, jalankan smoke test di luar source tree, dan upload
+- [x] Pastikan tag version harus sama dengan Cargo package version.
+- [x] Build release binary, jalankan smoke test di luar source tree, dan upload
   workflow artifact.
-- [ ] Hasilkan executable release asset dan SHA-256.
-- [ ] Implementasikan `install.sh` latest-only untuk Linux x86_64 dengan HTTPS,
+- [x] Hasilkan executable release asset dan SHA-256.
+- [x] Implementasikan `install.sh` latest-only untuk Linux x86_64 dengan HTTPS,
   checksum verification, atomic replacement, dan executable permission.
-- [ ] Uji installer M9 terhadap local/mock release endpoint dengan override
+- [x] Uji installer M9 terhadap local/mock release endpoint dengan override
   khusus test; interface pengguna production tetap latest-only tanpa version
   selector.
-- [ ] Implementasikan idempotent managed PATH block untuk Bash beserta backup,
+- [x] Implementasikan idempotent managed PATH block untuk Bash beserta backup,
   `source` instruction, dan manual fallback.
-- [ ] Implementasikan installation metadata yang membedakan file TTC-owned dari
+- [x] Implementasikan installation metadata yang membedakan file TTC-owned dari
   existing unrelated binary.
-- [ ] Implementasikan `ttc uninstall` global; tolak bila harness masih aktif dan
+- [x] Implementasikan `ttc uninstall` global; tolak bila harness masih aktif dan
   pertahankan PATH bila `~/.local/bin` dipakai program lain.
-- [ ] Dokumentasikan quick install, manual binary install, update dengan rerun
+- [x] Dokumentasikan quick install, manual binary install, update dengan rerun
   installer, PATH reload, dan global uninstall.
-- [ ] Jangan memublikasikan GitHub Release pada milestone ini.
+- [x] Jangan memublikasikan GitHub Release pada milestone ini.
 
 ### Acceptance criteria
 
-- [ ] Seluruh M1–M8 acceptance tetap lulus dalam satu clean CI run.
-- [ ] Artifact release-mode Linux dapat berjalan tanpa repository/source tree.
-- [ ] Fresh install, same-version reinstall, dan upgrade replacement atomik.
-- [ ] Checksum mismatch dan unsupported platform gagal sebelum binary diganti.
-- [ ] Installer tidak otomatis memasang integrasi Codex.
-- [ ] PATH edit idempotent; kegagalan edit tetap menyisakan binary sehat dan
+- [x] Seluruh M1–M8 acceptance tetap lulus dalam satu clean CI run.
+- [x] Artifact release-mode Linux dapat berjalan tanpa repository/source tree.
+- [x] Fresh install, same-version reinstall, dan upgrade replacement atomik.
+- [x] Checksum mismatch dan unsupported platform gagal sebelum binary diganti.
+- [x] Installer tidak otomatis memasang integrasi Codex.
+- [x] PATH edit idempotent; kegagalan edit tetap menyisakan binary sehat dan
   instruksi manual yang benar.
-- [ ] Global uninstall tidak menghapus unrelated binary/config/PATH usage.
+- [x] Global uninstall tidak menghapus unrelated binary/config/PATH usage.
 - [ ] User telah merge/push ke `master` dan artifact CI Linux berhasil. Ini
   adalah hard gate M10.
 
@@ -1052,12 +990,192 @@ cargo build --release --target x86_64-unknown-linux-gnu
 ./scripts/test-release-artifact.sh
 ```
 
+### Evidence lokal implementasi M9
+
+Pada 2026-10-01 seluruh command Verification commands di atas lulus, termasuk
+`cargo test --all-targets --all-features` paralel standar tanpa skip, build GNU
+release `--locked`, `./scripts/test-install.sh` (17 E2E), dan
+`./scripts/test-release-artifact.sh`. Log lengkap:
+`target/m9-evidence/local-gates-final.log`; generated audit:
+`target/m9-evidence/coverage.md` dan `ai_docs/M9_COVERAGE.md`, mapping/digest
+SPEC pada `ai_docs/m9-coverage.json`. Tambahan gate:
+`python3 scripts/test-release-policy.py` dan
+`python3 scripts/check-spec-coverage.py` lulus. Sebelas unit distribusi
+mencakup actual SIGKILL, metadata commit failure, failed rename, ambiguous
+rollback, in-place user config edit, active integration dan ownership.
+
+Local ELF SHA-256:
+`000896b3059970cd933c78febfd9228d09b5878cfc38bc2a91f094e9a23253fa`.
+Representative Rust stdout/stderr `23999/254` byte termasuk metadata (>=80%);
+argv/shell, cwd/env/stdin, status13/7, signal INT/TERM, count1, TTY dan raw replay
+lulus di direktori luar source. Seluruh installer HOME/XDG/mock endpoint
+terisolasi. Override HTTP hanya loopback dengan opt-in test. `sha2 = =0.10.9`
+dipilih untuk streaming SHA-256 native dan validasi binary existing tanpa
+mengeksekusinya. Core execution/filter tidak diubah pada implementasi M9.
+
+CI PR dan downloaded candidate sudah lulus pada evidence berikut. Master
+acceptance tetap menunggu merge pengguna dan run master yang diperiksa.
+
+### Evidence CI kandidat M9
+
+[PR #9](https://github.com/Skirja/ttc-ai/pull/9), production commit
+`bea54a5834722c7146e842dc0692d6b7d15edeb4`, lulus seluruh **10 job** pada
+[run `36824224429`](https://github.com/Skirja/ttc-ai/actions/runs/36824224429).
+Checkout merge CI yang menghasilkan artifact:
+`465b95c079244f95c36dbbc95b55d78f86dc18d3`. Semua baseline M1–M8 dan full
+pinned real-tool smoke dijalankan ulang, lalu distribution job memakai clean
+checkout, explicit GNU target, lockfile dan toolchain Rust `1.98.1`.
+
+Artifact `ttc-m9-x86_64-unknown-linux-gnu` diunduh ke
+`target/m9-evidence/run-36824224429/`; `sha256sum --check --status SHA256SUMS`
+dan `sha256sum --check --status EVIDENCE-SHA256SUMS` lulus untuk asset dan
+**112 evidence entries**. Checksum:
+
+| File | SHA-256 |
+|---|---|
+| ttc-x86_64-unknown-linux-gnu | `f1b6dd184ab31b0331055fe76e3a4370e4fa07f30d3b10199312a6d507700301` |
+| install.sh | `19e0e744ec83a0e4e29934b47f522eecba37dcdd95ad899b5193f6c8a9cebda7` |
+| SHA256SUMS | `90f8b6f54de0d200a300935da3d233d04d5eb5b47b32b281814d6ec9e58e52d8` |
+| EVIDENCE-SHA256SUMS | `70937a60d748d411d4fd6c715367d6bc802f9cebeceae243858d41de8e23ba8c` |
+
+`evidence/coverage.md` mencakup seluruh section/klausul/form command SPEC,
+source/test mapping dan batas kontrak M10. `evidence/prerequisites/` mencakup
+passthrough, streaming, fixture/reduction dan pinned smoke M2–M8 dari run yang
+sama; checksum wajib M6–M8 juga diperiksa. `evidence/standalone.txt` dan
+`evidence/packaged-smoke.txt` membuktikan versi, argv/shell bytes per-stream,
+cwd/env/stdin, status/signal, count1, TTY, retained diagnostic, raw replay dan
+representative reduction `23999/254` byte. Installer 17 E2E lulus pada CI.
+Binary hasil unduhan diuji ulang lokal menggunakan:
+
+```sh
+TTC_M9_BINARY="$PWD/target/m9-evidence/run-36824224429/ttc-x86_64-unknown-linux-gnu" ./scripts/test-release-artifact.sh
+TTC_M9_BINARY="$PWD/target/m9-evidence/run-36824224429/ttc-x86_64-unknown-linux-gnu" ./scripts/test-install.sh
+```
+
+Keduanya lulus. Gate evidence kini juga menolak checksum manifest wajib yang
+hilang; test tag mengisolasi HOME/config Git. Verifikasi narrow kedua perubahan
+tersebut lulus lokal. Run PR kandidat membuktikan implementasi; **M9 belum
+complete** sampai pengguna merge dan clean successful master run/artifact
+diperiksa. Tidak ada tag, public release atau Codex integration dibuat.
+
+Run berikutnya `36825391722` pada evidence commit `52dd9be` gagal di M2:
+`tests/signals.rs` membaca pidfile sesudah file dibuat tetapi sebelum PID ditulis
+(`ParseIntError { kind: Empty }`). Log diagnostik disimpan pada
+`target/m9-evidence/m2-signal-failure.log`. Readiness helper kini menunggu PID
+positif yang dapat diparse; regresi membuat file kosong lalu menulis PID setelah
+40ms. Tidak ada rerun child atau perubahan execution/filter core. Targeted
+signal suite, 50 pengulangan berturut-turut, format dan Clippy lulus. CI harus
+lulus lagi pada head perbaikan sebelum PR siap merge.
+
+Review follow-up `src/distribution/path.rs`: validasi snapshot `.bashrc` kini
+diulang setelah backup dan staging disiapkan, langsung sebelum penggantian.
+Perubahan baru yang ditulis pengguna selama I/O staging menyebabkan fallback
+manual tanpa mengganti config. Regresi menguji save in-place dan save atomik
+yang mengganti inode.
+
+Gate lokal sesudah fix: verification commands M9 seluruhnya lulus; log
+`target/m9-evidence/path-race-fix.log`. Narrow ulang sesudah cleanup test lulus:
+`cargo fmt --all -- --check`, `cargo test --bin ttc distribution::path::tests
+-- --test-threads=1`, Clippy, dan `git diff --check`.
+
+Fix commit `6a5627c62415510b9f95216b2ac0e003c521e0b1` lulus semua 10 CI jobs pada
+[run `36955336106`](https://github.com/Skirja/ttc-ai/actions/runs/36955336106),
+checkout merge `f734afe099b0be01ac8ab62788dcee62902104e8`. Artifact
+`ttc-m9-x86_64-unknown-linux-gnu` diunduh ke
+`target/m9-evidence/run-36955336106/`; kedua manifest checksum lulus. **112**
+evidence entries M1–M8/M9 terverifikasi; installer 17 E2E lulus pada CI dan
+binary unduhan. Standalone smoke binary unduhan lulus ulang untuk argv/shell
+stdout/stderr, cwd/env/stdin, status/signal, count1, TTY, diagnostic, raw replay
+dan reduction `23999/254` byte.
+
+| File artifact setelah fix | SHA-256 |
+|---|---|
+| ttc-x86_64-unknown-linux-gnu | `2ceac28857697143a5f67bf96950be2252238daa56228f7517846fc2d635ef63` |
+| install.sh | `19e0e744ec83a0e4e29934b47f522eecba37dcdd95ad899b5193f6c8a9cebda7` |
+| SHA256SUMS | `31eda14a8d25c8f77ef0e2a6dad3158eb8e86dc97d6b62240479aa96a09711e8` |
+| EVIDENCE-SHA256SUMS | `75c26b92646655e4b391a2d480164ba373a7b74d899773388daa1d6fae9dd2a3` |
+
+### Perbaikan TOCTOU commit config — 2026-10-02
+
+Review ulang menemukan fix staging `6a5627c` belum melindungi save setelah
+validasi terakhir. Replacement config existing sekarang memakai
+`renameat2(RENAME_EXCHANGE)` dan memvalidasi file aktual yang tergeser, yang
+selalu dipertahankan sebagai backup. Konflik atau kegagalan sync mempertahankan
+kedua versi, lokasi recovery, dan marker; operasi berikutnya ditolak.
+Rollback memakai exchange/capture tanpa overwrite; uninstall mempertahankan
+tombstone binary/metadata dan marker bila edit PATH ambigu.
+
+Feature `fs` ditambahkan pada `nix = =0.31.3` yang sudah terpin untuk API syscall
+aman tanpa unsafe code/dependency baru. SPEC §13, README, dan audit coverage
+diperbarui. Regresi menyisipkan save setelah validasi terakhir: in-place,
+atomic rename, symlink, concurrent fresh creation, rollback fresh/existing,
+write melalui inode original, serta uninstall dan penolakan operasi berikutnya.
+20 unit test distribusi dan seluruh 214 test Rust lulus.
+
+Semua verification commands M9, baseline release build, build GNU `--locked`,
+release policy, coverage, dan `git diff --check` lulus pada
+`target/m9-evidence/path-exchange-fix.log`. Installer 17 E2E dan artifact smoke
+di luar source tree lulus; reduction representative `23999/254` byte.
+Binary lokal GNU SHA-256:
+`fe665b880f521e2976447a6a0f6c42aa76465c40c12eed2cef7ac22cff7493cd`.
+Fix commit `8277e31b51fc4a29f5cbebca1b03822aa7c5eb82` lulus seluruh 10 job pada
+[run `36959752141`](https://github.com/Skirja/ttc-ai/actions/runs/36959752141).
+Provenance artifact mencatat checkout merge
+`e75efe9393c4a71ebfef8c712c0ea126fdfb7c14`; parent sesuai `master` dan fix head.
+Artifact diunduh ke `target/m9-evidence/run-36959752141/`. Kedua manifest
+checksum dan seluruh 112 evidence entries cocok. Standalone smoke serta 17
+installer E2E lulus ulang pada binary unduhan. Log pemeriksaan:
+`target/m9-evidence/artifact-36959752141.log`.
+
+Command pemeriksaan artifact: `gh run download 36959752141 --name
+ttc-m9-x86_64-unknown-linux-gnu --dir target/m9-evidence/run-36959752141`,
+`sha256sum --check --status SHA256SUMS` dan `sha256sum --check --status
+EVIDENCE-SHA256SUMS` dari root artifact, lalu kedua script M9 dengan
+`TTC_M9_BINARY` menunjuk executable unduhan.
+
+| File artifact atomic exchange | SHA-256 |
+|---|---|
+| ttc-x86_64-unknown-linux-gnu | `773a36057a958699598bb9613667c60fef79d49166c58eded57e4daf06709b48` |
+| install.sh | `19e0e744ec83a0e4e29934b47f522eecba37dcdd95ad899b5193f6c8a9cebda7` |
+| SHA256SUMS | `0182d3b7450786e21b19d9f8fb37806fadad82c7d687e2ab3666640ac0899d1c` |
+| EVIDENCE-SHA256SUMS | `720cba5546875135bd0a7d59ca55a6880d15e039fc6233685530b6e3511d406b` |
+
+### Perbaikan ownership binary/metadata sebelum squash merge
+
+Review penuh PR #9 menemukan check-then-rename pada binary. Transaksi baru
+memakai exchange/capture untuk binary, metadata, rollback, dan uninstall;
+validasi identity/SHA-256 dilakukan pada entry aktual yang tergeser dan hasil
+commit/rollback. Entry yang pernah dipublikasikan tetap diarchive agar write
+lewat FD lama tidak hilang. Marker diambil secara atomik; entry asing yang
+beradu dengan cleanup dipulihkan tanpa overwrite.
+
+Archive berada dalam `.ttc-distribution` privat pada filesystem bin/data.
+Receipt ownership wajib cocok; direktori existing tanpa receipt ditolak.
+Direktori administrasi ini dipertahankan setelah uninstall dan dikecualikan
+dari pemeriksaan program lain di bin. Metadata instalasi tetap schema 1.
+
+Seluruh 226 test Rust, format, Clippy, release build, GNU build `--locked`,
+17 installer E2E, standalone smoke, release policy, dan coverage lulus lokal.
+Log: `target/m9-evidence/ownership-race-fix-final.log` dan
+`target/m9-evidence/ownership-race-regressions-final.log`. Regresi meliputi
+commit binary/metadata, rollback, uninstall, save in-place/atomic, symlink,
+late FD write, syscall exchange gagal, namespace asing, dan marker recovery.
+Binary lokal SHA-256:
+`8d0807bd043273ba7a5ffab0c7570931ffb5205a17a4e06325fe8a600e80840f`.
+
+Pengguna pada 2026-10-02 mengotorisasi agent memperbaiki semua temuan dan
+squash merge PR #8/#9 ke branch utama repo (`master`). CI fix terbaru dan
+clean master run/artifact tetap wajib diperiksa sebelum completion M9.
+PR #8 sudah squash merged sebagai `2ad265f970f758b603dc9b706afe0b9b6351d559`;
+tree master cocok dengan head PR #8 yang direview dan seluruh delapan gate
+[run 36817828230](https://github.com/Skirja/ttc-ai/actions/runs/36817828230) lulus.
+
 ### Evidence
 
-- [ ] Commit production hardening dicatat.
+- [x] Commit production hardening dicatat.
 - [ ] Successful `master` CI run URL dicatat.
-- [ ] Downloaded workflow artifact checksum dicatat.
-- [ ] Full command coverage dan reduction reports dilampirkan.
+- [x] Downloaded workflow artifact checksum dicatat.
+- [x] Full command coverage dan reduction reports dilampirkan.
 
 ---
 
