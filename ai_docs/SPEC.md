@@ -1085,6 +1085,16 @@ CI utama berjalan pada branch `master`. Artifact release-mode Phase 1 harus
 lulus sebelum implementasi hook Codex dimulai. Public release hanya dibuat
 setelah Phase 2 lulus.
 
+Workflow tetap berjalan pada pull request ke `master` dan push ke `master`.
+Gate lengkap meliputi format, Clippy, semua test, pinned real-tool smoke,
+installer, serta artifact Linux. Gate ringan hanya berlaku jika seluruh diff
+berisi perubahan pada `README.md`, `LICENSE`, `ai_docs/CURRENT_STATE.md`,
+`ai_docs/TODO.md`, atau file Markdown di `ai_docs/steps_done/`. Perubahan
+campuran, SPEC/coverage, workflow, aturan agent, path lain, event tak dikenal,
+tag, atau diff yang gagal dibaca selalu memakai gate lengkap. Workflow harus
+tetap melaporkan aggregate check; kegagalan, pembatalan, dan skip prerequisite
+yang tidak sesuai klasifikasi harus menghasilkan status gagal.
+
 ## 14. Test plan
 
 ### 14.1 Unit tests
