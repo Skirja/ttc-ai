@@ -191,6 +191,12 @@ Untuk setiap Bash command selain recursive TTC wrapper:
 
 Hook selalu menghasilkan wrapper. Hook tidak memeriksa apakah command filterable.
 
+Entrypoint menerima maksimum 1 MiB JSON UTF-8. Payload bukan object, JSON
+malformed/berganda, field wajib bertipe salah atau duplikat, cwd bukan absolute,
+serta command dengan NUL ditolak dengan exit 2, diagnostic stderr, dan stdout
+kosong. Response baru ditulis setelah validasi lengkap. Event PreToolUse untuk
+tool selain Bash menghasilkan object kosong. Hook tidak menjalankan child.
+
 ### 5.3 Quoting
 
 POSIX quoting wajib menangani:
@@ -211,6 +217,11 @@ menambahkan option lain di antara TTC dan command asli.
 ### 5.4 Recursive wrapper prevention
 
 Jika command sudah memanggil binary TTC, hook mengembalikan object kosong.
+
+Pencegahan rekursi mengenali executable literal `ttc` atau installed absolute
+path, termasuk POSIX quoting dan prefix assignment, `command`, atau `exec`.
+Penyebutan TTC sebagai argument/data tidak dihitung. Parsing shell yang ambigu
+tetap dibungkus; tidak ada evaluasi shell atau subprocess untuk pemeriksaan ini.
 
 Contoh yang tidak dibungkus ulang:
 
@@ -243,6 +254,29 @@ entry dipertahankan jika `~/.local/bin` berisi program lain agar uninstall TTC
 tidak merusak tool lain.
 
 Tidak ada kondisi hook terlihat aktif tetapi diam-diam tidak wrapping. Jika hook terpasang dan trusted, setiap Bash command masuk melalui TTC.
+
+Lokasi integrasi mengikuti `CODEX_HOME`, default `~/.codex`. Bila `hooks.json`
+existing, TTC mengedit file tersebut; selain itu TTC mengedit inline hooks di
+`config.toml`. File config maksimum 1 MiB, regular, UTF-8, writable dan milik
+user; symlink, parse invalid, duplicate JSON key, atau ownership ambigu ditolak.
+Komentar dan byte setting unrelated dipertahankan. Receipt schema 1 milik TTC
+berada di `XDG_DATA_HOME/ttc/codex.toml`; receipt menyimpan lokasi/format config,
+definisi hook dan perubahan yang dimiliki TTC. Receipt tidak menyimpan trust.
+
+Config, receipt dan `active_harnesses` memakai lock serta marker `install.pending`
+distribusi. Commit/rollback mempertahankan entry aktual melalui archive privat
+dan pertukaran/capture atomik seperti transaksi distribusi. Konflik atau sync
+failure yang ambigu menyimpan semua versi dan menolak operasi berikutnya.
+Backup config tetap tersedia sesudah uninstall. Reinstall menolak hook yang
+diubah atau hook TTC existing tanpa receipt; uninstall hanya menghapus definisi
+yang masih cocok dengan receipt. Uninstall tidak mengganti config dengan backup
+lama. Config yang dibuat TTC dihapus hanya bila hasil penghapusan hook identik
+dengan konten awal kosong; perubahan pengguna sesudah install tetap ada.
+
+Install memeriksa `codex --version` dan fitur hooks yang aktif, serta mencetak
+instruksi review/trust `/hooks`. Hook support yang tidak tersedia gagal sebelum
+edit config; TTC tidak mengaktifkan feature flag atau menulis persisted trust.
+Config hook yang berubah dapat memerlukan review trust ulang sesuai Codex.
 
 ## 6. Pipeline binary TTC
 

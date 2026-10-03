@@ -1,5 +1,5 @@
 {
-  "spec_sha256": "514f981a439a41afac4c12916b6e107a574a61686a93dc65579e75d8e5f0d8e8",
+  "spec_sha256": "c6286c3cac94dd91f512835940bb13323f558de30257a8a7c3f1026c0af89b52",
   "sections": {
     "1": {
       "perilaku": "Standalone sekali; default retain, tanpa daemon/network/harness dependency. Artifact GNU mendahului M10.",
@@ -108,77 +108,87 @@
       "cakupan_m10": "Seluruh kontrak hook, serializer/quoting hook, recursive wrapper, config/trust, auth E2E ephemeral, token reduction, sandbox Codex dan publikasi menunggu M10. Global uninstall sudah dipetakan pada §13."
     },
     "5.1": {
-      "perilaku": "Kontrak harness terdokumentasi; entrypoint hook/install/uninstall Codex tidak tersedia pada M9.",
+      "perilaku": "Entrypoint hook bounded JSON, validasi sebelum response, official allow/updatedInput, POSIX quoting dan literal recursive prevention tanpa child atau classifier.",
       "implementasi": [
+        "src/harness/codex/hook.rs",
         "src/cli.rs"
       ],
       "test": [
-        "tests/cli.rs"
+        "tests/hook.rs"
       ],
       "gate": [
         "rust-safety"
       ],
-      "cakupan_m10": "Seluruh kontrak hook, serializer/quoting hook, recursive wrapper, config/trust, auth E2E ephemeral, token reduction, sandbox Codex dan publikasi menunggu M10. Global uninstall sudah dipetakan pada §13."
+      "cakupan_m10": "Runtime Codex minimum tanpa login diuji tersendiri; acceptance authenticated ephemeral, trust, token dan public release masih memerlukan gate M10."
     },
     "5.2": {
-      "perilaku": "Kontrak harness terdokumentasi; entrypoint hook/install/uninstall Codex tidak tersedia pada M9.",
+      "perilaku": "Entrypoint hook bounded JSON, validasi sebelum response, official allow/updatedInput, POSIX quoting dan literal recursive prevention tanpa child atau classifier.",
       "implementasi": [
+        "src/harness/codex/hook.rs",
         "src/cli.rs"
       ],
       "test": [
-        "tests/cli.rs"
+        "tests/hook.rs"
       ],
       "gate": [
         "rust-safety"
       ],
-      "cakupan_m10": "Seluruh kontrak hook, serializer/quoting hook, recursive wrapper, config/trust, auth E2E ephemeral, token reduction, sandbox Codex dan publikasi menunggu M10. Global uninstall sudah dipetakan pada §13."
+      "cakupan_m10": "Runtime Codex minimum tanpa login diuji tersendiri; acceptance authenticated ephemeral, trust, token dan public release masih memerlukan gate M10."
     },
     "5.3": {
-      "perilaku": "Kontrak harness terdokumentasi; entrypoint hook/install/uninstall Codex tidak tersedia pada M9.",
+      "perilaku": "Entrypoint hook bounded JSON, validasi sebelum response, official allow/updatedInput, POSIX quoting dan literal recursive prevention tanpa child atau classifier.",
       "implementasi": [
+        "src/harness/codex/hook.rs",
         "src/cli.rs"
       ],
       "test": [
-        "tests/cli.rs"
+        "tests/hook.rs"
       ],
       "gate": [
         "rust-safety"
       ],
-      "cakupan_m10": "Seluruh kontrak hook, serializer/quoting hook, recursive wrapper, config/trust, auth E2E ephemeral, token reduction, sandbox Codex dan publikasi menunggu M10. Global uninstall sudah dipetakan pada §13."
+      "cakupan_m10": "Runtime Codex minimum tanpa login diuji tersendiri; acceptance authenticated ephemeral, trust, token dan public release masih memerlukan gate M10."
     },
     "5.4": {
-      "perilaku": "Kontrak harness terdokumentasi; entrypoint hook/install/uninstall Codex tidak tersedia pada M9.",
+      "perilaku": "Entrypoint hook bounded JSON, validasi sebelum response, official allow/updatedInput, POSIX quoting dan literal recursive prevention tanpa child atau classifier.",
       "implementasi": [
+        "src/harness/codex/hook.rs",
         "src/cli.rs"
       ],
       "test": [
-        "tests/cli.rs"
+        "tests/hook.rs"
       ],
       "gate": [
         "rust-safety"
       ],
-      "cakupan_m10": "Seluruh kontrak hook, serializer/quoting hook, recursive wrapper, config/trust, auth E2E ephemeral, token reduction, sandbox Codex dan publikasi menunggu M10. Global uninstall sudah dipetakan pada §13."
+      "cakupan_m10": "Runtime Codex minimum tanpa login diuji tersendiri; acceptance authenticated ephemeral, trust, token dan public release masih memerlukan gate M10."
     },
     "5.5": {
-      "perilaku": "Kontrak harness terdokumentasi; entrypoint hook/install/uninstall Codex tidak tersedia pada M9.",
+      "perilaku": "Config-only install memverifikasi ownership binary dan capability minimum, memilih representasi existing, backup/transaksi config+receipt+active_harnesses, idempotent dan uninstall surgical yang menjaga setting/komentar/trust pengguna.",
       "implementasi": [
-        "src/cli.rs"
+        "src/harness/codex/install.rs",
+        "src/harness/codex/config.rs",
+        "src/distribution/integration.rs"
       ],
       "test": [
-        "tests/cli.rs"
+        "tests/codex_install.rs",
+        "tests/codex_config_ownership.rs",
+        "src/distribution/integration.rs"
       ],
       "gate": [
         "rust-safety"
       ],
-      "cakupan_m10": "Seluruh kontrak hook, serializer/quoting hook, recursive wrapper, config/trust, auth E2E ephemeral, token reduction, sandbox Codex dan publikasi menunggu M10. Global uninstall sudah dipetakan pada §13."
+      "cakupan_m10": "Authenticated ephemeral dan seluruh gate publikasi belum dinyatakan lengkap oleh mapping source/test ini."
     },
     "14.6": {
-      "perilaku": "Kontrak harness terdokumentasi; entrypoint hook/install/uninstall Codex tidak tersedia pada M9.",
+      "perilaku": "Smoke runtime actual pinned Codex 0.154.0 tanpa login pada ketiga sandbox; fake upstream tidak menjadi bukti authenticated E2E atau token reduction.",
       "implementasi": [
-        "src/cli.rs"
+        "src/harness/codex/mod.rs",
+        "scripts/m10-codex-support.py"
       ],
       "test": [
-        "tests/cli.rs"
+        "tests/codex_sandbox.rs",
+        "scripts/m10-runtime-tests.py"
       ],
       "gate": [
         "rust-safety"
@@ -247,7 +257,8 @@
       "implementasi": [
         "src/cli.rs",
         "src/core/execution.rs",
-        "src/core/streaming.rs"
+        "src/core/streaming.rs",
+        "src/harness/codex/mod.rs"
       ],
       "test": [
         "tests/cli.rs",
@@ -262,7 +273,7 @@
         "rust-safety",
         "linux-artifact"
       ],
-      "cakupan_m10": "Command install/uninstall/hook Codex dalam daftar CLI baru diimplementasikan M10; help M9 tidak mengiklankannya."
+      "cakupan_m10": "Hook/install/uninstall Codex sudah diimplementasikan; acceptance model-facing/auth dan publikasi tetap gate terpisah."
     },
     "4.3": {
       "perilaku": "Argv asli atau tepat satu shell string; stdin/cwd/env/TTY diwariskan, per-stream bytes/order, exit/signal dipertahankan, tanpa rerun.",

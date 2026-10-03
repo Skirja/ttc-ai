@@ -13,6 +13,8 @@ Penggunaan: ttc [OPTIONS]
        ttc <program> [args...]
        ttc '<complete shell command>'
        ttc raw <id> [--stdout | --stderr] [--tail N]
+       ttc install codex
+       ttc uninstall codex
        ttc uninstall
 
 Opsi:
@@ -36,6 +38,23 @@ pub(crate) fn run(arguments: impl IntoIterator<Item = OsString>) -> ExitCode {
             ExitCode::SUCCESS
         }
         [argument, ..] if argument == OsStr::new("raw") => run_raw(&command[1..]),
+        [argument, harness] if argument == "install" && harness == "codex" => {
+            crate::harness::codex::install()
+        }
+        [argument, harness] if argument == "uninstall" && harness == "codex" => {
+            crate::harness::codex::uninstall()
+        }
+        [argument, ..] if argument == "install" => {
+            eprintln!("ttc: usage: ttc install codex");
+            ExitCode::from(2)
+        }
+        [argument, harness] if argument == "hook" && harness == "codex" => {
+            crate::harness::codex::hook()
+        }
+        [argument, ..] if argument == "hook" => {
+            eprintln!("ttc: usage internal: ttc hook codex");
+            ExitCode::from(2)
+        }
         [argument] if argument == OsStr::new("uninstall") => crate::distribution::uninstall(),
         [argument, ..] if argument == OsStr::new("uninstall") => {
             eprintln!("ttc: usage: ttc uninstall");

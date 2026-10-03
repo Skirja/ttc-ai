@@ -1,6 +1,7 @@
 //! Local installation management, independent from execution and harnesses.
 
 mod files;
+pub(crate) mod integration;
 mod metadata;
 mod path;
 mod transaction;
@@ -161,7 +162,7 @@ pub(crate) fn install(expected: &str) -> ExitCode {
             env!("CARGO_PKG_VERSION"),
             paths.binary.display()
         );
-        println!("Jalankan {} --help", path::quote(&paths.binary));
+        println!("Jalankan {} install codex", path::quote(&paths.binary));
         Ok(())
     })();
     status(result)

@@ -125,7 +125,7 @@ class InstallTests(unittest.TestCase):
         self.assertEqual(self.target.stat().st_mode & 0o777, 0o755)
         self.assertEqual(self.metadata()["sha256"], DIGEST)
         self.assertEqual(self.metadata()["active_harnesses"], [])
-        self.assertNotIn(b"install codex", result.stdout)
+        self.assertIn(b"install codex", result.stdout)
         self.assertIn(b"source", result.stdout)
         backups = list(self.home.glob(".ttc-*-bashrc-backup"))
         self.assertEqual(len(backups), 1)

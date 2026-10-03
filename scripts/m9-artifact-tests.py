@@ -41,7 +41,7 @@ with tempfile.TemporaryDirectory(prefix="ttc-m9-artifact-") as scratch:
     assert run([str(binary), "--version"], "version.count").stdout == f"ttc {version}\n".encode()
     help_result = run([str(binary), "--help"], "help.count")
     assert help_result.returncode == 0 and b"ttc uninstall" in help_result.stdout
-    assert b"__install" not in help_result.stdout and b"install codex" not in help_result.stdout
+    assert b"__install" not in help_result.stdout and b"install codex" in help_result.stdout
     probe = tools / "custom-probe"
     probe.write_text("#!/bin/sh\nprintf x >> \"$COUNT_FILE\"\nprintf 'cwd=%s env=%s\\n' \"$PWD\" \"$TTC_M9_MARKER\"\nprintf 'arg=<%s>\\n' \"$@\"\ncat\nprintf '\\377\\000tail\\n'\nprintf 'warning: stderr exact\\n' >&2\nexit 13\n")
     probe.chmod(0o755)
