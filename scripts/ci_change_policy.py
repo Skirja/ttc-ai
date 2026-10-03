@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from http.client import HTTPException
 import json
 import re
 import subprocess
@@ -113,11 +114,11 @@ def previous_push_passed(env: Mapping[str, str]) -> bool:
         return False
     api = env.get("GITHUB_API_URL", "https://api.github.com").rstrip("/")
     query = urlencode({"branch": "master", "event": "push", "head_sha": before, "per_page": 100})
-    request = Request(
-        f"{api}/repos/{repository}/actions/workflows/ci.yml/runs?{query}",
-        headers={"Accept": "application/vnd.github+json", "Authorization": f"Bearer {token}"},
-    )
     try:
+        request = Request(
+            f"{api}/repos/{repository}/actions/workflows/ci.yml/runs?{query}",
+            headers={"Accept": "application/vnd.github+json", "Authorization": f"Bearer {token}"},
+        )
         with urlopen(request, timeout=15) as response:
             runs = json.load(response)["workflow_runs"]
         return any(
@@ -129,7 +130,7 @@ def previous_push_passed(env: Mapping[str, str]) -> bool:
             and run["conclusion"] == "success"
             for run in runs
         )
-    except (OSError, ValueError, KeyError, TypeError):
+    except (OSError, HTTPException, ValueError, KeyError, TypeError):
         # Includes API denial, timeout, malformed results, and unavailable history.
         return False
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from io import StringIO
+from http.client import IncompleteRead
 import json
 import os
 import subprocess
@@ -108,8 +109,11 @@ class ChangePolicyTests(unittest.TestCase):
             "GITHUB_REPOSITORY": "example/ttc",
             "CI_READ_TOKEN": "isolated-test-token",
         }
-        with patch("ci_change_policy.urlopen", side_effect=OSError("API unavailable")):
-            self.assertFalse(previous_push_passed(env))
+        for error in (OSError("API unavailable"), IncompleteRead(b"truncated")):
+            with self.subTest(error=type(error).__name__), patch(
+                "ci_change_policy.urlopen", side_effect=error
+            ):
+                self.assertFalse(previous_push_passed(env))
         with patch("ci_change_policy.urlopen", return_value=StringIO("invalid JSON")):
             self.assertFalse(previous_push_passed(env))
         for changes in ({"BEFORE_SHA": ""}, {"BEFORE_SHA": "0" * 40}, {"CI_READ_TOKEN": ""}):
