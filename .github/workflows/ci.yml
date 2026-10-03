@@ -1,4 +1,4 @@
-name: Validasi TTC
+name: TTC CI
 
 on:
   push:
@@ -19,7 +19,7 @@ concurrency:
 
 jobs:
   prepare:
-    name: Kebijakan dan build Linux
+    name: Policy and Linux Build
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -27,21 +27,21 @@ jobs:
     outputs:
       full_gate: ${{ steps.classify.outputs.full_gate }}
     steps:
-      - name: Ambil riwayat untuk audit perubahan
+      - name: Check out full history for change classification
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 0
 
-      - name: Pasang Python yang dipin
+      - name: Set up pinned Python
         uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
         with:
           python-version: 3.14.7
 
-      - name: Uji kebijakan perubahan CI
+      - name: Test CI change policy
         run: python3 scripts/test-ci-change-policy.py
 
-      - name: Pilih gate ringan atau penuh
+      - name: Select light or full CI gate
         id: classify
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -53,7 +53,7 @@ jobs:
           CI_READ_TOKEN: ${{ github.token }}
         run: python3 scripts/classify-ci-changes.py
 
-      - name: Uji kebijakan rilis stabil
+      - name: Test stable release policy
         env:
           REF_TYPE: ${{ github.ref_type }}
           REF_NAME: ${{ github.ref_name }}
@@ -65,15 +65,15 @@ jobs:
             python3 scripts/check-release-version.py Cargo.toml
           fi
 
-      - name: Pasang Rust 1.98.1
+      - name: Install Rust 1.98.1
         if: steps.classify.outputs.full_gate == 'true'
         run: rustup toolchain install 1.98.1 --profile minimal --target x86_64-unknown-linux-gnu
 
-      - name: Build binary release Linux
+      - name: Build Linux release binary
         if: steps.classify.outputs.full_gate == 'true'
         run: cargo build --locked --release --target x86_64-unknown-linux-gnu
 
-      - name: Siapkan binary smoke dengan checksum
+      - name: Prepare smoke binary and checksum
         if: steps.classify.outputs.full_gate == 'true'
         run: |
           set -euo pipefail
@@ -83,7 +83,7 @@ jobs:
           sha256sum ttc > SHA256SUMS
           sha256sum --check --status SHA256SUMS
 
-      - name: Bagikan binary smoke untuk run ini
+      - name: Upload smoke binary for this run
         if: steps.classify.outputs.full_gate == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -93,57 +93,57 @@ jobs:
           retention-days: 1
 
   rust-safety:
-    name: Rust dan keselamatan eksekusi
+    name: Rust and Execution Safety
     needs: prepare
     if: needs.prepare.outputs.full_gate == 'true'
     runs-on: ubuntu-24.04
     steps:
-      - name: Ambil source
+      - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Pasang Rust 1.98.1
+      - name: Install Rust 1.98.1
         run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt,clippy
 
-      - name: Pulihkan dan periksa binary smoke
+      - name: Download smoke binary
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: ttc-linux-smoke-binary
           path: target/ci-smoke-binary
 
-      - name: Verifikasi checksum binary smoke
+      - name: Verify smoke binary checksum
         run: |
           (cd target/ci-smoke-binary && sha256sum --check --status SHA256SUMS)
           mkdir -p target/release
           install -m 755 target/ci-smoke-binary/ttc target/release/ttc
 
-      - name: Periksa format Rust
+      - name: Check Rust formatting
         run: cargo fmt --all -- --check
 
-      - name: Jalankan Clippy dengan warning ditolak
+      - name: Run Clippy with warnings denied
         run: cargo clippy --all-targets --all-features -- -D warnings
 
-      - name: Jalankan seluruh suite Rust dan rekam bukti fixture
+      - name: Run full Rust suite and capture fixture evidence
         run: |
           set -o pipefail
           mkdir -p target/ci-evidence
           TTC_M8_EVIDENCE=1 cargo test --all-targets --all-features -- --test-threads=1 --nocapture 2>&1 | tee target/ci-evidence/rust-suite.txt
 
-      - name: Verifikasi passthrough byte-exact
+      - name: Verify byte-exact passthrough
         run: sh scripts/m2-evidence.sh target/ci-evidence/passthrough/report.txt
 
-      - name: Verifikasi memori streaming terbatas
+      - name: Verify bounded streaming memory
         run: sh scripts/m3-evidence.sh target/ci-evidence/streaming/report.txt target/release/ttc
 
-      - name: Buat dan periksa manifest bukti
+      - name: Generate and verify evidence checksums
         run: |
           set -euo pipefail
           cd target/ci-evidence
           find . -type f ! -name EVIDENCE-SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > EVIDENCE-SHA256SUMS
           sha256sum --check --status EVIDENCE-SHA256SUMS
 
-      - name: Unggah bukti Rust dan keselamatan
+      - name: Upload Rust and safety evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: rust-safety-evidence
@@ -151,61 +151,61 @@ jobs:
           if-no-files-found: error
 
   javascript-monorepo:
-    name: JavaScript dan monorepo
+    name: JavaScript and Monorepo
     needs: prepare
     if: needs.prepare.outputs.full_gate == 'true'
     runs-on: ubuntu-24.04
     steps:
-      - name: Ambil source
+      - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Pulihkan dan periksa binary smoke
+      - name: Download smoke binary
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: ttc-linux-smoke-binary
           path: target/ci-smoke-binary
 
-      - name: Verifikasi checksum binary smoke
+      - name: Verify smoke binary checksum
         run: |
           (cd target/ci-smoke-binary && sha256sum --check --status SHA256SUMS)
           mkdir -p target/release
           install -m 755 target/ci-smoke-binary/ttc target/release/ttc
 
-      - name: Pasang Node.js 24.21.0
+      - name: Set up Node.js 24.21.0
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24.21.0
 
-      - name: Pasang Python 3.14.7
+      - name: Set up Python 3.14.7
         uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
         with:
           python-version: 3.14.7
 
-      - name: Pasang Go 1.27.1
+      - name: Set up Go 1.27.1
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
           go-version: 1.27.1
 
-      - name: Pasang Rust 1.98.1 untuk fixture workspace
+      - name: Install Rust 1.98.1 for workspace fixtures
         run: rustup toolchain install 1.98.1 --profile minimal
 
-      - name: Jalankan smoke JavaScript dan monorepo
+      - name: Run JavaScript and monorepo smoke tests
         shell: bash
         run: |
           set -euo pipefail
           sh scripts/m4-smoke.sh target/release/ttc target/ci-evidence/javascript/report.txt
           sh scripts/m6-smoke.sh target/release/ttc target/ci-evidence/monorepo
 
-      - name: Buat dan periksa manifest bukti
+      - name: Generate and verify evidence checksums
         run: |
           set -euo pipefail
           cd target/ci-evidence
           find . -type f ! -name EVIDENCE-SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > EVIDENCE-SHA256SUMS
           sha256sum --check --status EVIDENCE-SHA256SUMS
 
-      - name: Unggah bukti JavaScript dan monorepo
+      - name: Upload JavaScript and monorepo evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: javascript-monorepo-evidence
@@ -213,61 +213,61 @@ jobs:
           if-no-files-found: error
 
   rust-python-go:
-    name: Rust, Python, dan Go
+    name: Rust, Python, and Go
     needs: prepare
     if: needs.prepare.outputs.full_gate == 'true'
     runs-on: ubuntu-24.04
     steps:
-      - name: Ambil source
+      - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Pasang Rust 1.98.1
+      - name: Install Rust 1.98.1
         run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt,clippy
 
-      - name: Pasang Python 3.14.7
+      - name: Set up Python 3.14.7
         uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
         with:
           python-version: 3.14.7
 
-      - name: Pasang Go 1.27.1
+      - name: Set up Go 1.27.1
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
           go-version: 1.27.1
 
-      - name: Pulihkan dan periksa binary smoke
+      - name: Download smoke binary
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: ttc-linux-smoke-binary
           path: target/ci-smoke-binary
 
-      - name: Verifikasi checksum binary smoke
+      - name: Verify smoke binary checksum
         run: |
           (cd target/ci-smoke-binary && sha256sum --check --status SHA256SUMS)
           mkdir -p target/release
           install -m 755 target/ci-smoke-binary/ttc target/release/ttc
 
-      - name: Pasang cargo-nextest 0.9.108 terverifikasi
+      - name: Install checksum-verified cargo-nextest 0.9.108
         run: |
           set -euo pipefail
           sh scripts/m5-install-nextest.sh "$RUNNER_TEMP/ttc-tools"
           printf 'M5_NEXTEST_BIN=%s/cargo-nextest\n' "$RUNNER_TEMP/ttc-tools" >> "$GITHUB_ENV"
 
-      - name: Jalankan smoke Rust, Python, dan Go
+      - name: Run Rust, Python, and Go smoke tests
         run: |
           set -euo pipefail
           mkdir -p target/ci-evidence
           sh scripts/m5-smoke.sh target/release/ttc target/ci-evidence/report.txt
 
-      - name: Buat dan periksa manifest bukti
+      - name: Generate and verify evidence checksums
         run: |
           set -euo pipefail
           cd target/ci-evidence
           find . -type f ! -name EVIDENCE-SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > EVIDENCE-SHA256SUMS
           sha256sum --check --status EVIDENCE-SHA256SUMS
 
-      - name: Unggah bukti Rust, Python, dan Go
+      - name: Upload Rust, Python, and Go evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: rust-python-go-evidence
@@ -275,29 +275,29 @@ jobs:
           if-no-files-found: error
 
   php-jvm-dotnet:
-    name: PHP, JVM, dan .NET
+    name: PHP, JVM, and .NET
     needs: prepare
     if: needs.prepare.outputs.full_gate == 'true'
     runs-on: ubuntu-24.04
     steps:
-      - name: Ambil source
+      - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Pulihkan dan periksa binary smoke
+      - name: Download smoke binary
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: ttc-linux-smoke-binary
           path: target/ci-smoke-binary
 
-      - name: Verifikasi checksum binary smoke
+      - name: Verify smoke binary checksum
         run: |
           (cd target/ci-smoke-binary && sha256sum --check --status SHA256SUMS)
           mkdir -p target/release
           install -m 755 target/ci-smoke-binary/ttc target/release/ttc
 
-      - name: Pasang PHP 8.4.25 dan Composer 2.10.3
+      - name: Set up PHP 8.4.25 and Composer 2.10.3
         uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # v2.37.1
         with:
           php-version: 8.4.25
@@ -305,7 +305,7 @@ jobs:
           extensions: zip
           coverage: none
 
-      - name: Build PHP 8.4.25 dari source terverifikasi
+      - name: Build PHP 8.4.25 from checksum-verified source
         shell: bash
         run: |
           set -euo pipefail
@@ -321,18 +321,18 @@ jobs:
           fi
           printf '%s/php-8.4.25/bin\n' "$tool_home" >> "$GITHUB_PATH"
 
-      - name: Pasang Java 21.0.12.1
+      - name: Set up Java 21.0.12.1
         uses: actions/setup-java@f2beeb24e141e01a676f977032f5a29d81c9e27e # v5.1.0
         with:
           distribution: temurin
           java-version: 21.0.12+101.0.LTS
 
-      - name: Pasang .NET 10.0.401
+      - name: Set up .NET 10.0.401
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: 10.0.401
 
-      - name: Pasang Maven 3.9.16 dan Gradle 9.8.0 terverifikasi
+      - name: Install checksum-verified Maven 3.9.16 and Gradle 9.8.0
         shell: bash
         run: |
           export M7_TOOL_HOME="$RUNNER_TEMP/m7-tools"
@@ -341,7 +341,7 @@ jobs:
           printf 'M7_MAVEN_SHA256=%s\n' "$M7_MAVEN_SHA256" >> "$GITHUB_ENV"
           printf 'M7_GRADLE_SHA256=%s\n' "$M7_GRADLE_SHA256" >> "$GITHUB_ENV"
 
-      - name: Jalankan smoke PHP, JVM, dan .NET
+      - name: Run PHP, JVM, and .NET smoke tests
         shell: bash
         run: |
           set -euo pipefail
@@ -352,14 +352,14 @@ jobs:
             exit 1
           fi
 
-      - name: Buat dan periksa manifest bukti
+      - name: Generate and verify evidence checksums
         run: |
           set -euo pipefail
           cd target/ci-evidence
           find . -type f ! -name EVIDENCE-SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > EVIDENCE-SHA256SUMS
           sha256sum --check --status EVIDENCE-SHA256SUMS
 
-      - name: Unggah bukti PHP, JVM, dan .NET
+      - name: Upload PHP, JVM, and .NET evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: php-jvm-dotnet-evidence
@@ -367,7 +367,7 @@ jobs:
           if-no-files-found: error
 
   build-infrastructure:
-    name: Build, Ruby, Swift, dan infrastruktur
+    name: Build, Ruby, Swift, and Infrastructure
     needs: prepare
     if: needs.prepare.outputs.full_gate == 'true'
     runs-on: ubuntu-24.04
@@ -375,35 +375,35 @@ jobs:
       BUNDLE_GEMFILE: ${{ github.workspace }}/scripts/m8-smoke/ruby/Gemfile
       BUNDLE_PATH: ${{ github.workspace }}/target/m8-bundle
     steps:
-      - name: Ambil source
+      - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Pulihkan dan periksa binary smoke
+      - name: Download smoke binary
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           name: ttc-linux-smoke-binary
           path: target/ci-smoke-binary
 
-      - name: Verifikasi checksum binary smoke
+      - name: Verify smoke binary checksum
         run: |
           (cd target/ci-smoke-binary && sha256sum --check --status SHA256SUMS)
           mkdir -p target/release
           install -m 755 target/ci-smoke-binary/ttc target/release/ttc
 
-      - name: Pasang Ruby 3.3.8 dan Bundler 2.6.9
+      - name: Set up Ruby 3.3.8 and Bundler 2.6.9
         uses: ruby/setup-ruby@6797dcbb9a1889fd411d07e8aba7eded53fb8b48 # v1.264.0
         with:
           ruby-version: 3.3.8
           bundler: 2.6.9
 
-      - name: Pasang Swift 6.1.2
+      - name: Set up Swift 6.1.2
         uses: swift-actions/setup-swift@7ca6abe6b3b0e8b5421b88be48feee39cbf52c6a # v2.4.0
         with:
           swift-version: 6.1.2
 
-      - name: Pasang Docker Engine 28.1.1 terisolasi
+      - name: Set up isolated Docker Engine 28.1.1
         uses: docker/setup-docker-action@2bf61fb9464cc67f0cbdeabed6aa0380accd1c70 # v5
         with:
           version: v28.1.1
@@ -411,19 +411,19 @@ jobs:
           runtime-basedir: ${{ runner.temp }}/ttc-ci-docker
           set-host: true
 
-      - name: Pasang Buildx 0.23.0
+      - name: Set up Buildx 0.23.0
         uses: docker/setup-buildx-action@18ce135bb5112fa8ce4ed6c17ab05699d7f3a5e0 # v3.11.0
         with:
           version: v0.23.0
           driver: docker
 
-      - name: Pasang Compose 2.35.1
+      - name: Set up Compose 2.35.1
         uses: docker/setup-compose-action@364cc21a5de5b1ee4a7f5f9d3fa374ce0ccde746 # v1.2.0
         with:
           version: v2.35.1
           cache-binary: false
 
-      - name: Pasang Make, CMake, Ninja, Terraform, dan Helm terverifikasi
+      - name: Install checksum-verified Make, CMake, Ninja, Terraform, and Helm
         shell: bash
         run: |
           set -euo pipefail
@@ -433,10 +433,10 @@ jobs:
           printf '%s/bin\n' "$tool_home" >> "$GITHUB_PATH"
           printf '%s/cmake-3.31.6-linux-x86_64/bin\n' "$tool_home" >> "$GITHUB_PATH"
 
-      - name: Pasang dependency Ruby dari lockfile
+      - name: Install locked Ruby dependencies
         run: bundle install --jobs 4 --retry 3
 
-      - name: Jalankan smoke build, Ruby, Swift, dan infrastruktur
+      - name: Run build, Ruby, Swift, and infrastructure smoke tests
         shell: bash
         run: |
           set -euo pipefail
@@ -448,7 +448,7 @@ jobs:
             exit 1
           fi
 
-      - name: Buat dan periksa manifest bukti
+      - name: Generate and verify evidence checksums
         run: |
           set -euo pipefail
           cd target/ci-evidence
@@ -457,7 +457,7 @@ jobs:
           find . -type f ! -name EVIDENCE-SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > EVIDENCE-SHA256SUMS
           sha256sum --check --status EVIDENCE-SHA256SUMS
 
-      - name: Unggah bukti build, Ruby, Swift, dan infrastruktur
+      - name: Upload build, Ruby, Swift, and infrastructure evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: build-ruby-swift-infrastructure-evidence
@@ -465,7 +465,7 @@ jobs:
           if-no-files-found: error
 
   linux-artifact:
-    name: Gate CI dan artifact Linux
+    name: CI Gate and Linux Artifact
     needs:
       - prepare
       - rust-safety
@@ -476,7 +476,7 @@ jobs:
     if: always()
     runs-on: ubuntu-24.04
     steps:
-      - name: Periksa hasil job wajib
+      - name: Check required job results
         env:
           FULL_GATE: ${{ needs.prepare.outputs.full_gate }}
           PREPARE_RESULT: ${{ needs.prepare.result }}
@@ -503,27 +503,27 @@ jobs:
             exit 1
           fi
 
-      - name: Ambil source bersih
+      - name: Check out clean source
         if: needs.prepare.outputs.full_gate == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Pasang Rust 1.98.1 untuk target Linux
+      - name: Install Rust 1.98.1 for Linux target
         if: needs.prepare.outputs.full_gate == 'true'
         run: rustup toolchain install 1.98.1 --profile minimal --target x86_64-unknown-linux-gnu
 
-      - name: Pasang Python 3.14.7
+      - name: Set up Python 3.14.7
         if: needs.prepare.outputs.full_gate == 'true'
         uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
         with:
           python-version: 3.14.7
 
-      - name: Build ulang binary kandidat dari source bersih
+      - name: Rebuild candidate binary from clean source
         if: needs.prepare.outputs.full_gate == 'true'
         run: cargo build --locked --release --target x86_64-unknown-linux-gnu
 
-      - name: Verifikasi installer, artifact mandiri, dan coverage SPEC
+      - name: Verify installer, standalone artifact, and SPEC coverage
         if: needs.prepare.outputs.full_gate == 'true'
         run: |
           set -euo pipefail
@@ -532,14 +532,14 @@ jobs:
           ./scripts/test-release-artifact.sh 2>&1 | tee target/ci-candidate/evidence/standalone.txt
           python3 scripts/check-spec-coverage.py > target/ci-candidate/evidence/coverage.md
 
-      - name: Ambil bukti suite yang lulus
+      - name: Download passing test evidence
         if: needs.prepare.outputs.full_gate == 'true'
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           pattern: "*-evidence"
           path: target/ci-candidate/evidence/prerequisites
 
-      - name: Verifikasi bukti, provenance, dan checksum kandidat
+      - name: Verify evidence, provenance, and candidate checksums
         if: needs.prepare.outputs.full_gate == 'true'
         shell: bash
         env:
@@ -559,7 +559,7 @@ jobs:
           find evidence -type f -print0 | sort -z | xargs -0 sha256sum > EVIDENCE-SHA256SUMS
           sha256sum --check --status EVIDENCE-SHA256SUMS
 
-      - name: Unggah kandidat Linux setelah seluruh gate lulus
+      - name: Upload Linux candidate after all gates pass
         if: needs.prepare.outputs.full_gate == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -567,6 +567,6 @@ jobs:
           path: target/ci-candidate/
           if-no-files-found: error
 
-      - name: Rekam gate dokumentasi ringan
+      - name: Record light documentation gate
         if: needs.prepare.outputs.full_gate == 'false'
         run: echo "Light documentation checks passed for this commit."

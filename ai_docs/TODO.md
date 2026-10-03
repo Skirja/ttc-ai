@@ -28,9 +28,11 @@ SPEC lebih dulu, lalu sinkronkan TODO dalam commit yang sama.
   `ai_docs/TODO.md`, dan Markdown di `ai_docs/steps_done/`. Perubahan campuran,
   kontrak, workflow, aturan agent, path tak dikenal, tag, dan diff yang tidak
   dapat dibaca memakai gate lengkap.
-- Workflow memiliki tujuh job: kebijakan/build, keselamatan Rust, JavaScript/
-  monorepo, Rust/Python/Go, PHP/JVM/.NET, build/infrastruktur, dan aggregate
-  gate/artifact Linux. Test Rust berjalan sekali; smoke tool asli tetap terpisah
+- Nama workflow adalah `TTC CI`; nama job, step, dan artifact memakai Inggris.
+  Tujuh job: `Policy and Linux Build`, `Rust and Execution Safety`,
+  `JavaScript and Monorepo`, `Rust, Python, and Go`, `PHP, JVM, and .NET`,
+  `Build, Ruby, Swift, and Infrastructure`, serta `CI Gate and Linux Artifact`.
+  Test Rust berjalan sekali; smoke tool asli tetap terpisah
   per kelompok runtime. Semua smoke memakai satu binary bersama terverifikasi;
   artifact kandidat akhir dibangun ulang dari source bersih.
 - Gate akhir selalu berjalan dan gagal untuk prerequisite gagal, dibatalkan,

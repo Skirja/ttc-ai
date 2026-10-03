@@ -104,6 +104,7 @@ cargo build --release
 
 ### Continuous integration
 
+- Use English for workflow, job, step, and artifact names.
 - Use GitHub Actions. CI runs for pull requests targeting `master` and pushes to
   `master`; do not make feature-branch-only behavior part of a required gate.
 - Build the workflow progressively as milestones land. Never add placeholder or
