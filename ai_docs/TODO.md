@@ -21,6 +21,29 @@ SPEC lebih dulu, lalu sinkronkan TODO dalam commit yang sama.
 - M10 tidak boleh dimulai sebelum artifact CI M9 lulus.
 - Public release tidak boleh dibuat sebelum E2E Codex M10 lulus.
 
+## Kebijakan biaya CI
+
+- Perubahan kode menjalankan semua gate pada pull request dan push `master`.
+- Gate ringan hanya untuk `README.md`, `LICENSE`, `ai_docs/CURRENT_STATE.md`,
+  `ai_docs/TODO.md`, dan Markdown di `ai_docs/steps_done/`. Perubahan campuran,
+  kontrak, workflow, aturan agent, path tak dikenal, tag, dan diff yang tidak
+  dapat dibaca memakai gate lengkap.
+- Nama workflow adalah `TTC CI`; nama job, step, dan artifact memakai Inggris.
+  Tujuh job: `Policy and Linux Build`, `Rust and Execution Safety`,
+  `JavaScript and Monorepo`, `Rust, Python, and Go`, `PHP, JVM, and .NET`,
+  `Build, Ruby, Swift, and Infrastructure`, serta `CI Gate and Linux Artifact`.
+  Test Rust berjalan sekali; smoke tool asli tetap terpisah
+  per kelompok runtime. Semua smoke memakai satu binary bersama terverifikasi;
+  artifact kandidat akhir dibangun ulang dari source bersih.
+- Gate akhir selalu berjalan dan gagal untuk prerequisite gagal, dibatalkan,
+  atau skip yang tidak sesuai klasifikasi. Run PR/master yang digantikan dapat
+  dibatalkan; run tag tidak. Push dokumentasi hanya ringan jika commit sebelum
+  push memiliki run push `master` sukses pada workflow ini; jika belum atau
+  bukti API tidak tersedia, pengganti menjalankan gate penuh.
+- `cargo-nextest` CI memakai release resmi 0.9.108 dengan SHA-256 tetap.
+- Catat verifikasi serta penghematan aktual setelah full-code PR dan gate master
+  berhasil; jangan mengklaim target menit sebelum job CI terukur.
+
 ## Dependency graph
 
 ```text

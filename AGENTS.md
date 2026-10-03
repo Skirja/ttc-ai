@@ -78,6 +78,16 @@ cargo test --all-targets --all-features
 cargo build --release
 ```
 
+- GitHub Actions runs the complete gate for every code, contract, workflow,
+  agent-rule, unknown-path, mixed, or unclassifiable change. The light gate is
+  restricted to `README.md`, `LICENSE`, `ai_docs/CURRENT_STATE.md`,
+  `ai_docs/TODO.md`, and Markdown files under `ai_docs/steps_done/`. Keep the
+  workflow active for these changes and require its final aggregate job to
+  reject failed, cancelled, or unexpectedly skipped prerequisites.
+  A documentation push may use the light gate only when its exact predecessor
+  commit has a successful master push run; otherwise run the full replacement
+  gate, including when verification history cannot be read.
+
 - A parser family is not complete with fixtures alone. Add success, failure,
   warning, unknown/edge, and large fixtures plus the pinned real-tool smoke test
   required by TODO.
@@ -94,6 +104,7 @@ cargo build --release
 
 ### Continuous integration
 
+- Use English for workflow, job, step, and artifact names.
 - Use GitHub Actions. CI runs for pull requests targeting `master` and pushes to
   `master`; do not make feature-branch-only behavior part of a required gate.
 - Build the workflow progressively as milestones land. Never add placeholder or

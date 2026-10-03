@@ -1,4 +1,4 @@
-name: CI
+name: TTC CI
 
 on:
   push:
@@ -15,23 +15,45 @@ permissions:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 jobs:
-  release-policy:
-    name: Stable release policy
+  prepare:
+    name: Policy and Linux Build
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      full_gate: ${{ steps.classify.outputs.full_gate }}
     steps:
-      - name: Check out complete history
+      - name: Check out full history for change classification
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 0
-      - name: Install pinned Python
+
+      - name: Set up pinned Python
         uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
         with:
           python-version: 3.14.7
-      - name: Test tag policy and validate event
+
+      - name: Test CI change policy
+        run: python3 scripts/test-ci-change-policy.py
+
+      - name: Select light or full CI gate
+        id: classify
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          BEFORE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          CI_READ_TOKEN: ${{ github.token }}
+        run: python3 scripts/classify-ci-changes.py
+
+      - name: Test stable release policy
         env:
           REF_TYPE: ${{ github.ref_type }}
           REF_NAME: ${{ github.ref_name }}
@@ -43,270 +65,239 @@ jobs:
             python3 scripts/check-release-version.py Cargo.toml
           fi
 
-  rust:
-    needs: release-policy
-    name: Rust baseline
+      - name: Install Rust 1.98.1
+        if: steps.classify.outputs.full_gate == 'true'
+        run: rustup toolchain install 1.98.1 --profile minimal --target x86_64-unknown-linux-gnu
+
+      - name: Build Linux release binary
+        if: steps.classify.outputs.full_gate == 'true'
+        run: cargo build --locked --release --target x86_64-unknown-linux-gnu
+
+      - name: Prepare smoke binary and checksum
+        if: steps.classify.outputs.full_gate == 'true'
+        run: |
+          set -euo pipefail
+          mkdir -p target/ci-smoke-binary
+          install -m 755 target/x86_64-unknown-linux-gnu/release/ttc target/ci-smoke-binary/ttc
+          cd target/ci-smoke-binary
+          sha256sum ttc > SHA256SUMS
+          sha256sum --check --status SHA256SUMS
+
+      - name: Upload smoke binary for this run
+        if: steps.classify.outputs.full_gate == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ttc-linux-smoke-binary
+          path: target/ci-smoke-binary/
+          if-no-files-found: error
+          retention-days: 1
+
+  rust-safety:
+    name: Rust and Execution Safety
+    needs: prepare
+    if: needs.prepare.outputs.full_gate == 'true'
     runs-on: ubuntu-24.04
     steps:
-      - name: Check out repository
+      - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Install pinned Rust toolchain
+      - name: Install Rust 1.98.1
         run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt,clippy
 
-      - name: Verify format
+      - name: Download smoke binary
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: ttc-linux-smoke-binary
+          path: target/ci-smoke-binary
+
+      - name: Verify smoke binary checksum
+        run: |
+          (cd target/ci-smoke-binary && sha256sum --check --status SHA256SUMS)
+          mkdir -p target/release
+          install -m 755 target/ci-smoke-binary/ttc target/release/ttc
+
+      - name: Check Rust formatting
         run: cargo fmt --all -- --check
 
-      - name: Run Clippy
+      - name: Run Clippy with warnings denied
         run: cargo clippy --all-targets --all-features -- -D warnings
 
-      - name: Run tests
-        run: cargo test --all-targets --all-features
-
-      - name: Build debug binary
-        run: cargo build
-
-      - name: Build release binary
-        run: cargo build --release
-
-  m2-passthrough:
-    needs: release-policy
-    name: M2 passthrough safety
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Install pinned Rust toolchain
-        run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt,clippy
-
-      - name: Verify process execution
-        run: cargo test --test execution
+      - name: Run full Rust suite and capture fixture evidence
+        run: |
+          set -o pipefail
+          mkdir -p target/ci-evidence
+          TTC_M8_EVIDENCE=1 cargo test --all-targets --all-features -- --test-threads=1 --nocapture 2>&1 | tee target/ci-evidence/rust-suite.txt
 
       - name: Verify byte-exact passthrough
-        run: cargo test --test passthrough
+        run: sh scripts/m2-evidence.sh target/ci-evidence/passthrough/report.txt
 
-      - name: Verify signal propagation
-        run: cargo test --test signals
+      - name: Verify bounded streaming memory
+        run: sh scripts/m3-evidence.sh target/ci-evidence/streaming/report.txt target/release/ttc
 
-      - name: Verify POSIX shell and TTY behavior
-        run: cargo test --test shell_contract
-
-      - name: Build release binary for evidence
-        run: cargo build --release
-
-      - name: Record baseline byte comparison
-        run: sh scripts/m2-evidence.sh target/m2-evidence/report.txt
-
-      - name: Upload passing comparison report
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: m2-byte-comparison
-          path: target/m2-evidence/report.txt
-          if-no-files-found: error
-
-  m3-streaming:
-    needs: release-policy
-    name: M3 streaming and raw retrieval
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Install pinned Rust toolchain
-        run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt,clippy
-
-      - name: Verify streaming and raw retrieval
+      - name: Generate and verify evidence checksums
         run: |
-          cargo test --test streaming
-          cargo test --test raw_store
-          cargo test --test raw_cli
-          cargo test --test storage_failure
-          cargo test --test config
+          set -euo pipefail
+          cd target/ci-evidence
+          find . -type f ! -name EVIDENCE-SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > EVIDENCE-SHA256SUMS
+          sha256sum --check --status EVIDENCE-SHA256SUMS
 
-      - name: Build release binary
-        run: cargo build --release
-
-      - name: Record bounded memory evidence
-        run: sh scripts/m3-evidence.sh target/m3-evidence/report.txt
-
-      - name: Upload passing M3 report
+      - name: Upload Rust and safety evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: m3-streaming-evidence
-          path: target/m3-evidence/report.txt
+          name: rust-safety-evidence
+          path: target/ci-evidence/
           if-no-files-found: error
 
-  m4-javascript:
-    needs: release-policy
-    name: M4 JavaScript filtering and real tools
+  javascript-monorepo:
+    name: JavaScript and Monorepo
+    needs: prepare
+    if: needs.prepare.outputs.full_gate == 'true'
     runs-on: ubuntu-24.04
     steps:
-      - name: Check out repository
+      - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Install pinned Rust toolchain
-        run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt,clippy
+      - name: Download smoke binary
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: ttc-linux-smoke-binary
+          path: target/ci-smoke-binary
 
-      - name: Install pinned Node.js
+      - name: Verify smoke binary checksum
+        run: |
+          (cd target/ci-smoke-binary && sha256sum --check --status SHA256SUMS)
+          mkdir -p target/release
+          install -m 755 target/ci-smoke-binary/ttc target/release/ttc
+
+      - name: Set up Node.js 24.21.0
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24.21.0
 
-      - name: Verify M4 classifier, safety, fixtures, E2E, and reduction
-        run: |
-          cargo test --test classifier
-          cargo test --test filter_safety
-          cargo test --test javascript_fixtures
-          cargo test --test javascript_e2e
-          cargo test --test reduction
-
-      - name: Build release binary
-        run: cargo build --release
-
-      - name: Record large-fixture reductions
-        run: sh scripts/m4-reduction.sh target/m4-evidence/reduction.txt
-
-      - name: Run pinned real-tool smoke tests
-        run: sh scripts/m4-smoke.sh target/release/ttc target/m4-evidence/report.txt
-
-      - name: Upload passing M4 evidence
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: m4-javascript-evidence
-          path: target/m4-evidence/
-          if-no-files-found: error
-
-  m5-core-ecosystems:
-    needs: release-policy
-    name: M5 Rust, Python, and Go filtering
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Install pinned Rust toolchain
-        run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt,clippy
-
-      - name: Install pinned Python
+      - name: Set up Python 3.14.7
         uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
         with:
           python-version: 3.14.7
 
-      - name: Install pinned Go
+      - name: Set up Go 1.27.1
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
           go-version: 1.27.1
 
-      - name: Verify ecosystem fixtures and reduction
+      - name: Install Rust 1.98.1 for workspace fixtures
+        run: rustup toolchain install 1.98.1 --profile minimal
+
+      - name: Run JavaScript and monorepo smoke tests
+        shell: bash
         run: |
-          set -o pipefail
-          mkdir -p target/m5-evidence
-          : > target/m5-evidence/fixtures.txt
-          cargo test --test classifier 2>&1 | tee -a target/m5-evidence/fixtures.txt
-          cargo test --test filter_safety 2>&1 | tee -a target/m5-evidence/fixtures.txt
-          cargo test --test rust_fixtures 2>&1 | tee -a target/m5-evidence/fixtures.txt
-          cargo test --test python_fixtures 2>&1 | tee -a target/m5-evidence/fixtures.txt
-          cargo test --test go_fixtures 2>&1 | tee -a target/m5-evidence/fixtures.txt
-          cargo test --test core_ecosystem_e2e 2>&1 | tee -a target/m5-evidence/fixtures.txt
-          cargo test --test reduction -- --nocapture 2>&1 | tee target/m5-evidence/reduction.txt
+          set -euo pipefail
+          sh scripts/m4-smoke.sh target/release/ttc target/ci-evidence/javascript/report.txt
+          sh scripts/m6-smoke.sh target/release/ttc target/ci-evidence/monorepo
 
-      - name: Build release binary
-        run: cargo build --release
+      - name: Generate and verify evidence checksums
+        run: |
+          set -euo pipefail
+          cd target/ci-evidence
+          find . -type f ! -name EVIDENCE-SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > EVIDENCE-SHA256SUMS
+          sha256sum --check --status EVIDENCE-SHA256SUMS
 
-      - name: Run pinned Rust, Python, and Go real-tool smoke tests
-        run: sh scripts/m5-smoke.sh target/release/ttc target/m5-evidence/report.txt
-
-      - name: Upload passing M5 evidence
+      - name: Upload JavaScript and monorepo evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: m5-core-ecosystem-evidence
-          path: target/m5-evidence/
+          name: javascript-monorepo-evidence
+          path: target/ci-evidence/
           if-no-files-found: error
 
-  m6-package-monorepo:
-    needs: release-policy
-    name: M6 package scripts and monorepo support
+  rust-python-go:
+    name: Rust, Python, and Go
+    needs: prepare
+    if: needs.prepare.outputs.full_gate == 'true'
     runs-on: ubuntu-24.04
     steps:
-      - name: Check out repository
+      - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Install pinned Rust toolchain
+      - name: Install Rust 1.98.1
         run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt,clippy
 
-      - name: Install pinned Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version: 24.21.0
-
-      - name: Install pinned Python
+      - name: Set up Python 3.14.7
         uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
         with:
           python-version: 3.14.7
 
-      - name: Install pinned Go
+      - name: Set up Go 1.27.1
         uses: actions/setup-go@44694675825211faa026b3c33043df3e48a5fa00 # v6.0.0
         with:
           go-version: 1.27.1
 
-      - name: Verify package, workspace, runner, and mixed-language fixtures
+      - name: Download smoke binary
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: ttc-linux-smoke-binary
+          path: target/ci-smoke-binary
+
+      - name: Verify smoke binary checksum
         run: |
-          set -o pipefail
-          mkdir -p target/m6-evidence
-          : > target/m6-evidence/fixtures.txt
-          cargo test --test manifests 2>&1 | tee -a target/m6-evidence/fixtures.txt
-          cargo test --test package_scripts 2>&1 | tee -a target/m6-evidence/fixtures.txt
-          cargo test --test monorepo -- --nocapture 2>&1 | tee -a target/m6-evidence/fixtures.txt
-          cargo test --test mixed_monorepo 2>&1 | tee -a target/m6-evidence/fixtures.txt
-          cargo test --test classifier 2>&1 | tee -a target/m6-evidence/fixtures.txt
-          cargo test --test javascript_e2e 2>&1 | tee -a target/m6-evidence/fixtures.txt
-          cargo test --test filter_safety 2>&1 | tee -a target/m6-evidence/fixtures.txt
+          (cd target/ci-smoke-binary && sha256sum --check --status SHA256SUMS)
+          mkdir -p target/release
+          install -m 755 target/ci-smoke-binary/ttc target/release/ttc
 
-      - name: Build production binary
-        run: cargo build --release
+      - name: Install checksum-verified cargo-nextest 0.9.108
+        run: |
+          set -euo pipefail
+          sh scripts/m5-install-nextest.sh "$RUNNER_TEMP/ttc-tools"
+          printf 'M5_NEXTEST_BIN=%s/cargo-nextest\n' "$RUNNER_TEMP/ttc-tools" >> "$GITHUB_ENV"
 
-      - name: Run pinned manager and monorepo runner smoke tests
-        run: sh scripts/m6-smoke.sh target/release/ttc target/m6-evidence/report.txt
+      - name: Run Rust, Python, and Go smoke tests
+        run: |
+          set -euo pipefail
+          mkdir -p target/ci-evidence
+          sh scripts/m5-smoke.sh target/release/ttc target/ci-evidence/report.txt
 
-      - name: Record evidence checksums
-        run: sha256sum target/m6-evidence/fixtures.txt target/m6-evidence/report.txt > target/m6-evidence/SHA256SUMS
+      - name: Generate and verify evidence checksums
+        run: |
+          set -euo pipefail
+          cd target/ci-evidence
+          find . -type f ! -name EVIDENCE-SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > EVIDENCE-SHA256SUMS
+          sha256sum --check --status EVIDENCE-SHA256SUMS
 
-      - name: Upload passing M6 evidence
+      - name: Upload Rust, Python, and Go evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: m6-monorepo-evidence
-          path: target/m6-evidence/
+          name: rust-python-go-evidence
+          path: target/ci-evidence/
           if-no-files-found: error
 
-  m7-php-jvm-dotnet:
-    needs: release-policy
-    name: M7 PHP, JVM, and .NET filtering
+  php-jvm-dotnet:
+    name: PHP, JVM, and .NET
+    needs: prepare
+    if: needs.prepare.outputs.full_gate == 'true'
     runs-on: ubuntu-24.04
-    env:
-      RUSTUP_TOOLCHAIN: 1.98.1
     steps:
-      - name: Check out repository
+      - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Install pinned Rust toolchain
-        run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt,clippy
+      - name: Download smoke binary
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: ttc-linux-smoke-binary
+          path: target/ci-smoke-binary
 
-      - name: Install pinned PHP and Composer
+      - name: Verify smoke binary checksum
+        run: |
+          (cd target/ci-smoke-binary && sha256sum --check --status SHA256SUMS)
+          mkdir -p target/release
+          install -m 755 target/ci-smoke-binary/ttc target/release/ttc
+
+      - name: Set up PHP 8.4.25 and Composer 2.10.3
         uses: shivammathur/setup-php@7c071dfe9dc99bdf297fa79cb49ea005b9fcadbc # v2.37.1
         with:
           php-version: 8.4.25
@@ -314,35 +305,34 @@ jobs:
           extensions: zip
           coverage: none
 
-      - name: Build exact checksum-verified PHP runtime
+      - name: Build PHP 8.4.25 from checksum-verified source
         shell: bash
         run: |
           set -euo pipefail
           sudo apt-get update
           sudo apt-get install -y libcurl4-openssl-dev libxml2-dev libonig-dev libssl-dev libzip-dev zlib1g-dev
           tool_home="$RUNNER_TEMP/m7-tools"
-          mkdir -p target/m7-evidence
-          if M7_TOOL_HOME="$tool_home" sh scripts/m7-install-php.sh > target/m7-evidence/php-build.log 2>&1; then
+          mkdir -p target/ci-evidence
+          if M7_TOOL_HOME="$tool_home" sh scripts/m7-install-php.sh > target/ci-evidence/php-build.log 2>&1; then
             "$tool_home/php-8.4.25/bin/php" --version
           else
-            tail -c 12000 target/m7-evidence/php-build.log
+            tail -c 12000 target/ci-evidence/php-build.log
             exit 1
           fi
           printf '%s/php-8.4.25/bin\n' "$tool_home" >> "$GITHUB_PATH"
 
-      - name: Install pinned Java 21 LTS
+      - name: Set up Java 21.0.12.1
         uses: actions/setup-java@f2beeb24e141e01a676f977032f5a29d81c9e27e # v5.1.0
         with:
           distribution: temurin
-          # Adoptium SemVer for the pinned runtime 21.0.12.1+1.
           java-version: 21.0.12+101.0.LTS
 
-      - name: Install pinned .NET 10 LTS
+      - name: Set up .NET 10.0.401
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: 10.0.401
 
-      - name: Install checksum-verified Maven and Gradle
+      - name: Install checksum-verified Maven 3.9.16 and Gradle 9.8.0
         shell: bash
         run: |
           export M7_TOOL_HOME="$RUNNER_TEMP/m7-tools"
@@ -351,91 +341,89 @@ jobs:
           printf 'M7_MAVEN_SHA256=%s\n' "$M7_MAVEN_SHA256" >> "$GITHUB_ENV"
           printf 'M7_GRADLE_SHA256=%s\n' "$M7_GRADLE_SHA256" >> "$GITHUB_ENV"
 
-      - name: Verify M7 classifier, manifests, safety, and fixtures
+      - name: Run PHP, JVM, and .NET smoke tests
         shell: bash
         run: |
-          set -o pipefail
-          mkdir -p target/m7-evidence
-          : > target/m7-evidence/fixtures.txt
-          cargo test --test classifier 2>&1 | tee -a target/m7-evidence/fixtures.txt
-          cargo test --test manifests 2>&1 | tee -a target/m7-evidence/fixtures.txt
-          cargo test --test filter_safety 2>&1 | tee -a target/m7-evidence/fixtures.txt
-          cargo test --test php_fixtures 2>&1 | tee -a target/m7-evidence/fixtures.txt
-          cargo test --test jvm_fixtures 2>&1 | tee -a target/m7-evidence/fixtures.txt
-          cargo test --test dotnet_fixtures 2>&1 | tee -a target/m7-evidence/fixtures.txt
-          cargo test --test additional_ecosystem_e2e 2>&1 | tee -a target/m7-evidence/fixtures.txt
-          cargo test --test reduction -- --nocapture 2>&1 | tee -a target/m7-evidence/fixtures.txt
-
-      - name: Build production binary
-        run: cargo build --release
-
-      - name: Run pinned PHP, JVM, and .NET smoke tests
-        shell: bash
-        run: |
-          if sh scripts/m7-smoke.sh target/release/ttc target/m7-evidence/report.txt > target/m7-evidence/smoke.log 2>&1; then
-            tail -n 24 target/m7-evidence/report.txt
+          set -euo pipefail
+          if sh scripts/m7-smoke.sh target/release/ttc target/ci-evidence/report.txt > target/ci-evidence/smoke.log 2>&1; then
+            tail -n 24 target/ci-evidence/report.txt
           else
-            tail -c 12000 target/m7-evidence/smoke.log
+            tail -c 12000 target/ci-evidence/smoke.log
             exit 1
           fi
 
-      - name: Record passing M7 checksums
-        run: sha256sum scripts/m7-tool-versions.txt scripts/m7-tool-checksums.txt target/m7-evidence/fixtures.txt target/m7-evidence/report.txt > target/m7-evidence/SHA256SUMS
+      - name: Generate and verify evidence checksums
+        run: |
+          set -euo pipefail
+          cd target/ci-evidence
+          find . -type f ! -name EVIDENCE-SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > EVIDENCE-SHA256SUMS
+          sha256sum --check --status EVIDENCE-SHA256SUMS
 
-      - name: Upload passing M7 evidence
+      - name: Upload PHP, JVM, and .NET evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: m7-php-jvm-dotnet-evidence
-          path: target/m7-evidence/
+          name: php-jvm-dotnet-evidence
+          path: target/ci-evidence/
           if-no-files-found: error
 
-  m8-remaining-ecosystems:
-    needs: release-policy
-    name: M8 build, Ruby, Swift, containers, and infrastructure
+  build-infrastructure:
+    name: Build, Ruby, Swift, and Infrastructure
+    needs: prepare
+    if: needs.prepare.outputs.full_gate == 'true'
     runs-on: ubuntu-24.04
     env:
-      RUSTUP_TOOLCHAIN: 1.98.1
       BUNDLE_GEMFILE: ${{ github.workspace }}/scripts/m8-smoke/ruby/Gemfile
       BUNDLE_PATH: ${{ github.workspace }}/target/m8-bundle
     steps:
-      - name: Check out repository
+      - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Install pinned Rust toolchain
-        run: rustup toolchain install 1.98.1 --profile minimal --component rustfmt,clippy
+      - name: Download smoke binary
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          name: ttc-linux-smoke-binary
+          path: target/ci-smoke-binary
 
-      - name: Install pinned Ruby and Bundler
+      - name: Verify smoke binary checksum
+        run: |
+          (cd target/ci-smoke-binary && sha256sum --check --status SHA256SUMS)
+          mkdir -p target/release
+          install -m 755 target/ci-smoke-binary/ttc target/release/ttc
+
+      - name: Set up Ruby 3.3.8 and Bundler 2.6.9
         uses: ruby/setup-ruby@6797dcbb9a1889fd411d07e8aba7eded53fb8b48 # v1.264.0
         with:
           ruby-version: 3.3.8
           bundler: 2.6.9
 
-      - name: Install pinned Swift
+      - name: Set up Swift 6.1.2
         uses: swift-actions/setup-swift@7ca6abe6b3b0e8b5421b88be48feee39cbf52c6a # v2.4.0
         with:
           swift-version: 6.1.2
 
-      - name: Install isolated pinned Docker engine
+      - name: Set up isolated Docker Engine 28.1.1
         uses: docker/setup-docker-action@2bf61fb9464cc67f0cbdeabed6aa0380accd1c70 # v5
         with:
           version: v28.1.1
-          context: ttc-m8-docker
-          runtime-basedir: ${{ runner.temp }}/ttc-m8-docker
+          context: ttc-ci-docker
+          runtime-basedir: ${{ runner.temp }}/ttc-ci-docker
           set-host: true
 
-      - name: Install pinned Buildx and Compose
+      - name: Set up Buildx 0.23.0
         uses: docker/setup-buildx-action@18ce135bb5112fa8ce4ed6c17ab05699d7f3a5e0 # v3.11.0
         with:
           version: v0.23.0
           driver: docker
-      - uses: docker/setup-compose-action@364cc21a5de5b1ee4a7f5f9d3fa374ce0ccde746 # v1.2.0
+
+      - name: Set up Compose 2.35.1
+        uses: docker/setup-compose-action@364cc21a5de5b1ee4a7f5f9d3fa374ce0ccde746 # v1.2.0
         with:
           version: v2.35.1
           cache-binary: false
 
-      - name: Install checksum-verified Make, Terraform, and Helm
+      - name: Install checksum-verified Make, CMake, Ninja, Terraform, and Helm
         shell: bash
         run: |
           set -euo pipefail
@@ -445,110 +433,140 @@ jobs:
           printf '%s/bin\n' "$tool_home" >> "$GITHUB_PATH"
           printf '%s/cmake-3.31.6-linux-x86_64/bin\n' "$tool_home" >> "$GITHUB_PATH"
 
-      - name: Install locked Ruby smoke dependencies
+      - name: Install locked Ruby dependencies
         run: bundle install --jobs 4 --retry 3
 
-      - name: Verify M8 classifier, fixtures, retention, and raw command matrix
+      - name: Run build, Ruby, Swift, and infrastructure smoke tests
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p target/m8-evidence
-          : > target/m8-evidence/fixtures.log
-          cargo test --test classifier 2>&1 | tee -a target/m8-evidence/fixtures.log
-          cargo test --test filter_safety 2>&1 | tee -a target/m8-evidence/fixtures.log
-          TTC_M8_EVIDENCE=1 cargo test --test build_tool_fixtures -- --test-threads=1 --nocapture 2>&1 | tee -a target/m8-evidence/fixtures.log
-          TTC_M8_EVIDENCE=1 cargo test --test ruby_swift_fixtures -- --test-threads=1 --nocapture 2>&1 | tee -a target/m8-evidence/fixtures.log
-          TTC_M8_EVIDENCE=1 cargo test --test infrastructure_fixtures -- --test-threads=1 --nocapture 2>&1 | tee -a target/m8-evidence/fixtures.log
-          cargo test --test raw_command_matrix 2>&1 | tee -a target/m8-evidence/fixtures.log
-          cargo test --test remaining_ecosystem_e2e 2>&1 | tee -a target/m8-evidence/fixtures.log
-          cargo test --test m8_smoke_assertions 2>&1 | tee -a target/m8-evidence/fixtures.log
-          cargo test --test reduction 2>&1 | tee -a target/m8-evidence/fixtures.log
-
-      - name: Build production binary
-        run: cargo build --release
-
-      - name: Run pinned build, Ruby, Swift, Docker, Podman, and infrastructure smoke tests
-        shell: bash
-        run: |
-          mkdir -p target/m8-evidence
-          if sh -x scripts/m8-smoke.sh target/release/ttc target/m8-evidence > target/m8-evidence/smoke.log 2>&1; then
-            tail -n 24 target/m8-evidence/smoke-report.txt
+          mkdir -p target/ci-evidence
+          if sh -x scripts/m8-smoke.sh target/release/ttc target/ci-evidence > target/ci-evidence/smoke.log 2>&1; then
+            tail -n 24 target/ci-evidence/smoke-report.txt
           else
-            tail -c 12000 target/m8-evidence/smoke.log
+            tail -c 12000 target/ci-evidence/smoke.log
             exit 1
           fi
 
-      - name: Verify finalized M8 evidence checksums
-        shell: bash
+      - name: Generate and verify evidence checksums
         run: |
           set -euo pipefail
-          cd target/m8-evidence
-          find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+          cd target/ci-evidence
+          find . -type f ! -name SHA256SUMS ! -name EVIDENCE-SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
           sha256sum --check --status SHA256SUMS
+          find . -type f ! -name EVIDENCE-SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > EVIDENCE-SHA256SUMS
+          sha256sum --check --status EVIDENCE-SHA256SUMS
 
-      - name: Upload passing M8 evidence
+      - name: Upload build, Ruby, Swift, and infrastructure evidence
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: m8-remaining-ecosystem-evidence
-          path: target/m8-evidence/
+          name: build-ruby-swift-infrastructure-evidence
+          path: target/ci-evidence/
           if-no-files-found: error
 
-  m9-distribution:
-    name: M9 standalone distribution candidate
-    needs: [release-policy, rust, m2-passthrough, m3-streaming, m4-javascript, m5-core-ecosystems, m6-package-monorepo, m7-php-jvm-dotnet, m8-remaining-ecosystems]
+  linux-artifact:
+    name: CI Gate and Linux Artifact
+    needs:
+      - prepare
+      - rust-safety
+      - javascript-monorepo
+      - rust-python-go
+      - php-jvm-dotnet
+      - build-infrastructure
+    if: always()
     runs-on: ubuntu-24.04
     steps:
+      - name: Check required job results
+        env:
+          FULL_GATE: ${{ needs.prepare.outputs.full_gate }}
+          PREPARE_RESULT: ${{ needs.prepare.result }}
+          RUST_SAFETY_RESULT: ${{ needs['rust-safety'].result }}
+          JAVASCRIPT_MONOREPO_RESULT: ${{ needs['javascript-monorepo'].result }}
+          RUST_PYTHON_GO_RESULT: ${{ needs['rust-python-go'].result }}
+          PHP_JVM_DOTNET_RESULT: ${{ needs['php-jvm-dotnet'].result }}
+          BUILD_INFRASTRUCTURE_RESULT: ${{ needs['build-infrastructure'].result }}
+        run: |
+          set -euo pipefail
+          test "$PREPARE_RESULT" = success
+          if [ "$FULL_GATE" = true ]; then
+            for result in "$RUST_SAFETY_RESULT" "$JAVASCRIPT_MONOREPO_RESULT" \
+              "$RUST_PYTHON_GO_RESULT" "$PHP_JVM_DOTNET_RESULT" "$BUILD_INFRASTRUCTURE_RESULT"; do
+              test "$result" = success
+            done
+          elif [ "$FULL_GATE" = false ]; then
+            for result in "$RUST_SAFETY_RESULT" "$JAVASCRIPT_MONOREPO_RESULT" \
+              "$RUST_PYTHON_GO_RESULT" "$PHP_JVM_DOTNET_RESULT" "$BUILD_INFRASTRUCTURE_RESULT"; do
+              test "$result" = skipped
+            done
+          else
+            printf 'CI gate classification missing or invalid: %s\n' "$FULL_GATE" >&2
+            exit 1
+          fi
+
       - name: Check out clean source
+        if: needs.prepare.outputs.full_gate == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Install pinned Rust target
+
+      - name: Install Rust 1.98.1 for Linux target
+        if: needs.prepare.outputs.full_gate == 'true'
         run: rustup toolchain install 1.98.1 --profile minimal --target x86_64-unknown-linux-gnu
-      - name: Install pinned Python
+
+      - name: Set up Python 3.14.7
+        if: needs.prepare.outputs.full_gate == 'true'
         uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c # v6.0.0
         with:
           python-version: 3.14.7
-      - name: Build clean locked production target
+
+      - name: Rebuild candidate binary from clean source
+        if: needs.prepare.outputs.full_gate == 'true'
         run: cargo build --locked --release --target x86_64-unknown-linux-gnu
-      - name: Verify installer and standalone behavior
-        shell: bash
+
+      - name: Verify installer, standalone artifact, and SPEC coverage
+        if: needs.prepare.outputs.full_gate == 'true'
         run: |
           set -euo pipefail
-          mkdir -p target/m9-candidate/evidence
-          ./scripts/test-install.sh 2>&1 | tee target/m9-candidate/evidence/installer.txt
-          ./scripts/test-release-artifact.sh 2>&1 | tee target/m9-candidate/evidence/standalone.txt
-          python3 scripts/check-spec-coverage.py > target/m9-candidate/evidence/coverage.md
-      - name: Collect passing safety, smoke, and reduction reports
+          mkdir -p target/ci-candidate/evidence
+          ./scripts/test-install.sh 2>&1 | tee target/ci-candidate/evidence/installer.txt
+          ./scripts/test-release-artifact.sh 2>&1 | tee target/ci-candidate/evidence/standalone.txt
+          python3 scripts/check-spec-coverage.py > target/ci-candidate/evidence/coverage.md
+
+      - name: Download passing test evidence
+        if: needs.prepare.outputs.full_gate == 'true'
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
-          pattern: m*-evidence
-          path: target/m9-candidate/evidence/prerequisites
-      - name: Collect passing byte comparison
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
-        with:
-          name: m2-byte-comparison
-          path: target/m9-candidate/evidence/prerequisites/m2-byte-comparison
-      - name: Package and smoke final assets outside source tree
+          pattern: "*-evidence"
+          path: target/ci-candidate/evidence/prerequisites
+
+      - name: Verify evidence, provenance, and candidate checksums
+        if: needs.prepare.outputs.full_gate == 'true'
         shell: bash
         env:
           CHECKOUT_COMMIT: ${{ github.sha }}
           CI_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
-          install -m 755 target/x86_64-unknown-linux-gnu/release/ttc target/m9-candidate/ttc-x86_64-unknown-linux-gnu
-          install -m 755 install.sh target/m9-candidate/install.sh
-          TTC_M9_BINARY="$PWD/target/m9-candidate/ttc-x86_64-unknown-linux-gnu" ./scripts/test-release-artifact.sh > target/m9-candidate/evidence/packaged-smoke.txt
-          python3 scripts/verify-m9-evidence.py target/m9-candidate/evidence/prerequisites
-          printf 'commit=%s\nrun=%s\nversion=' "$CHECKOUT_COMMIT" "$CI_RUN_URL" > target/m9-candidate/evidence/provenance.txt
-          python3 scripts/check-release-version.py Cargo.toml >> target/m9-candidate/evidence/provenance.txt
-          cd target/m9-candidate
+          install -m 755 target/x86_64-unknown-linux-gnu/release/ttc target/ci-candidate/ttc-x86_64-unknown-linux-gnu
+          install -m 755 install.sh target/ci-candidate/install.sh
+          TTC_M9_BINARY="$PWD/target/ci-candidate/ttc-x86_64-unknown-linux-gnu" ./scripts/test-release-artifact.sh > target/ci-candidate/evidence/packaged-smoke.txt
+          python3 scripts/verify-m9-evidence.py target/ci-candidate/evidence/prerequisites
+          printf 'commit=%s\nrun=%s\nversion=' "$CHECKOUT_COMMIT" "$CI_RUN_URL" > target/ci-candidate/evidence/provenance.txt
+          python3 scripts/check-release-version.py Cargo.toml >> target/ci-candidate/evidence/provenance.txt
+          cd target/ci-candidate
           sha256sum ttc-x86_64-unknown-linux-gnu install.sh > SHA256SUMS
           sha256sum --check --status SHA256SUMS
           find evidence -type f -print0 | sort -z | xargs -0 sha256sum > EVIDENCE-SHA256SUMS
           sha256sum --check --status EVIDENCE-SHA256SUMS
-      - name: Upload verified candidate after all gates pass
+
+      - name: Upload Linux candidate after all gates pass
+        if: needs.prepare.outputs.full_gate == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: ttc-m9-x86_64-unknown-linux-gnu
-          path: target/m9-candidate/
+          name: ttc-linux-gnu-candidate
+          path: target/ci-candidate/
           if-no-files-found: error
+
+      - name: Record light documentation gate
+        if: needs.prepare.outputs.full_gate == 'false'
+        run: echo "Light documentation checks passed for this commit."

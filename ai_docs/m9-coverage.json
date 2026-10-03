@@ -1,5 +1,5 @@
 {
-  "spec_sha256": "6f668fe0631a4b2f24b30d2ce2cc436f6476111803c2e02cbe4f2dfb23f0a489",
+  "spec_sha256": "514f981a439a41afac4c12916b6e107a574a61686a93dc65579e75d8e5f0d8e8",
   "sections": {
     "1": {
       "perilaku": "Standalone sekali; default retain, tanpa daemon/network/harness dependency. Artifact GNU mendahului M10.",
@@ -16,9 +16,8 @@
         "scripts/m9-artifact-tests.py"
       ],
       "gate": [
-        "rust",
-        "m2-passthrough",
-        "m9-distribution"
+        "rust-safety",
+        "linux-artifact"
       ],
       "cakupan_m10": "Hook semua Bash, kontrak permission resmi, minimum Codex dan penggunaan full-access dibuktikan pada M10."
     },
@@ -37,9 +36,8 @@
         "scripts/m9-artifact-tests.py"
       ],
       "gate": [
-        "rust",
-        "m2-passthrough",
-        "m9-distribution"
+        "rust-safety",
+        "linux-artifact"
       ],
       "cakupan_m10": "Hook semua Bash, kontrak permission resmi, minimum Codex dan penggunaan full-access dibuktikan pada M10."
     },
@@ -58,9 +56,8 @@
         "scripts/m9-artifact-tests.py"
       ],
       "gate": [
-        "rust",
-        "m2-passthrough",
-        "m9-distribution"
+        "rust-safety",
+        "linux-artifact"
       ],
       "cakupan_m10": "Hook semua Bash, kontrak permission resmi, minimum Codex dan penggunaan full-access dibuktikan pada M10."
     },
@@ -79,9 +76,8 @@
         "scripts/m9-artifact-tests.py"
       ],
       "gate": [
-        "rust",
-        "m2-passthrough",
-        "m9-distribution"
+        "rust-safety",
+        "linux-artifact"
       ],
       "cakupan_m10": "Hook semua Bash, kontrak permission resmi, minimum Codex dan penggunaan full-access dibuktikan pada M10."
     },
@@ -94,7 +90,7 @@
         "tests/cli.rs"
       ],
       "gate": [
-        "rust"
+        "rust-safety"
       ],
       "cakupan_m10": "Seluruh kontrak hook, serializer/quoting hook, recursive wrapper, config/trust, auth E2E ephemeral, token reduction, sandbox Codex dan publikasi menunggu M10. Global uninstall sudah dipetakan pada §13."
     },
@@ -107,7 +103,7 @@
         "tests/cli.rs"
       ],
       "gate": [
-        "rust"
+        "rust-safety"
       ],
       "cakupan_m10": "Seluruh kontrak hook, serializer/quoting hook, recursive wrapper, config/trust, auth E2E ephemeral, token reduction, sandbox Codex dan publikasi menunggu M10. Global uninstall sudah dipetakan pada §13."
     },
@@ -120,7 +116,7 @@
         "tests/cli.rs"
       ],
       "gate": [
-        "rust"
+        "rust-safety"
       ],
       "cakupan_m10": "Seluruh kontrak hook, serializer/quoting hook, recursive wrapper, config/trust, auth E2E ephemeral, token reduction, sandbox Codex dan publikasi menunggu M10. Global uninstall sudah dipetakan pada §13."
     },
@@ -133,7 +129,7 @@
         "tests/cli.rs"
       ],
       "gate": [
-        "rust"
+        "rust-safety"
       ],
       "cakupan_m10": "Seluruh kontrak hook, serializer/quoting hook, recursive wrapper, config/trust, auth E2E ephemeral, token reduction, sandbox Codex dan publikasi menunggu M10. Global uninstall sudah dipetakan pada §13."
     },
@@ -146,7 +142,7 @@
         "tests/cli.rs"
       ],
       "gate": [
-        "rust"
+        "rust-safety"
       ],
       "cakupan_m10": "Seluruh kontrak hook, serializer/quoting hook, recursive wrapper, config/trust, auth E2E ephemeral, token reduction, sandbox Codex dan publikasi menunggu M10. Global uninstall sudah dipetakan pada §13."
     },
@@ -159,7 +155,7 @@
         "tests/cli.rs"
       ],
       "gate": [
-        "rust"
+        "rust-safety"
       ],
       "cakupan_m10": "Seluruh kontrak hook, serializer/quoting hook, recursive wrapper, config/trust, auth E2E ephemeral, token reduction, sandbox Codex dan publikasi menunggu M10. Global uninstall sudah dipetakan pada §13."
     },
@@ -172,7 +168,7 @@
         "tests/cli.rs"
       ],
       "gate": [
-        "rust"
+        "rust-safety"
       ],
       "cakupan_m10": "Seluruh kontrak hook, serializer/quoting hook, recursive wrapper, config/trust, auth E2E ephemeral, token reduction, sandbox Codex dan publikasi menunggu M10. Global uninstall sudah dipetakan pada §13."
     },
@@ -185,7 +181,7 @@
         "tests/cli.rs"
       ],
       "gate": [
-        "rust"
+        "rust-safety"
       ],
       "cakupan_m10": "Seluruh kontrak hook, serializer/quoting hook, recursive wrapper, config/trust, auth E2E ephemeral, token reduction, sandbox Codex dan publikasi menunggu M10. Global uninstall sudah dipetakan pada §13."
     },
@@ -198,7 +194,7 @@
         "tests/cli.rs"
       ],
       "gate": [
-        "rust"
+        "rust-safety"
       ],
       "cakupan_m10": "Seluruh kontrak hook, serializer/quoting hook, recursive wrapper, config/trust, auth E2E ephemeral, token reduction, sandbox Codex dan publikasi menunggu M10. Global uninstall sudah dipetakan pada §13."
     },
@@ -219,10 +215,8 @@
         "scripts/m9-artifact-tests.py"
       ],
       "gate": [
-        "rust",
-        "m2-passthrough",
-        "m3-streaming",
-        "m9-distribution"
+        "rust-safety",
+        "linux-artifact"
       ],
       "cakupan_m10": "Command install/uninstall/hook Codex dalam daftar CLI baru diimplementasikan M10; help M9 tidak mengiklankannya."
     },
@@ -243,10 +237,8 @@
         "scripts/m9-artifact-tests.py"
       ],
       "gate": [
-        "rust",
-        "m2-passthrough",
-        "m3-streaming",
-        "m9-distribution"
+        "rust-safety",
+        "linux-artifact"
       ],
       "cakupan_m10": "Command install/uninstall/hook Codex dalam daftar CLI baru diimplementasikan M10; help M9 tidak mengiklankannya."
     },
@@ -267,10 +259,8 @@
         "scripts/m9-artifact-tests.py"
       ],
       "gate": [
-        "rust",
-        "m2-passthrough",
-        "m3-streaming",
-        "m9-distribution"
+        "rust-safety",
+        "linux-artifact"
       ],
       "cakupan_m10": "Command install/uninstall/hook Codex dalam daftar CLI baru diimplementasikan M10; help M9 tidak mengiklankannya."
     },
@@ -291,10 +281,8 @@
         "scripts/m9-artifact-tests.py"
       ],
       "gate": [
-        "rust",
-        "m2-passthrough",
-        "m3-streaming",
-        "m9-distribution"
+        "rust-safety",
+        "linux-artifact"
       ],
       "cakupan_m10": "Command install/uninstall/hook Codex dalam daftar CLI baru diimplementasikan M10; help M9 tidak mengiklankannya."
     },
@@ -315,10 +303,8 @@
         "scripts/m9-artifact-tests.py"
       ],
       "gate": [
-        "rust",
-        "m2-passthrough",
-        "m3-streaming",
-        "m9-distribution"
+        "rust-safety",
+        "linux-artifact"
       ],
       "cakupan_m10": "Command install/uninstall/hook Codex dalam daftar CLI baru diimplementasikan M10; help M9 tidak mengiklankannya."
     },
@@ -340,12 +326,10 @@
         "tests/shell_contract.rs"
       ],
       "gate": [
-        "rust",
-        "m2-passthrough",
-        "m3-streaming",
-        "m4-javascript",
-        "m5-core-ecosystems",
-        "m8-remaining-ecosystems"
+        "rust-safety",
+        "javascript-monorepo",
+        "rust-python-go",
+        "build-infrastructure"
       ],
       "cakupan_m10": ""
     },
@@ -367,12 +351,10 @@
         "tests/shell_contract.rs"
       ],
       "gate": [
-        "rust",
-        "m2-passthrough",
-        "m3-streaming",
-        "m4-javascript",
-        "m5-core-ecosystems",
-        "m8-remaining-ecosystems"
+        "rust-safety",
+        "javascript-monorepo",
+        "rust-python-go",
+        "build-infrastructure"
       ],
       "cakupan_m10": ""
     },
@@ -394,12 +376,10 @@
         "tests/shell_contract.rs"
       ],
       "gate": [
-        "rust",
-        "m2-passthrough",
-        "m3-streaming",
-        "m4-javascript",
-        "m5-core-ecosystems",
-        "m8-remaining-ecosystems"
+        "rust-safety",
+        "javascript-monorepo",
+        "rust-python-go",
+        "build-infrastructure"
       ],
       "cakupan_m10": ""
     },
@@ -421,12 +401,10 @@
         "tests/shell_contract.rs"
       ],
       "gate": [
-        "rust",
-        "m2-passthrough",
-        "m3-streaming",
-        "m4-javascript",
-        "m5-core-ecosystems",
-        "m8-remaining-ecosystems"
+        "rust-safety",
+        "javascript-monorepo",
+        "rust-python-go",
+        "build-infrastructure"
       ],
       "cakupan_m10": ""
     },
@@ -448,12 +426,10 @@
         "tests/shell_contract.rs"
       ],
       "gate": [
-        "rust",
-        "m2-passthrough",
-        "m3-streaming",
-        "m4-javascript",
-        "m5-core-ecosystems",
-        "m8-remaining-ecosystems"
+        "rust-safety",
+        "javascript-monorepo",
+        "rust-python-go",
+        "build-infrastructure"
       ],
       "cakupan_m10": ""
     },
@@ -475,12 +451,10 @@
         "tests/shell_contract.rs"
       ],
       "gate": [
-        "rust",
-        "m2-passthrough",
-        "m3-streaming",
-        "m4-javascript",
-        "m5-core-ecosystems",
-        "m8-remaining-ecosystems"
+        "rust-safety",
+        "javascript-monorepo",
+        "rust-python-go",
+        "build-infrastructure"
       ],
       "cakupan_m10": ""
     },
@@ -502,9 +476,8 @@
         "scripts/m6-smoke.sh"
       ],
       "gate": [
-        "rust",
-        "m4-javascript",
-        "m6-package-monorepo"
+        "rust-safety",
+        "javascript-monorepo"
       ],
       "cakupan_m10": ""
     },
@@ -526,9 +499,8 @@
         "scripts/m6-smoke.sh"
       ],
       "gate": [
-        "rust",
-        "m4-javascript",
-        "m6-package-monorepo"
+        "rust-safety",
+        "javascript-monorepo"
       ],
       "cakupan_m10": ""
     },
@@ -550,9 +522,8 @@
         "scripts/m6-smoke.sh"
       ],
       "gate": [
-        "rust",
-        "m4-javascript",
-        "m6-package-monorepo"
+        "rust-safety",
+        "javascript-monorepo"
       ],
       "cakupan_m10": ""
     },
@@ -573,8 +544,8 @@
         "scripts/m6-smoke.sh"
       ],
       "gate": [
-        "rust",
-        "m6-package-monorepo"
+        "rust-safety",
+        "javascript-monorepo"
       ],
       "cakupan_m10": ""
     },
@@ -595,8 +566,8 @@
         "scripts/m6-smoke.sh"
       ],
       "gate": [
-        "rust",
-        "m6-package-monorepo"
+        "rust-safety",
+        "javascript-monorepo"
       ],
       "cakupan_m10": ""
     },
@@ -617,8 +588,8 @@
         "scripts/m6-smoke.sh"
       ],
       "gate": [
-        "rust",
-        "m6-package-monorepo"
+        "rust-safety",
+        "javascript-monorepo"
       ],
       "cakupan_m10": ""
     },
@@ -639,8 +610,8 @@
         "scripts/m6-smoke.sh"
       ],
       "gate": [
-        "rust",
-        "m6-package-monorepo"
+        "rust-safety",
+        "javascript-monorepo"
       ],
       "cakupan_m10": ""
     },
@@ -661,8 +632,8 @@
         "scripts/m6-smoke.sh"
       ],
       "gate": [
-        "rust",
-        "m6-package-monorepo"
+        "rust-safety",
+        "javascript-monorepo"
       ],
       "cakupan_m10": ""
     },
@@ -683,8 +654,8 @@
         "scripts/m6-smoke.sh"
       ],
       "gate": [
-        "rust",
-        "m6-package-monorepo"
+        "rust-safety",
+        "javascript-monorepo"
       ],
       "cakupan_m10": ""
     },
@@ -705,8 +676,8 @@
         "scripts/m6-smoke.sh"
       ],
       "gate": [
-        "rust",
-        "m6-package-monorepo"
+        "rust-safety",
+        "javascript-monorepo"
       ],
       "cakupan_m10": ""
     },
@@ -714,7 +685,8 @@
       "perilaku": "Libtest/nextest PASS dan compiler progress dikenal compact setelah tiga record aman; workspace/package tetap command asli; compiler/failure/summary retain.",
       "implementasi": [
         "src/core/classification.rs",
-        "src/core/filters/ecosystems.rs"
+        "src/core/filters/ecosystems.rs",
+        "scripts/m5-install-nextest.sh"
       ],
       "test": [
         "tests/classifier.rs",
@@ -724,8 +696,8 @@
         "scripts/m5-smoke.sh"
       ],
       "gate": [
-        "rust",
-        "m5-core-ecosystems"
+        "rust-safety",
+        "rust-python-go"
       ],
       "cakupan_m10": ""
     },
@@ -743,8 +715,8 @@
         "scripts/m5-smoke.sh"
       ],
       "gate": [
-        "rust",
-        "m5-core-ecosystems"
+        "rust-safety",
+        "rust-python-go"
       ],
       "cakupan_m10": ""
     },
@@ -762,8 +734,8 @@
         "scripts/m5-smoke.sh"
       ],
       "gate": [
-        "rust",
-        "m5-core-ecosystems"
+        "rust-safety",
+        "rust-python-go"
       ],
       "cakupan_m10": ""
     },
@@ -783,8 +755,8 @@
         "scripts/m7-smoke.sh"
       ],
       "gate": [
-        "rust",
-        "m7-php-jvm-dotnet"
+        "rust-safety",
+        "php-jvm-dotnet"
       ],
       "cakupan_m10": ""
     },
@@ -804,8 +776,8 @@
         "scripts/m7-smoke.sh"
       ],
       "gate": [
-        "rust",
-        "m7-php-jvm-dotnet"
+        "rust-safety",
+        "php-jvm-dotnet"
       ],
       "cakupan_m10": ""
     },
@@ -823,8 +795,8 @@
         "scripts/m7-smoke.sh"
       ],
       "gate": [
-        "rust",
-        "m7-php-jvm-dotnet"
+        "rust-safety",
+        "php-jvm-dotnet"
       ],
       "cakupan_m10": ""
     },
@@ -844,8 +816,8 @@
         "scripts/m8-smoke.sh"
       ],
       "gate": [
-        "rust",
-        "m8-remaining-ecosystems"
+        "rust-safety",
+        "build-infrastructure"
       ],
       "cakupan_m10": ""
     },
@@ -864,8 +836,8 @@
         "scripts/m8-smoke.sh"
       ],
       "gate": [
-        "rust",
-        "m8-remaining-ecosystems"
+        "rust-safety",
+        "build-infrastructure"
       ],
       "cakupan_m10": ""
     },
@@ -882,10 +854,9 @@
         "scripts/m9-artifact-tests.py"
       ],
       "gate": [
-        "rust",
-        "m2-passthrough",
-        "m8-remaining-ecosystems",
-        "m9-distribution"
+        "rust-safety",
+        "build-infrastructure",
+        "linux-artifact"
       ],
       "cakupan_m10": ""
     },
@@ -904,10 +875,8 @@
         "scripts/m9-install-tests.py"
       ],
       "gate": [
-        "rust",
-        "m2-passthrough",
-        "m3-streaming",
-        "m9-distribution"
+        "rust-safety",
+        "linux-artifact"
       ],
       "cakupan_m10": "Eksekusi actual Codex read-only/workspace-write/danger-full-access dibuktikan manual M10."
     },
@@ -927,9 +896,8 @@
         "scripts/m9-artifact-tests.py"
       ],
       "gate": [
-        "rust",
-        "m3-streaming",
-        "m9-distribution"
+        "rust-safety",
+        "linux-artifact"
       ],
       "cakupan_m10": ""
     },
@@ -946,8 +914,7 @@
         "tests/cli.rs"
       ],
       "gate": [
-        "rust",
-        "m3-streaming"
+        "rust-safety"
       ],
       "cakupan_m10": "Uninstall integrasi Codex untuk disable hanya tersedia M10."
     },
@@ -973,9 +940,9 @@
         "src/distribution/transaction_tests.rs"
       ],
       "gate": [
-        "rust",
-        "release-policy",
-        "m9-distribution"
+        "rust-safety",
+        "prepare",
+        "linux-artifact"
       ],
       "cakupan_m10": "Public releases/latest dan job publish baru M10 sesudah user-authorized tag; belum diklaim tersedia."
     },
@@ -1001,9 +968,9 @@
         "src/distribution/transaction_tests.rs"
       ],
       "gate": [
-        "rust",
-        "release-policy",
-        "m9-distribution"
+        "rust-safety",
+        "prepare",
+        "linux-artifact"
       ],
       "cakupan_m10": "Public releases/latest dan job publish baru M10 sesudah user-authorized tag; belum diklaim tersedia."
     },
@@ -1011,7 +978,9 @@
       "perilaku": "Full test unit/integration/safety/fixture/monorepo, pinned real tools dan large >=80% bytes termasuk metadata. CI Linux artifact+installer master final acceptance; command exit/signals/env/once dan raw storage isolasi. Tidak mengklaim token/sandbox Codex dari fixture.",
       "implementasi": [
         "tests/common/mod.rs",
-        ".github/workflows/ci.yml"
+        ".github/workflows/ci.yml",
+        "scripts/ci_change_policy.py",
+        "scripts/classify-ci-changes.py"
       ],
       "test": [
         "tests/reduction.rs",
@@ -1025,18 +994,16 @@
         "scripts/m6-smoke.sh",
         "scripts/m7-smoke.sh",
         "scripts/m8-smoke.sh",
-        "scripts/m9-artifact-tests.py"
+        "scripts/m9-artifact-tests.py",
+        "scripts/test-ci-change-policy.py"
       ],
       "gate": [
-        "rust",
-        "m2-passthrough",
-        "m3-streaming",
-        "m4-javascript",
-        "m5-core-ecosystems",
-        "m6-package-monorepo",
-        "m7-php-jvm-dotnet",
-        "m8-remaining-ecosystems",
-        "m9-distribution"
+        "rust-safety",
+        "javascript-monorepo",
+        "rust-python-go",
+        "php-jvm-dotnet",
+        "build-infrastructure",
+        "linux-artifact"
       ],
       "cakupan_m10": "Quoting/recursive prevention hook pada §14.1 serta seluruh Phase2 DoD hanya M10. Final master run menunggu merge pengguna."
     },
@@ -1061,15 +1028,12 @@
         "scripts/m9-artifact-tests.py"
       ],
       "gate": [
-        "rust",
-        "m2-passthrough",
-        "m3-streaming",
-        "m4-javascript",
-        "m5-core-ecosystems",
-        "m6-package-monorepo",
-        "m7-php-jvm-dotnet",
-        "m8-remaining-ecosystems",
-        "m9-distribution"
+        "rust-safety",
+        "javascript-monorepo",
+        "rust-python-go",
+        "php-jvm-dotnet",
+        "build-infrastructure",
+        "linux-artifact"
       ],
       "cakupan_m10": "Quoting/recursive prevention hook pada §14.1 serta seluruh Phase2 DoD hanya M10. Final master run menunggu merge pengguna."
     },
@@ -1094,15 +1058,12 @@
         "scripts/m9-artifact-tests.py"
       ],
       "gate": [
-        "rust",
-        "m2-passthrough",
-        "m3-streaming",
-        "m4-javascript",
-        "m5-core-ecosystems",
-        "m6-package-monorepo",
-        "m7-php-jvm-dotnet",
-        "m8-remaining-ecosystems",
-        "m9-distribution"
+        "rust-safety",
+        "javascript-monorepo",
+        "rust-python-go",
+        "php-jvm-dotnet",
+        "build-infrastructure",
+        "linux-artifact"
       ],
       "cakupan_m10": "Quoting/recursive prevention hook pada §14.1 serta seluruh Phase2 DoD hanya M10. Final master run menunggu merge pengguna."
     },
@@ -1127,15 +1088,12 @@
         "scripts/m9-artifact-tests.py"
       ],
       "gate": [
-        "rust",
-        "m2-passthrough",
-        "m3-streaming",
-        "m4-javascript",
-        "m5-core-ecosystems",
-        "m6-package-monorepo",
-        "m7-php-jvm-dotnet",
-        "m8-remaining-ecosystems",
-        "m9-distribution"
+        "rust-safety",
+        "javascript-monorepo",
+        "rust-python-go",
+        "php-jvm-dotnet",
+        "build-infrastructure",
+        "linux-artifact"
       ],
       "cakupan_m10": "Quoting/recursive prevention hook pada §14.1 serta seluruh Phase2 DoD hanya M10. Final master run menunggu merge pengguna."
     },
@@ -1160,15 +1118,12 @@
         "scripts/m9-artifact-tests.py"
       ],
       "gate": [
-        "rust",
-        "m2-passthrough",
-        "m3-streaming",
-        "m4-javascript",
-        "m5-core-ecosystems",
-        "m6-package-monorepo",
-        "m7-php-jvm-dotnet",
-        "m8-remaining-ecosystems",
-        "m9-distribution"
+        "rust-safety",
+        "javascript-monorepo",
+        "rust-python-go",
+        "php-jvm-dotnet",
+        "build-infrastructure",
+        "linux-artifact"
       ],
       "cakupan_m10": "Quoting/recursive prevention hook pada §14.1 serta seluruh Phase2 DoD hanya M10. Final master run menunggu merge pengguna."
     },
@@ -1193,15 +1148,12 @@
         "scripts/m9-artifact-tests.py"
       ],
       "gate": [
-        "rust",
-        "m2-passthrough",
-        "m3-streaming",
-        "m4-javascript",
-        "m5-core-ecosystems",
-        "m6-package-monorepo",
-        "m7-php-jvm-dotnet",
-        "m8-remaining-ecosystems",
-        "m9-distribution"
+        "rust-safety",
+        "javascript-monorepo",
+        "rust-python-go",
+        "php-jvm-dotnet",
+        "build-infrastructure",
+        "linux-artifact"
       ],
       "cakupan_m10": "Quoting/recursive prevention hook pada §14.1 serta seluruh Phase2 DoD hanya M10. Final master run menunggu merge pengguna."
     },
@@ -1218,8 +1170,8 @@
         "scripts/check-spec-coverage.py"
       ],
       "gate": [
-        "rust",
-        "m9-distribution"
+        "rust-safety",
+        "linux-artifact"
       ],
       "cakupan_m10": ""
     },
@@ -1236,8 +1188,8 @@
         "scripts/check-spec-coverage.py"
       ],
       "gate": [
-        "rust",
-        "m9-distribution"
+        "rust-safety",
+        "linux-artifact"
       ],
       "cakupan_m10": ""
     }
