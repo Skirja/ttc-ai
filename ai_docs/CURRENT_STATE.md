@@ -2,18 +2,21 @@
 
 **Diperbarui:** 2026-10-02 WIB
 
-## Sedang dikerjakan
+## Terakhir selesai
 
-M9 — production binary dan distribution gate pada
-`feat/m9-production-distribution`, dibuat dari `master` dengan perbaikan
-prasyarat CI yang sudah teruji. Installer/latest finalizer, metadata ownership,
-transaksi atomik dengan lock/rollback/pending marker, PATH backup/fallback,
-global uninstall, audit SPEC dan workflow kandidat GNU telah diimplementasikan.
-Seluruh gate lokal fix ownership binary/metadata terbaru lulus (226 Rust test,
-17 installer E2E dan standalone smoke). CI fix config sebelumnya sudah lulus;
-fix ownership terbaru masih menunggu PR CI. Pengguna mengotorisasi squash merge
-PR #8/#9 ke branch utama repo (`master`) pada 2026-10-02. M9 belum lengkap
-karena clean master run/artifact masih harus diperiksa setelah merge.
+M9 — production binary dan distribution gate lengkap pada 2026-10-02.
+PR #8/#9 telah squash merged ke `master` sesuai otorisasi pengguna.
+Master `a11cb6a238c5eb7d9cb652f81bb944447d578a94` lulus seluruh 10 job pada
+[run 36985240287](https://github.com/Skirja/ttc-ai/actions/runs/36985240287).
+Artifact GNU diunduh; kedua manifest checksum dan 112 evidence entries cocok.
+Standalone smoke serta 17 installer E2E lulus ulang pada binary unduhan.
+Binary SHA-256:
+`0d438ca72d1140c232eaa390e55112f6076a36b126879a33fbda2be184cdc9b5`.
+Source gate lokal mencakup 226 Rust test, format, Clippy, release builds,
+installer, release policy dan coverage. Detail checksum/command/reduction
+tercatat pada TODO M9 dan `target/m9-evidence/artifact-36985240287.log`.
+
+M10 belum dimulai. Tidak ada tag/release atau konfigurasi Codex yang diubah.
 
 ## Prasyarat yang sudah terbukti
 
@@ -121,11 +124,8 @@ lokal yang tidak menyediakan seluruh build prerequisite.
 
 ## Next action
 
-PR #8 sudah squash merged menjadi `2ad265f970f758b603dc9b706afe0b9b6351d559`
-pada 2026-10-02; base PR #9 disinkronkan tanpa perubahan kode produksi.
-Periksa CI fix ownership PR #9, lalu squash merge #9 sesuai otorisasi pengguna.
-Periksa clean successful master run dan downloaded GNU artifact; catat exact
-commit/run/checksum dan lengkapi M9. M10 tetap menunggu gate master tersebut.
+Gate standalone M9 telah terpenuhi. PR dokumentasi mencatat evidence master;
+pekerjaan M10 hanya dimulai setelah diminta pengguna, sesuai SPEC/TODO.
 
 ## Arsip terakhir
 

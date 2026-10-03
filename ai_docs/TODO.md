@@ -976,7 +976,7 @@ candidate, dan dibuktikan oleh artifact CI sebelum pekerjaan Codex dimulai.
 - [x] PATH edit idempotent; kegagalan edit tetap menyisakan binary sehat dan
   instruksi manual yang benar.
 - [x] Global uninstall tidak menghapus unrelated binary/config/PATH usage.
-- [ ] User telah merge/push ke `master` dan artifact CI Linux berhasil. Ini
+- [x] User telah merge/push ke `master` dan artifact CI Linux berhasil. Ini
   adalah hard gate M10.
 
 ### Verification commands
@@ -1170,10 +1170,50 @@ PR #8 sudah squash merged sebagai `2ad265f970f758b603dc9b706afe0b9b6351d559`;
 tree master cocok dengan head PR #8 yang direview dan seluruh delapan gate
 [run 36817828230](https://github.com/Skirja/ttc-ai/actions/runs/36817828230) lulus.
 
+### Completion M9 — clean master run 2026-10-02
+
+Dengan otorisasi pengguna, PR #8 dan #9 telah squash merged ke `master`:
+
+- PR #8: `2ad265f970f758b603dc9b706afe0b9b6351d559`; master
+  [run 36983395613](https://github.com/Skirja/ttc-ai/actions/runs/36983395613) lulus.
+- PR #9: `a11cb6a238c5eb7d9cb652f81bb944447d578a94`; clean master
+  [run 36985240287](https://github.com/Skirja/ttc-ai/actions/runs/36985240287) lulus
+  seluruh 10 job, termasuk pinned smoke M2–M8 dan standalone distribution M9.
+- Fix ownership `9542314` dan head PR `86b09d0` lulus review ulang. PR
+  [run 36983750115](https://github.com/Skirja/ttc-ai/actions/runs/36983750115) juga
+  lulus 10 job; artifact/replay dari run tersebut diperiksa sebelum merge.
+
+Artifact master diunduh ke `target/m9-evidence/run-36985240287/`. Provenance
+mencatat commit master yang sama, run tersebut, dan versi `0.1.0`. Kedua
+manifest checksum serta seluruh 112 evidence entries cocok. Binary master
+identik dengan kandidat PR yang diuji. Standalone smoke di luar source tree
+serta 17 installer E2E lulus ulang pada binary unduhan; seluruh HOME/XDG/config
+berada pada direktori temporary. Log: `target/m9-evidence/artifact-36985240287.log`.
+
+Command aktual: `gh run download 36985240287 --name
+ttc-m9-x86_64-unknown-linux-gnu --dir target/m9-evidence/run-36985240287`,
+`sha256sum --check --status SHA256SUMS`, `sha256sum --check --status
+EVIDENCE-SHA256SUMS`, dan kedua script M9 dengan `TTC_M9_BINARY` menunjuk
+executable unduhan. Smoke memverifikasi argv/shell, per-stream byte content,
+cwd/env/stdin, exit/signal, invocation count1, TTY, raw replay dan diagnostic.
+Reduction representative `23999/254` byte (>80%, termasuk metadata); coverage
+ada pada `ai_docs/M9_COVERAGE.md` dan artifact `evidence/coverage.md`. Tidak ada
+klaim token reduction dari smoke standalone.
+
+| File artifact master | SHA-256 |
+|---|---|
+| ttc-x86_64-unknown-linux-gnu | `0d438ca72d1140c232eaa390e55112f6076a36b126879a33fbda2be184cdc9b5` |
+| install.sh | `19e0e744ec83a0e4e29934b47f522eecba37dcdd95ad899b5193f6c8a9cebda7` |
+| SHA256SUMS | `af86eadd1473c8f5df4f95012cc9ba14a54cccd2c27e70db5f4711ad7e1fceea` |
+| EVIDENCE-SHA256SUMS | `7a9ac5ab2075c73630f50c1d23ed7204510ee5b5b7d6c31255f0bc9a0e8c5adc` |
+
+M9 lengkap setelah gate master dan pemeriksaan artifact ini. M10 belum dimulai;
+tidak ada tag atau publikasi release pada tugas ini.
+
 ### Evidence
 
 - [x] Commit production hardening dicatat.
-- [ ] Successful `master` CI run URL dicatat.
+- [x] Successful `master` CI run URL dicatat.
 - [x] Downloaded workflow artifact checksum dicatat.
 - [x] Full command coverage dan reduction reports dilampirkan.
 
