@@ -1,5 +1,5 @@
 {
-  "spec_sha256": "4bd8f2aff2be42ac6fcccb420a91ac6544e25edc593d0968b2a36e845cacf1b4",
+  "spec_sha256": "514f981a439a41afac4c12916b6e107a574a61686a93dc65579e75d8e5f0d8e8",
   "sections": {
     "1": {
       "perilaku": "Standalone sekali; default retain, tanpa daemon/network/harness dependency. Artifact GNU mendahului M10.",

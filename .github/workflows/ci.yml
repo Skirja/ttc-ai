@@ -21,6 +21,9 @@ jobs:
   prepare:
     name: Kebijakan dan build Linux
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
     outputs:
       full_gate: ${{ steps.classify.outputs.full_gate }}
     steps:
@@ -47,6 +50,7 @@ jobs:
           HEAD_SHA: ${{ github.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          CI_READ_TOKEN: ${{ github.token }}
         run: python3 scripts/classify-ci-changes.py
 
       - name: Uji kebijakan rilis stabil

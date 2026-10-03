@@ -1094,6 +1094,11 @@ campuran, SPEC/coverage, workflow, aturan agent, path lain, event tak dikenal,
 tag, atau diff yang gagal dibaca selalu memakai gate lengkap. Workflow harus
 tetap melaporkan aggregate check; kegagalan, pembatalan, dan skip prerequisite
 yang tidak sesuai klasifikasi harus menghasilkan status gagal.
+Push dokumentasi ke `master` hanya memakai gate ringan jika commit sebelum
+push sudah memiliki run push `master` yang selesai sukses pada workflow ini.
+Jika run sebelumnya masih berjalan, menunggu, gagal, dibatalkan, atau bukti
+tersebut tidak dapat dibaca, run pengganti wajib menjalankan gate penuh.
+Run tag tidak boleh dibatalkan oleh run lain.
 
 ## 14. Test plan
 

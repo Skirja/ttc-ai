@@ -35,7 +35,9 @@ SPEC lebih dulu, lalu sinkronkan TODO dalam commit yang sama.
   artifact kandidat akhir dibangun ulang dari source bersih.
 - Gate akhir selalu berjalan dan gagal untuk prerequisite gagal, dibatalkan,
   atau skip yang tidak sesuai klasifikasi. Run PR/master yang digantikan dapat
-  dibatalkan; run tag tidak.
+  dibatalkan; run tag tidak. Push dokumentasi hanya ringan jika commit sebelum
+  push memiliki run push `master` sukses pada workflow ini; jika belum atau
+  bukti API tidak tersedia, pengganti menjalankan gate penuh.
 - `cargo-nextest` CI memakai release resmi 0.9.108 dengan SHA-256 tetap.
 - Catat verifikasi serta penghematan aktual setelah full-code PR dan gate master
   berhasil; jangan mengklaim target menit sebelum job CI terukur.

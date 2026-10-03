@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+import json
 import re
 import subprocess
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
 
 _SHA = re.compile(r"\A[0-9a-fA-F]{40,64}\Z")
 _LIGHT_DOC_ROOTS = frozenset({"README.md", "LICENSE", "ai_docs/CURRENT_STATE.md", "ai_docs/TODO.md"})
@@ -94,3 +97,45 @@ def full_gate_for_event(event: str, env: Mapping[str, str], cwd: str = ".") -> b
         return requires_full_gate(changed_paths(event, env, cwd))
     except (DiffError, OSError, ValueError):
         return True
+
+
+def previous_push_passed(env: Mapping[str, str]) -> bool:
+    """Require a successful master run for the exact push base; uncertainty is false."""
+    before = env.get("BEFORE_SHA", "")
+    repository = env.get("GITHUB_REPOSITORY", "")
+    token = env.get("CI_READ_TOKEN", "")
+    if (
+        not _SHA.fullmatch(before)
+        or set(before) == {"0"}
+        or not re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository)
+        or not token
+    ):
+        return False
+    api = env.get("GITHUB_API_URL", "https://api.github.com").rstrip("/")
+    query = urlencode({"branch": "master", "event": "push", "head_sha": before, "per_page": 100})
+    request = Request(
+        f"{api}/repos/{repository}/actions/workflows/ci.yml/runs?{query}",
+        headers={"Accept": "application/vnd.github+json", "Authorization": f"Bearer {token}"},
+    )
+    try:
+        with urlopen(request, timeout=15) as response:
+            runs = json.load(response)["workflow_runs"]
+        return any(
+            str(run["id"]) != env.get("GITHUB_RUN_ID", "")
+            and run["head_sha"] == before
+            and run["head_branch"] == "master"
+            and run["event"] == "push"
+            and run["status"] == "completed"
+            and run["conclusion"] == "success"
+            for run in runs
+        )
+    except (OSError, ValueError, KeyError, TypeError):
+        # Includes API denial, timeout, malformed results, and unavailable history.
+        return False
+
+
+def full_gate_for_run(event: str, env: Mapping[str, str], cwd: str = ".") -> bool:
+    """A docs push can replace a code run only by completing its full verification."""
+    if full_gate_for_event(event, env, cwd):
+        return True
+    return event == "push" and not previous_push_passed(env)
