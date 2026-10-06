@@ -29,6 +29,7 @@ def digest():
 def validate(report):
     assert report['schema_version'] == 1
     assert report['complete'] is True and report['cleanup'] is True and report['authenticated'] is True
+    assert len(report['source_commit']) == 40 and all(ch in '0123456789abcdef' for ch in report['source_commit'])
     assert report['trust'] == 'official-tui' and report['auth_isolation'] == 'read-only-mount'
     assert report['source_digest'] == digest(), 'Manual Codex evidence does not match production source'
     assert len(report['binary_sha256']) == 64 and all(ch in '0123456789abcdef' for ch in report['binary_sha256'])
