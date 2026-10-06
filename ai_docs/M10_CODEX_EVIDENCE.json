@@ -1,0 +1,526 @@
+{
+  "schema_version": 1,
+  "source_digest": "c169795a7ba6f54a01bef95e90a33b9fd94f657fb80542f63d1b92602da93496",
+  "binary_sha256": "f9b615f517b7edef06236d92ccc49e92ef342c814c6bf3746fbfd7b5fe0081eb",
+  "codex_version": "codex-cli 0.160.0",
+  "authenticated": true,
+  "cases": [
+    {
+      "name": "npm",
+      "sandbox": "danger-full-access",
+      "output_content_equal": false,
+      "permission_outcomes": null,
+      "baseline": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 39360,
+        "following_input_tokens": 24941,
+        "invocation_count": 1,
+        "fixture_invocations": 1,
+        "tool_outputs": 1,
+        "exit_codes": [
+          0
+        ],
+        "native_shell_invocations": 1
+      },
+      "ttc": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 646,
+        "following_input_tokens": 12010,
+        "invocation_count": 1,
+        "fixture_invocations": 1,
+        "tool_outputs": 1,
+        "exit_codes": [
+          0
+        ],
+        "native_shell_invocations": 1
+      }
+    },
+    {
+      "name": "npm-failure",
+      "sandbox": "danger-full-access",
+      "output_content_equal": true,
+      "permission_outcomes": null,
+      "baseline": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 990,
+        "following_input_tokens": 12071,
+        "invocation_count": 1,
+        "fixture_invocations": 1,
+        "tool_outputs": 1,
+        "exit_codes": [
+          1
+        ],
+        "native_shell_invocations": 1
+      },
+      "ttc": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 990,
+        "following_input_tokens": 12074,
+        "invocation_count": 1,
+        "fixture_invocations": 1,
+        "tool_outputs": 1,
+        "exit_codes": [
+          1
+        ],
+        "native_shell_invocations": 1
+      }
+    },
+    {
+      "name": "pnpm",
+      "sandbox": "danger-full-access",
+      "output_content_equal": false,
+      "permission_outcomes": null,
+      "baseline": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 24094,
+        "following_input_tokens": 19317,
+        "invocation_count": 1,
+        "fixture_invocations": 2,
+        "tool_outputs": 1,
+        "exit_codes": [
+          0
+        ],
+        "native_shell_invocations": 1
+      },
+      "ttc": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 1439,
+        "following_input_tokens": 12256,
+        "invocation_count": 1,
+        "fixture_invocations": 2,
+        "tool_outputs": 1,
+        "exit_codes": [
+          0
+        ],
+        "native_shell_invocations": 1
+      }
+    },
+    {
+      "name": "mixed",
+      "sandbox": "danger-full-access",
+      "output_content_equal": false,
+      "permission_outcomes": null,
+      "baseline": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 12837,
+        "following_input_tokens": 16141,
+        "invocation_count": 1,
+        "fixture_invocations": 2,
+        "tool_outputs": 1,
+        "exit_codes": [
+          0
+        ],
+        "native_shell_invocations": 1
+      },
+      "ttc": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 1133,
+        "following_input_tokens": 12189,
+        "invocation_count": 1,
+        "fixture_invocations": 2,
+        "tool_outputs": 1,
+        "exit_codes": [
+          0
+        ],
+        "native_shell_invocations": 1
+      }
+    },
+    {
+      "name": "cargo",
+      "sandbox": "danger-full-access",
+      "output_content_equal": false,
+      "permission_outcomes": null,
+      "baseline": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 8032,
+        "following_input_tokens": 14406,
+        "invocation_count": 1,
+        "fixture_invocations": 1,
+        "tool_outputs": 1,
+        "exit_codes": [
+          0
+        ],
+        "native_shell_invocations": 1
+      },
+      "ttc": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 768,
+        "following_input_tokens": 12059,
+        "invocation_count": 1,
+        "fixture_invocations": 1,
+        "tool_outputs": 1,
+        "exit_codes": [
+          0
+        ],
+        "native_shell_invocations": 1
+      }
+    },
+    {
+      "name": "cat",
+      "sandbox": "danger-full-access",
+      "output_content_equal": true,
+      "permission_outcomes": null,
+      "baseline": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 231,
+        "following_input_tokens": 11868,
+        "invocation_count": 1,
+        "fixture_invocations": 1,
+        "tool_outputs": 1,
+        "exit_codes": [
+          0
+        ],
+        "native_shell_invocations": 1
+      },
+      "ttc": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 231,
+        "following_input_tokens": 11875,
+        "invocation_count": 1,
+        "fixture_invocations": 1,
+        "tool_outputs": 1,
+        "exit_codes": [
+          0
+        ],
+        "native_shell_invocations": 1
+      }
+    },
+    {
+      "name": "unknown",
+      "sandbox": "danger-full-access",
+      "output_content_equal": true,
+      "permission_outcomes": null,
+      "baseline": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 196,
+        "following_input_tokens": 11842,
+        "invocation_count": 1,
+        "fixture_invocations": 1,
+        "tool_outputs": 1,
+        "exit_codes": [
+          0
+        ],
+        "native_shell_invocations": 1
+      },
+      "ttc": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 196,
+        "following_input_tokens": 11862,
+        "invocation_count": 1,
+        "fixture_invocations": 1,
+        "tool_outputs": 1,
+        "exit_codes": [
+          0
+        ],
+        "native_shell_invocations": 1
+      }
+    },
+    {
+      "name": "stderr",
+      "sandbox": "danger-full-access",
+      "output_content_equal": true,
+      "permission_outcomes": null,
+      "baseline": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 207,
+        "following_input_tokens": 11909,
+        "invocation_count": 1,
+        "fixture_invocations": 1,
+        "tool_outputs": 1,
+        "exit_codes": [
+          7
+        ],
+        "native_shell_invocations": 1
+      },
+      "ttc": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 207,
+        "following_input_tokens": 11913,
+        "invocation_count": 1,
+        "fixture_invocations": 1,
+        "tool_outputs": 1,
+        "exit_codes": [
+          7
+        ],
+        "native_shell_invocations": 1
+      }
+    },
+    {
+      "name": "quote",
+      "sandbox": "danger-full-access",
+      "output_content_equal": true,
+      "permission_outcomes": null,
+      "baseline": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 214,
+        "following_input_tokens": 11938,
+        "invocation_count": 1,
+        "fixture_invocations": 1,
+        "tool_outputs": 1,
+        "exit_codes": [
+          0
+        ],
+        "native_shell_invocations": 1
+      },
+      "ttc": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 214,
+        "following_input_tokens": 11941,
+        "invocation_count": 1,
+        "fixture_invocations": 1,
+        "tool_outputs": 1,
+        "exit_codes": [
+          0
+        ],
+        "native_shell_invocations": 1
+      }
+    },
+    {
+      "name": "recursive",
+      "sandbox": "danger-full-access",
+      "output_content_equal": true,
+      "permission_outcomes": null,
+      "baseline": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 167,
+        "following_input_tokens": 11874,
+        "invocation_count": 1,
+        "fixture_invocations": 1,
+        "tool_outputs": 1,
+        "exit_codes": [
+          0
+        ],
+        "native_shell_invocations": 1
+      },
+      "ttc": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 167,
+        "following_input_tokens": 11910,
+        "invocation_count": 1,
+        "fixture_invocations": 1,
+        "tool_outputs": 1,
+        "exit_codes": [
+          0
+        ],
+        "native_shell_invocations": 1
+      }
+    },
+    {
+      "name": "dev",
+      "sandbox": "danger-full-access",
+      "output_content_equal": true,
+      "permission_outcomes": null,
+      "baseline": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 383,
+        "following_input_tokens": 11966,
+        "invocation_count": 1,
+        "fixture_invocations": 1,
+        "tool_outputs": 2,
+        "exit_codes": [
+          0
+        ],
+        "native_shell_invocations": 1
+      },
+      "ttc": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 383,
+        "following_input_tokens": 11973,
+        "invocation_count": 1,
+        "fixture_invocations": 1,
+        "tool_outputs": 2,
+        "exit_codes": [
+          0
+        ],
+        "native_shell_invocations": 1
+      }
+    },
+    {
+      "name": "signal",
+      "sandbox": "danger-full-access",
+      "output_content_equal": true,
+      "permission_outcomes": null,
+      "baseline": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 168,
+        "following_input_tokens": 11880,
+        "invocation_count": 1,
+        "fixture_invocations": 1,
+        "tool_outputs": 1,
+        "exit_codes": [
+          143
+        ],
+        "native_shell_invocations": 1
+      },
+      "ttc": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 168,
+        "following_input_tokens": 11871,
+        "invocation_count": 1,
+        "fixture_invocations": 1,
+        "tool_outputs": 1,
+        "exit_codes": [
+          143
+        ],
+        "native_shell_invocations": 1
+      }
+    },
+    {
+      "name": "sandbox-read-only",
+      "sandbox": "read-only",
+      "output_content_equal": true,
+      "permission_outcomes": {
+        "workspace=yes": [
+          false,
+          false
+        ],
+        "workspace=no": [
+          true,
+          true
+        ],
+        "outside=yes": [
+          false,
+          false
+        ],
+        "outside=no": [
+          true,
+          true
+        ]
+      },
+      "baseline": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 197,
+        "following_input_tokens": 12013,
+        "invocation_count": 1,
+        "fixture_invocations": 0,
+        "tool_outputs": 1,
+        "exit_codes": [
+          0
+        ],
+        "native_shell_invocations": 1
+      },
+      "ttc": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 197,
+        "following_input_tokens": 12008,
+        "invocation_count": 1,
+        "fixture_invocations": 0,
+        "tool_outputs": 1,
+        "exit_codes": [
+          0
+        ],
+        "native_shell_invocations": 1
+      }
+    },
+    {
+      "name": "sandbox-workspace-write",
+      "sandbox": "workspace-write",
+      "output_content_equal": true,
+      "permission_outcomes": {
+        "workspace=yes": [
+          true,
+          true
+        ],
+        "workspace=no": [
+          false,
+          false
+        ],
+        "outside=yes": [
+          false,
+          false
+        ],
+        "outside=no": [
+          true,
+          true
+        ]
+      },
+      "baseline": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 198,
+        "following_input_tokens": 12241,
+        "invocation_count": 1,
+        "fixture_invocations": 0,
+        "tool_outputs": 1,
+        "exit_codes": [
+          0
+        ],
+        "native_shell_invocations": 1
+      },
+      "ttc": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 198,
+        "following_input_tokens": 12242,
+        "invocation_count": 1,
+        "fixture_invocations": 0,
+        "tool_outputs": 1,
+        "exit_codes": [
+          0
+        ],
+        "native_shell_invocations": 1
+      }
+    },
+    {
+      "name": "sandbox-danger-full-access",
+      "sandbox": "danger-full-access",
+      "output_content_equal": true,
+      "permission_outcomes": {
+        "workspace=yes": [
+          true,
+          true
+        ],
+        "workspace=no": [
+          false,
+          false
+        ],
+        "outside=yes": [
+          true,
+          true
+        ],
+        "outside=no": [
+          false,
+          false
+        ]
+      },
+      "baseline": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 199,
+        "following_input_tokens": 12010,
+        "invocation_count": 1,
+        "fixture_invocations": 0,
+        "tool_outputs": 1,
+        "exit_codes": [
+          0
+        ],
+        "native_shell_invocations": 1
+      },
+      "ttc": {
+        "model": "gpt-6-luna",
+        "model_facing_bytes": 199,
+        "following_input_tokens": 12012,
+        "invocation_count": 1,
+        "fixture_invocations": 0,
+        "tool_outputs": 1,
+        "exit_codes": [
+          0
+        ],
+        "native_shell_invocations": 1
+      }
+    }
+  ],
+  "complete": true,
+  "tool_versions": {
+    "node": "v24.21.0",
+    "npm": "11.19.0",
+    "vitest": "vitest/5.0.1 linux-x64 node-v24.21.0",
+    "pnpm": "9.15.9",
+    "rustc": "rustc 1.98.1 (48a229cea 2026-09-01)",
+    "cargo": "cargo 1.98.1 (797e8a9bc 2026-08-05)",
+    "go": "go version go1.27.1 linux/amd64",
+    "codex_cli_asset_sha256": "4fcc47ab57f52ff75363951a8761146cd10c8288bd86fed45487dbb204a16b71",
+    "fixture_package_lock_sha256": "c782847665851de6f8484e189b512a71336521bed4f066724e2da4a6a92e3027"
+  },
+  "cleanup": true,
+  "trust": "official-tui",
+  "auth_isolation": "read-only-mount",
+  "source_commit": "9c518827ffb845e198e79d882df3cc5da8731a6a"
+}

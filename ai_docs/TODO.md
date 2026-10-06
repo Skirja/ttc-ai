@@ -1251,34 +1251,34 @@ terbukti pada CLI nyata dan seluruh sandbox mode, lalu dirilis publik.
 
 ### Implementation checklist
 
-- [ ] Implementasikan internal hidden entrypoint `ttc hook codex` yang membaca
+- [x] Implementasikan internal hidden entrypoint `ttc hook codex` yang membaca
   satu event JSON stdin dan menulis satu response JSON stdout.
-- [ ] Abaikan field input tambahan, tetapi tolak payload wajib yang invalid
+- [x] Abaikan field input tambahan, tetapi tolak payload wajib yang invalid
   tanpa menghasilkan partial wrapper.
-- [ ] Untuk setiap Bash command selain recursive TTC invocation, emit official
+- [x] Untuk setiap Bash command selain recursive TTC invocation, emit official
   `permissionDecision: allow` dan `updatedInput.command`.
-- [ ] Quote absolute executable path dan original command sebagai satu POSIX
+- [x] Quote absolute executable path dan original command sebagai satu POSIX
   argument; cover spasi, quote, dollar, newline, Unicode, operators,
   substitution, dan environment assignment.
-- [ ] Implementasikan recursive prevention untuk PATH invocation, absolute path,
+- [x] Implementasikan recursive prevention untuk PATH invocation, absolute path,
   dan already-wrapped shell command.
-- [ ] Implementasikan `ttc install codex` sebagai config-only operation:
+- [x] Implementasikan `ttc install codex` sebagai config-only operation:
   verifikasi `~/.local/bin/ttc`, Codex CLI minimum 0.154.0, dan hook support.
-- [ ] Tambahkan tepat satu matcher `^Bash$`, absolute hook path, backup config,
+- [x] Tambahkan tepat satu matcher `^Bash$`, absolute hook path, backup config,
   ownership metadata, dan trust instruction tanpa mengubah model/settings lain.
-- [ ] Implementasikan idempotent reinstall dan update hook ownership.
-- [ ] Implementasikan `ttc uninstall codex` yang hanya menghapus hook milik TTC
+- [x] Implementasikan idempotent reinstall dan update hook ownership.
+- [x] Implementasikan `ttc uninstall codex` yang hanya menghapus hook milik TTC
   serta mempertahankan binary dan config unrelated.
-- [ ] Sediakan interface adapter minimum agar harness baru dapat ditambah kelak;
+- [x] Sediakan interface adapter minimum agar harness baru dapat ditambah kelak;
   jangan implementasikan Claude pada MVP.
-- [ ] Buat automated adapter/config tests tanpa login.
-- [ ] Buat local Codex CLI E2E memakai login terpasang, production release-mode
+- [x] Buat automated adapter/config tests tanpa login.
+- [x] Buat local Codex CLI E2E memakai login terpasang, production release-mode
   binary, temporary fixture workspace, dan `codex exec --ephemeral`.
-- [ ] Backup/restore config untuk setiap run dan hapus seluruh fixture/artifact;
+- [x] Isolasi config/auth dengan mount read-only, dan hapus seluruh fixture/artifact;
   jangan meninggalkan session history atau test hook.
-- [ ] Jalankan E2E pada read-only, workspace-write, dan danger-full-access tanpa
+- [x] Jalankan E2E pada read-only, workspace-write, dan danger-full-access tanpa
   menambah permission dibanding baseline.
-- [ ] Ukur bytes serta token pada request model berikutnya.
+- [x] Ukur bytes serta token pada request model berikutnya.
 - [ ] Setelah seluruh gate lulus, tag `v0.1.0`; workflow membangun ulang,
   memverifikasi checksum/version, dan memublikasikan executable, checksum, serta
   `install.sh` ke GitHub Release.
@@ -1287,18 +1287,18 @@ terbukti pada CLI nyata dan seluruh sandbox mode, lalu dirilis publik.
 
 ### Acceptance criteria
 
-- [ ] Setiap Bash command dibungkus sekali; TTC command tidak recursive.
-- [ ] npm, pnpm monorepo, Cargo, dan mixed JS-Go model-facing output lebih kecil.
-- [ ] Large output berkurang minimum 80% secara byte dan token lebih rendah dari
+- [x] Setiap Bash command dibungkus sekali; TTC command tidak recursive.
+- [x] npm, pnpm monorepo, Cargo, dan mixed JS-Go model-facing output lebih kecil.
+- [x] Large output berkurang minimum 80% secara byte dan token lebih rendah dari
   baseline.
-- [ ] cat, unknown, failure tanpa kompaksi, stdout/stderr, dan exit status sama
+- [x] cat, unknown, failure tanpa kompaksi, stdout/stderr, dan exit status sama
   dengan baseline.
-- [ ] Watch/dev raw streaming dan shell semantics tidak berubah.
-- [ ] Seluruh sandbox mode dapat membaca/mengeksekusi installed binary dan tidak
+- [x] Watch/dev raw streaming dan shell semantics tidak berubah.
+- [x] Seluruh sandbox mode dapat membaca/mengeksekusi installed binary dan tidak
   mendapat permission tambahan.
-- [ ] Install/uninstall idempotent dan config pengguna pulih tanpa unrelated
+- [x] Install/uninstall idempotent dan config pengguna pulih tanpa unrelated
   diff.
-- [ ] E2E ephemeral tidak meninggalkan Codex session, hook, fixture, atau
+- [x] E2E ephemeral tidak meninggalkan Codex session, hook, fixture, atau
   artifact test.
 - [ ] GitHub Release `v0.1.0` tersedia pada `skirja/ttc-ai` dan quick-install
   command berhasil memasang binary latest.
@@ -1309,14 +1309,81 @@ terbukti pada CLI nyata dan seluruh sandbox mode, lalu dirilis publik.
 cargo test --test hook
 cargo test --test codex_install
 cargo test --test codex_config_ownership
-cargo test --test codex_sandbox
+TTC_M10_TEST_BINARY="$PWD/target/x86_64-unknown-linux-gnu/release/ttc" cargo test --test codex_sandbox
 ./scripts/test-codex-e2e.sh
 ./scripts/test-public-install.sh
 ```
 
 ### Evidence
 
-- [ ] Commit integrasi Codex dicatat.
-- [ ] Codex CLI version dan sanitized ephemeral E2E report dicatat.
-- [ ] Sandbox matrix serta model-facing byte/token report dilampirkan.
+- [x] Commit integrasi Codex dicatat.
+- [x] Codex CLI version dan sanitized ephemeral E2E report dicatat.
+- [x] Sandbox matrix serta model-facing byte/token report dilampirkan.
+- [x] Required PR CI dan Linux artifact lulus untuk source commit
+  `212430248d3099fc77dd7ea1f3582eedf100eda8` pada
+  [CI run 37416009048](https://github.com/Skirja/ttc-ai/actions/runs/37416009048).
 - [ ] Successful tag workflow dan GitHub Release URL dicatat.
+
+### Evidence slice hook/config — 2026-10-03
+
+Hook hidden, quoting/recursive prevention, config-only install/uninstall dan
+receipt ownership tersedia pada branch `feat/m10-codex-integration`.
+`toml_edit = =0.23.7` mempertahankan formatting config; fitur derive pada serde
+terpin memvalidasi field wajib/duplikat tanpa serialisasi payload ulang.
+Adapter memakai transaksi distribusi; core tidak mengimpor harness.
+
+Gate lokal format, Clippy warnings-denied, seluruh Rust test, release native dan
+GNU `--locked` lulus (`target/m10-evidence/hook-config-gates.log`). Installer
+17 E2E dan standalone artifact smoke lulus (`installer.log`, `standalone.log`
+pada direktori evidence yang sama). Release policy dan coverage juga lulus.
+Test transaksi meliputi save in-place/rename setelah validasi, rollback ketika
+metadata gagal, serta SIGKILL setelah commit config dan penolakan marker berikutnya.
+`cargo test --test hook`, `codex_install`, `codex_config_ownership`, dan
+`codex_sandbox` tercakup gate penuh. Minimum CLI 0.154.0 memakai archive resmi
+SHA-256 `d7e18b2597ae8f242f5f31ee9e90deef48dbc9edd634d9868fb6435d08c07f02`.
+Runtime aktual pada tiga sandbox lulus tanpa login; upstream fixture tidak
+menjadi evidence authenticated E2E atau token reduction.
+
+Gate authenticated ephemeral, report request model, CI PR dan publikasi belum
+dinyatakan lulus oleh evidence slice ini. M10 tetap partial.
+
+### Evidence authenticated E2E — 2026-10-06
+
+Source M10 yang diuji: commit `9c518827ffb845e198e79d882df3cc5da8731a6a`; source digest
+`c169795a7ba6f54a01bef95e90a33b9fd94f657fb80542f63d1b92602da93496`.
+Laporan tersanitasi ada di [`ai_docs/M10_CODEX_EVIDENCE.json`](M10_CODEX_EVIDENCE.json).
+Laporan mengikat binary GNU release SHA-256
+`f9b615f517b7edef06236d92ccc49e92ef342c814c6bf3746fbfd7b5fe0081eb`, Codex
+CLI `0.160.0` dan asset SHA-256
+`4fcc47ab57f52ff75363951a8761146cd10c8288bd86fed45487dbb204a16b71`.
+Semua 15 pasangan baseline/TTC lulus; hook dipercaya melalui UI `/hooks` resmi.
+Trace ephemeral tidak terpotong dan fixture/session/config dibersihkan.
+
+| Kasus besar | Output model baseline/TTC | Input token request berikutnya baseline/TTC |
+|---|---:|---:|
+| npm | 39.360 / 646 byte | 24.941 / 12.010 |
+| pnpm workspace | 24.094 / 1.439 byte | 19.317 / 12.256 |
+| mixed JS–Go | 12.837 / 1.133 byte | 16.141 / 12.189 |
+| Cargo | 8.032 / 768 byte | 14.406 / 12.059 |
+
+Raw, failure, quoting, recursive TTC, streaming/dev, dan signal menjaga content
+serta exit status baseline. SIGTERM menghasilkan `143` pada kedua jalur.
+Read-only menolak kedua probe write; workspace-write hanya mengizinkan write di
+workspace; danger-full-access menghasilkan hasil baseline yang sama. Pembatalan
+proses E2E melalui SIGTERM juga lulus: child dihentikan dan tidak ada temporary
+root yang tertinggal.
+
+Baseline lokal setelah perubahan final: format, Clippy warnings-denied, seluruh
+Rust suite dengan binary release, empat suite M10, pinned Codex `0.154.0`
+tanpa login pada ketiga sandbox, installer 17-case, standalone GNU artifact,
+release policy, CI change policy dan coverage audit lulus. Log lokal berada di
+`target/m10-evidence/final-local-gates.log` dan
+`target/m10-evidence/final-local-gates-release-runtime.log`; bukti sanitasi E2E
+yang dapat dirilis ada di report tertaut di atas.
+
+Required PR CI dan Linux artifact lulus untuk commit
+`212430248d3099fc77dd7ea1f3582eedf100eda8` pada run
+[37416009048](https://github.com/Skirja/ttc-ai/actions/runs/37416009048).
+Tag/release serta `./scripts/test-public-install.sh` tetap menunggu merge,
+permintaan publikasi terpisah, dan asset `releases/latest` yang benar-benar
+tersedia.

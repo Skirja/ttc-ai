@@ -10,6 +10,8 @@ Penggunaan: ttc [OPTIONS]
        ttc <program> [args...]
        ttc '<complete shell command>'
        ttc raw <id> [--stdout | --stderr] [--tail N]
+       ttc install codex
+       ttc uninstall codex
        ttc uninstall
 
 Opsi:
@@ -45,14 +47,14 @@ fn help_only_lists_the_implemented_public_interface() {
         assert!(output.stderr.is_empty());
     }
 
-    for unavailable_command in ["install codex", "__install", "hook", "explain", "doctor"] {
+    for unavailable_command in ["__install", "hook", "explain", "doctor"] {
         assert!(!EXPECTED_HELP.contains(unavailable_command));
     }
 }
 
 #[test]
 fn help_does_not_advertise_future_commands() {
-    assert!(!EXPECTED_HELP.contains("install codex"));
+    assert!(EXPECTED_HELP.contains("install codex"));
     assert!(!EXPECTED_HELP.contains("__install"));
     assert!(!EXPECTED_HELP.contains("hook"));
 }

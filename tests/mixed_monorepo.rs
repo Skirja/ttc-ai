@@ -28,6 +28,39 @@ fn mixed_js_go_and_nested_python_rust_scripts_accumulate_families() {
     assert!(mixed.families.contains(&Family::GoTest));
     assert!(!mixed.raw);
 
+    // Keep the successful JavaScript summary raw while allowing the statically
+    // selected Go recognizer to compact the following package's pass frames.
+    let mut filter = DispatchFilter::new(mixed);
+    for index in 0..4 {
+        let record = format!("✓ tests/case-{index}.test.js\n");
+        let compact = filter.decide(Stream::Stdout, record.as_bytes()).unwrap();
+        assert_eq!(compact.is_some(), index >= 3, "{record:?}");
+    }
+    assert!(
+        filter
+            .decide(Stream::Stdout, b"Test Files 1 passed (1)\n")
+            .unwrap()
+            .is_none()
+    );
+    for index in 0..6 {
+        let lifecycle = format!("=== RUN   TestPassing{index}\n");
+        assert!(
+            filter
+                .decide(Stream::Stdout, lifecycle.as_bytes())
+                .unwrap()
+                .is_none()
+        );
+        let record = format!("--- PASS: TestPassing{index} (0.00s)\n");
+        let compact = filter.decide(Stream::Stdout, record.as_bytes()).unwrap();
+        assert_eq!(compact.is_some(), index >= 3, "{record:?}");
+    }
+    assert!(
+        filter
+            .decide(Stream::Stdout, b"ok  fixture/go\t0.003s\n")
+            .unwrap()
+            .is_none()
+    );
+
     let nested = classify(
         &[OsString::from("npm run nested")],
         dir.path(),
