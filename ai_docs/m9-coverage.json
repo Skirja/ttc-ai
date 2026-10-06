@@ -209,7 +209,7 @@
       "cakupan_m10": "Authenticated ephemeral dan seluruh gate publikasi belum dinyatakan lengkap oleh mapping source/test ini."
     },
     "14.6": {
-      "perilaku": "Runtime Codex CLI 0.154.0 tanpa login pada ketiga sandbox diuji CI; authenticated ephemeral Codex CLI 0.160.0 memakai trust UI resmi, request trace, byte/token acceptance dan cleanup diuji lokal.",
+      "perilaku": "Runtime Codex CLI 0.154.0 tanpa login pada read-only memakai Landlock legacy di hosted CI karena runner menolak konfigurasi network namespace; lokal no-auth dan authenticated Codex 0.160.0 menjalankan ketiga sandbox.",
       "implementasi": [
         "src/harness/codex/mod.rs",
         "scripts/m10-codex-support.py"
@@ -225,7 +225,7 @@
         "rust-safety",
         "publish-stable-release"
       ],
-      "cakupan_m10": "Gate authenticated lokal dilampirkan di ai_docs/M10_CODEX_EVIDENCE.json; CI tidak mengakses login. Publish tag mensyaratkan evidence yang cocok dengan source release."
+      "cakupan_m10": "Hosted CI memeriksa loader/hook dan parity read-only tanpa bypass/escalation. Full read-only/workspace-write/danger-full-access matrix, trust UI dan token/output trace dibuktikan authenticated lokal pada ai_docs/M10_CODEX_EVIDENCE.json."
     },
     "18": {
       "perilaku": "Command publik install/uninstall Codex dan hidden hook entrypoint sudah diimplementasikan; invalid administration command ditolak.",

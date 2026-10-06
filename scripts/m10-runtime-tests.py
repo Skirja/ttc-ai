@@ -30,7 +30,9 @@ with tempfile.TemporaryDirectory(prefix='ttc-m10-runtime-') as temporary:
     result = subprocess.run([str(installed), 'install', 'codex'], env=env, capture_output=True, timeout=30)
     assert result.returncode == 0, result.stderr.decode(errors='replace')
     subprocess.run([str(installed), 'uninstall', 'codex'], env=env, capture_output=True, check=True, timeout=30)
-    for mode in ['read-only', 'workspace-write', 'danger-full-access']:
+    ci_read_only = os.environ.get('TTC_M10_CI_RUNTIME') == '1'
+    modes = ['read-only'] if ci_read_only else ['read-only', 'workspace-write', 'danger-full-access']
+    for mode in modes:
         outside = fixture / 'outside-write'
         command = "printf 'runtime stdout\\n'; sleep 0.05; printf 'runtime stderr\\n' >&2; "
         command += "if touch workspace-write 2>/dev/null; then printf 'workspace=yes\\n'; else printf 'workspace=no\\n'; fi; "
@@ -43,7 +45,14 @@ with tempfile.TemporaryDirectory(prefix='ttc-m10-runtime-') as temporary:
                 result = subprocess.run([str(installed), 'install', 'codex'], env=env, capture_output=True, timeout=30)
                 assert result.returncode == 0
             with support.ModelServer(command) as model:
-                args = support.base_arguments(codex, fixture, mode) + model.arguments()
+                args = support.base_arguments(codex, fixture, mode)
+                if ci_read_only:
+                    # GitHub-hosted runners block the unprivileged network
+                    # namespace needed by Codex's default bubblewrap backend.
+                    # Landlock still enforces the read-only policy tested here;
+                    # the authenticated local gate covers all three modes.
+                    args += ['-c', 'features.use_legacy_landlock=true']
+                args += model.arguments()
                 if wrapped:
                     args += ['--dangerously-bypass-hook-trust']
                 args += ['Run the fixture command once.']

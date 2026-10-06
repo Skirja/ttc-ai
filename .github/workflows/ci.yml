@@ -135,6 +135,7 @@ jobs:
       - name: Run full Rust suite and capture fixture evidence
         env:
           TTC_M10_TEST_BINARY: ${{ github.workspace }}/target/release/ttc
+          TTC_M10_CI_RUNTIME: "1"
         run: |
           set -o pipefail
           mkdir -p target/ci-evidence
