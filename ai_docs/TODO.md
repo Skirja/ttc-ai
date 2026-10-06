@@ -1384,6 +1384,13 @@ yang dapat dirilis ada di report tertaut di atas.
 Required PR CI dan Linux artifact lulus untuk commit
 `212430248d3099fc77dd7ea1f3582eedf100eda8` pada run
 [37416009048](https://github.com/Skirja/ttc-ai/actions/runs/37416009048).
-Tag/release serta `./scripts/test-public-install.sh` tetap menunggu merge,
-permintaan publikasi terpisah, dan asset `releases/latest` yang benar-benar
-tersedia.
+Tag `v0.1.0` dibuat pada commit `fe9c99abbacdd33b48667cea7b65933a12edc4e8`.
+Run tag [37431488927](https://github.com/Skirja/ttc-ai/actions/runs/37431488927)
+menjalankan semua gate build/test dan candidate artifact dengan sukses, tetapi
+publisher gagal karena download artifact tidak mempertahankan permission
+executable. Rerun setelah repository menjadi publik melewati fetch, validasi
+versi, source, dan evidence; publisher tetap gagal saat menjalankan binary.
+Belum ada GitHub Release. Workflow dispatch dari `master` disiapkan untuk
+menjalankan ulang gate penuh pada source tag yang sudah ada tanpa memindahkan
+tag. Setelah workflow fix di-merge dan release berhasil, jalankan
+`./scripts/test-public-install.sh` terhadap `releases/latest`.

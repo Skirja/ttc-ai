@@ -9,13 +9,19 @@ on:
   pull_request:
     branches:
       - master
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing stable tag to rebuild and publish from a clean run
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+  group: ci-${{ github.workflow }}-${{ inputs.release_tag || github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') && !(github.event_name == 'workflow_dispatch' && inputs.release_tag != '') }}
 
 jobs:
   prepare:
@@ -30,7 +36,8 @@ jobs:
       - name: Check out full history for change classification
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          persist-credentials: false
+          ref: ${{ inputs.release_tag || github.sha }}
+          persist-credentials: ${{ github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '') }}
           fetch-depth: 0
 
       - name: Set up pinned Python
@@ -46,6 +53,7 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           REF_TYPE: ${{ github.ref_type }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
           BEFORE_SHA: ${{ github.event.before }}
           HEAD_SHA: ${{ github.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -55,12 +63,17 @@ jobs:
 
       - name: Test stable release policy
         env:
-          REF_TYPE: ${{ github.ref_type }}
-          REF_NAME: ${{ github.ref_name }}
+          IS_RELEASE: ${{ github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '') }}
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
         run: |
+          set -euo pipefail
+          if [ "$IS_RELEASE" = true ]; then
+            git fetch --no-tags origin master:refs/remotes/origin/master
+            git merge-base --is-ancestor HEAD origin/master
+          fi
           python3 scripts/test-release-policy.py
-          if [ "$REF_TYPE" = tag ]; then
-            python3 scripts/check-release-version.py Cargo.toml "$REF_NAME"
+          if [ "$IS_RELEASE" = true ]; then
+            python3 scripts/check-release-version.py Cargo.toml "$RELEASE_TAG" HEAD origin/master
           else
             python3 scripts/check-release-version.py Cargo.toml
           fi
@@ -101,6 +114,7 @@ jobs:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.release_tag || github.sha }}
           persist-credentials: false
 
       - name: Install Rust 1.98.1
@@ -170,6 +184,7 @@ jobs:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.release_tag || github.sha }}
           persist-credentials: false
 
       - name: Download smoke binary
@@ -232,6 +247,7 @@ jobs:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.release_tag || github.sha }}
           persist-credentials: false
 
       - name: Install Rust 1.98.1
@@ -294,6 +310,7 @@ jobs:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.release_tag || github.sha }}
           persist-credentials: false
 
       - name: Download smoke binary
@@ -389,6 +406,7 @@ jobs:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.release_tag || github.sha }}
           persist-credentials: false
 
       - name: Download smoke binary
@@ -518,6 +536,7 @@ jobs:
         if: needs.prepare.outputs.full_gate == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.release_tag || github.sha }}
           persist-credentials: false
 
       - name: Install Rust 1.98.1 for Linux target
@@ -554,7 +573,6 @@ jobs:
         if: needs.prepare.outputs.full_gate == 'true'
         shell: bash
         env:
-          CHECKOUT_COMMIT: ${{ github.sha }}
           CI_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
@@ -562,6 +580,7 @@ jobs:
           install -m 755 install.sh target/ci-candidate/install.sh
           TTC_M9_BINARY="$PWD/target/ci-candidate/ttc-x86_64-unknown-linux-gnu" ./scripts/test-release-artifact.sh > target/ci-candidate/evidence/packaged-smoke.txt
           python3 scripts/verify-m9-evidence.py target/ci-candidate/evidence/prerequisites
+          CHECKOUT_COMMIT="$(git rev-parse HEAD)"
           printf 'commit=%s\nrun=%s\nversion=' "$CHECKOUT_COMMIT" "$CI_RUN_URL" > target/ci-candidate/evidence/provenance.txt
           python3 scripts/check-release-version.py Cargo.toml >> target/ci-candidate/evidence/provenance.txt
           cd target/ci-candidate
@@ -585,7 +604,7 @@ jobs:
   publish-stable-release:
     name: Publish Stable Release
     needs: linux-artifact
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master' && inputs.release_tag != '')
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -594,8 +613,9 @@ jobs:
       - name: Check out tagged source and full history
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ inputs.release_tag || github.sha }}
           fetch-depth: 0
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Download fully verified Linux candidate
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
@@ -605,15 +625,17 @@ jobs:
 
       - name: Verify tag, source containment, manual evidence, and checksums
         env:
-          RELEASE_TAG: ${{ github.ref_name }}
-          RELEASE_COMMIT: ${{ github.sha }}
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
         run: |
           set -euo pipefail
           git fetch --no-tags origin master:refs/remotes/origin/master
+          RELEASE_COMMIT="$(git rev-parse HEAD)"
+          git merge-base --is-ancestor "$RELEASE_COMMIT" origin/master
           python3 scripts/check-release-version.py Cargo.toml "$RELEASE_TAG" "$RELEASE_COMMIT" origin/master
           python3 scripts/check-codex-release-gate.py ai_docs/M10_CODEX_EVIDENCE.json
           cd target/release-candidate
           sha256sum --check --status SHA256SUMS
+          chmod 755 ./ttc-x86_64-unknown-linux-gnu
           test "$(./ttc-x86_64-unknown-linux-gnu --version)" = "ttc ${RELEASE_TAG#v}"
           test -x ./ttc-x86_64-unknown-linux-gnu
           test -f ./install.sh
@@ -621,7 +643,7 @@ jobs:
       - name: Refuse to overwrite an existing GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
         run: |
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Release $RELEASE_TAG already exists; refusing to overwrite it." >&2
@@ -632,7 +654,7 @@ jobs:
         working-directory: target/release-candidate
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
         run: |
           gh release create "$RELEASE_TAG" \
             ttc-x86_64-unknown-linux-gnu SHA256SUMS install.sh \
