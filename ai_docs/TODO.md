@@ -1230,8 +1230,8 @@ klaim token reduction dari smoke standalone.
 | SHA256SUMS | `af86eadd1473c8f5df4f95012cc9ba14a54cccd2c27e70db5f4711ad7e1fceea` |
 | EVIDENCE-SHA256SUMS | `7a9ac5ab2075c73630f50c1d23ed7204510ee5b5b7d6c31255f0bc9a0e8c5adc` |
 
-M9 lengkap setelah gate master dan pemeriksaan artifact ini. M10 belum dimulai;
-tidak ada tag atau publikasi release pada tugas ini.
+M9 lengkap setelah gate master dan pemeriksaan artifact ini. Pada saat evidence
+M9 dicatat, M10 belum dimulai dan belum ada tag atau publikasi release.
 
 ### Evidence
 
@@ -1279,10 +1279,10 @@ terbukti pada CLI nyata dan seluruh sandbox mode, lalu dirilis publik.
 - [x] Jalankan E2E pada read-only, workspace-write, dan danger-full-access tanpa
   menambah permission dibanding baseline.
 - [x] Ukur bytes serta token pada request model berikutnya.
-- [ ] Setelah seluruh gate lulus, tag `v0.1.0`; workflow membangun ulang,
+- [x] Setelah seluruh gate lulus, tag `v0.1.0`; workflow membangun ulang,
   memverifikasi checksum/version, dan memublikasikan executable, checksum, serta
   `install.sh` ke GitHub Release.
-- [ ] Smoke-test public latest installer dan `ttc install codex` dari clean
+- [x] Smoke-test public latest installer dan `ttc install codex` dari clean
   temporary environment.
 
 ### Acceptance criteria
@@ -1300,7 +1300,7 @@ terbukti pada CLI nyata dan seluruh sandbox mode, lalu dirilis publik.
   diff.
 - [x] E2E ephemeral tidak meninggalkan Codex session, hook, fixture, atau
   artifact test.
-- [ ] GitHub Release `v0.1.0` tersedia pada `skirja/ttc-ai` dan quick-install
+- [x] GitHub Release `v0.1.0` tersedia pada `skirja/ttc-ai` dan quick-install
   command berhasil memasang binary latest.
 
 ### Verification commands
@@ -1322,7 +1322,8 @@ TTC_M10_TEST_BINARY="$PWD/target/x86_64-unknown-linux-gnu/release/ttc" cargo tes
 - [x] Required PR CI dan Linux artifact lulus untuk source commit
   `212430248d3099fc77dd7ea1f3582eedf100eda8` pada
   [CI run 37416009048](https://github.com/Skirja/ttc-ai/actions/runs/37416009048).
-- [ ] Successful tag workflow dan GitHub Release URL dicatat.
+- [x] Recovery release workflow untuk tag `v0.1.0` lulus dan GitHub Release
+  URL dicatat.
 
 ### Evidence slice hook/config — 2026-10-03
 
@@ -1384,13 +1385,17 @@ yang dapat dirilis ada di report tertaut di atas.
 Required PR CI dan Linux artifact lulus untuk commit
 `212430248d3099fc77dd7ea1f3582eedf100eda8` pada run
 [37416009048](https://github.com/Skirja/ttc-ai/actions/runs/37416009048).
-Tag `v0.1.0` dibuat pada commit `fe9c99abbacdd33b48667cea7b65933a12edc4e8`.
-Run tag [37431488927](https://github.com/Skirja/ttc-ai/actions/runs/37431488927)
-menjalankan semua gate build/test dan candidate artifact dengan sukses, tetapi
-publisher gagal karena download artifact tidak mempertahankan permission
-executable. Rerun setelah repository menjadi publik melewati fetch, validasi
-versi, source, dan evidence; publisher tetap gagal saat menjalankan binary.
-Belum ada GitHub Release. Workflow dispatch dari `master` disiapkan untuk
-menjalankan ulang gate penuh pada source tag yang sudah ada tanpa memindahkan
-tag. Setelah workflow fix di-merge dan release berhasil, jalankan
-`./scripts/test-public-install.sh` terhadap `releases/latest`.
+Tag `v0.1.0` menunjuk ke commit
+`fe9c99abbacdd33b48667cea7b65933a12edc4e8`. Percobaan awal tag workflow
+[37431488927](https://github.com/Skirja/ttc-ai/actions/runs/37431488927)
+menemukan masalah executable bit pada artifact download. Perbaikannya masuk
+lewat PR #13, commit `6a491aedef35b8c17a472432ce96fe2dec767fe5`. Recovery
+dispatch dari `master` menjalankan ulang semua gate pada source tag bersih dan
+mempublikasikan candidate dari run yang sama:
+[37443610565](https://github.com/Skirja/ttc-ai/actions/runs/37443610565).
+GitHub Release: <https://github.com/Skirja/ttc-ai/releases/tag/v0.1.0>.
+
+`./scripts/test-public-install.sh` lulus terhadap `releases/latest` pada
+2026-10-06: tag `v0.1.0`, versi `ttc 0.1.0`, binary SHA-256
+`90bbf33b466b62dcc2268f87335d84679319d0140d0d4cc0a37a0632f2b7df96`,
+checksum, reinstall, Codex install/uninstall, dan cleanup semuanya lulus.
