@@ -2,12 +2,14 @@ mod common;
 
 #[test]
 fn real_minimum_cli_executes_hook_in_all_sandbox_modes_without_login() {
+    let binary = std::env::var_os("TTC_M10_TEST_BINARY")
+        .expect("Codex runtime test must use the production release-mode TTC binary");
     let result = std::process::Command::new("python3")
         .arg(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/scripts/m10-runtime-tests.py"
         ))
-        .arg(common::ttc())
+        .arg(binary)
         .output()
         .unwrap();
     assert!(

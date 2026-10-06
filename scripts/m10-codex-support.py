@@ -91,7 +91,7 @@ class ModelServer:
 
 
 def tool_outputs(request):
-    return [item['output'] for item in request['input'] if item.get('type') == 'function_call_output']
+    return [item['output'] for item in request['input'] if item.get('type') in ['function_call_output', 'custom_tool_call_output']]
 
 
 def trust_hook(codex, root, env, provider_arguments=(), launcher=()):
@@ -150,3 +150,39 @@ def trust_hook(codex, root, env, provider_arguments=(), launcher=()):
             process.wait(timeout=10)
         os.close(master)
     return 'official-tui-trust=pass'
+
+
+def inference_records(trace_root):
+    records = []
+    for trace in sorted(Path(trace_root).rglob('trace.jsonl')):
+        by_id = {}
+        for line in trace.read_text().splitlines():
+            payload = json.loads(line)['payload']
+            kind = payload['type']
+            if kind not in ['inference_started', 'inference_completed']:
+                continue
+            record = by_id.setdefault(payload['inference_call_id'], {})
+            field = 'request_payload' if kind == 'inference_started' else 'response_payload'
+            relative = Path(payload[field]['path'])
+            assert not relative.is_absolute() and '..' not in relative.parts
+            value = json.loads((trace.parent / relative).read_text())
+            if kind == 'inference_started':
+                record['request'] = value
+                record['model'] = payload['model']
+            else:
+                record['tokens'] = value['token_usage']
+        records.extend(by_id.values())
+    return records
+
+
+def authentication_mount(root):
+    """Bind existing auth read-only; never open/copy credentials in Python."""
+    import shutil
+    auth_home = Path(os.environ.get('CODEX_HOME') or Path.home() / '.codex')
+    auth = auth_home / 'auth.json'
+    assert auth.is_file(), 'Existing file-backed Codex login is required'
+    bwrap = shutil.which('bwrap')
+    assert bwrap, 'bubblewrap is required for isolated authenticated E2E'
+    return [bwrap, '--die-with-parent', '--unshare-user', '--ro-bind', '/', '/',
+            '--bind', str(root), str(root), '--ro-bind', str(auth), str(root / 'codex/auth.json'),
+            '--dev', '/dev', '--proc', '/proc']

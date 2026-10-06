@@ -385,7 +385,11 @@ fn stream_child(command: &mut Command, config: Config, mut filter: DispatchFilte
     let report = streaming::process(receiver, config, StorePaths::from_env().ok(), &mut filter);
     let status = child.wait();
     signal_handle.close();
-    let _ = signal_thread.join();
+    // Once the child has been reaped, forwarding is no longer needed. Some
+    // restricted sandboxes block the wakeup used by signal-hook's iterator,
+    // so joining that idle worker here can keep an otherwise-finished command
+    // alive forever. Detach it; process exit reclaims the worker.
+    drop(signal_thread);
     let stdout_result = stdout_thread.join();
     let stderr_result = stderr_thread.join();
 

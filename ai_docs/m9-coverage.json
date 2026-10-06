@@ -114,12 +114,19 @@
         "src/cli.rs"
       ],
       "test": [
-        "tests/hook.rs"
+        "tests/hook.rs",
+        "tests/codex_install.rs",
+        "tests/codex_config_ownership.rs",
+        "tests/codex_sandbox.rs",
+        "scripts/m10-e2e.py",
+        "scripts/test-codex-e2e.sh",
+        "scripts/check-codex-release-gate.py"
       ],
       "gate": [
-        "rust-safety"
+        "rust-safety",
+        "publish-stable-release"
       ],
-      "cakupan_m10": "Runtime Codex minimum tanpa login diuji tersendiri; acceptance authenticated ephemeral, trust, token dan public release masih memerlukan gate M10."
+      "cakupan_m10": "Hook, ownership, sandbox, trust UI, authenticated ephemeral E2E CLI 0.160.0, output/token trace dan public release dipetakan ke acceptance M10; rilis dan smoke latest hanya lulus setelah publikasi."
     },
     "5.2": {
       "perilaku": "Entrypoint hook bounded JSON, validasi sebelum response, official allow/updatedInput, POSIX quoting dan literal recursive prevention tanpa child atau classifier.",
@@ -128,12 +135,19 @@
         "src/cli.rs"
       ],
       "test": [
-        "tests/hook.rs"
+        "tests/hook.rs",
+        "tests/codex_install.rs",
+        "tests/codex_config_ownership.rs",
+        "tests/codex_sandbox.rs",
+        "scripts/m10-e2e.py",
+        "scripts/test-codex-e2e.sh",
+        "scripts/check-codex-release-gate.py"
       ],
       "gate": [
-        "rust-safety"
+        "rust-safety",
+        "publish-stable-release"
       ],
-      "cakupan_m10": "Runtime Codex minimum tanpa login diuji tersendiri; acceptance authenticated ephemeral, trust, token dan public release masih memerlukan gate M10."
+      "cakupan_m10": "Hook, ownership, sandbox, trust UI, authenticated ephemeral E2E CLI 0.160.0, output/token trace dan public release dipetakan ke acceptance M10; rilis dan smoke latest hanya lulus setelah publikasi."
     },
     "5.3": {
       "perilaku": "Entrypoint hook bounded JSON, validasi sebelum response, official allow/updatedInput, POSIX quoting dan literal recursive prevention tanpa child atau classifier.",
@@ -142,12 +156,19 @@
         "src/cli.rs"
       ],
       "test": [
-        "tests/hook.rs"
+        "tests/hook.rs",
+        "tests/codex_install.rs",
+        "tests/codex_config_ownership.rs",
+        "tests/codex_sandbox.rs",
+        "scripts/m10-e2e.py",
+        "scripts/test-codex-e2e.sh",
+        "scripts/check-codex-release-gate.py"
       ],
       "gate": [
-        "rust-safety"
+        "rust-safety",
+        "publish-stable-release"
       ],
-      "cakupan_m10": "Runtime Codex minimum tanpa login diuji tersendiri; acceptance authenticated ephemeral, trust, token dan public release masih memerlukan gate M10."
+      "cakupan_m10": "Hook, ownership, sandbox, trust UI, authenticated ephemeral E2E CLI 0.160.0, output/token trace dan public release dipetakan ke acceptance M10; rilis dan smoke latest hanya lulus setelah publikasi."
     },
     "5.4": {
       "perilaku": "Entrypoint hook bounded JSON, validasi sebelum response, official allow/updatedInput, POSIX quoting dan literal recursive prevention tanpa child atau classifier.",
@@ -156,12 +177,19 @@
         "src/cli.rs"
       ],
       "test": [
-        "tests/hook.rs"
+        "tests/hook.rs",
+        "tests/codex_install.rs",
+        "tests/codex_config_ownership.rs",
+        "tests/codex_sandbox.rs",
+        "scripts/m10-e2e.py",
+        "scripts/test-codex-e2e.sh",
+        "scripts/check-codex-release-gate.py"
       ],
       "gate": [
-        "rust-safety"
+        "rust-safety",
+        "publish-stable-release"
       ],
-      "cakupan_m10": "Runtime Codex minimum tanpa login diuji tersendiri; acceptance authenticated ephemeral, trust, token dan public release masih memerlukan gate M10."
+      "cakupan_m10": "Hook, ownership, sandbox, trust UI, authenticated ephemeral E2E CLI 0.160.0, output/token trace dan public release dipetakan ke acceptance M10; rilis dan smoke latest hanya lulus setelah publikasi."
     },
     "5.5": {
       "perilaku": "Config-only install memverifikasi ownership binary dan capability minimum, memilih representasi existing, backup/transaksi config+receipt+active_harnesses, idempotent dan uninstall surgical yang menjaga setting/komentar/trust pengguna.",
@@ -181,32 +209,43 @@
       "cakupan_m10": "Authenticated ephemeral dan seluruh gate publikasi belum dinyatakan lengkap oleh mapping source/test ini."
     },
     "14.6": {
-      "perilaku": "Smoke runtime actual pinned Codex 0.154.0 tanpa login pada ketiga sandbox; fake upstream tidak menjadi bukti authenticated E2E atau token reduction.",
+      "perilaku": "Runtime Codex CLI 0.154.0 tanpa login pada ketiga sandbox diuji CI; authenticated ephemeral Codex CLI 0.160.0 memakai trust UI resmi, request trace, byte/token acceptance dan cleanup diuji lokal.",
       "implementasi": [
         "src/harness/codex/mod.rs",
         "scripts/m10-codex-support.py"
       ],
       "test": [
         "tests/codex_sandbox.rs",
-        "scripts/m10-runtime-tests.py"
+        "scripts/m10-runtime-tests.py",
+        "scripts/m10-e2e.py",
+        "scripts/test-codex-e2e.sh",
+        "scripts/check-codex-release-gate.py"
       ],
       "gate": [
-        "rust-safety"
+        "rust-safety",
+        "publish-stable-release"
       ],
-      "cakupan_m10": "Seluruh kontrak hook, serializer/quoting hook, recursive wrapper, config/trust, auth E2E ephemeral, token reduction, sandbox Codex dan publikasi menunggu M10. Global uninstall sudah dipetakan pada §13."
+      "cakupan_m10": "Gate authenticated lokal dilampirkan di ai_docs/M10_CODEX_EVIDENCE.json; CI tidak mengakses login. Publish tag mensyaratkan evidence yang cocok dengan source release."
     },
     "18": {
-      "perilaku": "Kontrak harness terdokumentasi; entrypoint hook/install/uninstall Codex tidak tersedia pada M9.",
+      "perilaku": "Command publik install/uninstall Codex dan hidden hook entrypoint sudah diimplementasikan; invalid administration command ditolak.",
       "implementasi": [
         "src/cli.rs"
       ],
       "test": [
-        "tests/cli.rs"
+        "tests/cli.rs",
+        "tests/hook.rs",
+        "tests/codex_install.rs",
+        "tests/codex_config_ownership.rs",
+        "scripts/m10-e2e.py",
+        "scripts/test-codex-e2e.sh",
+        "scripts/check-codex-release-gate.py"
       ],
       "gate": [
-        "rust-safety"
+        "rust-safety",
+        "publish-stable-release"
       ],
-      "cakupan_m10": "Seluruh kontrak hook, serializer/quoting hook, recursive wrapper, config/trust, auth E2E ephemeral, token reduction, sandbox Codex dan publikasi menunggu M10. Global uninstall sudah dipetakan pada §13."
+      "cakupan_m10": "Entry point dan lifecycle diuji Rust serta authenticated E2E lokal; `test-public-install.sh` menunggu publikasi v0.1.0 dan permintaan tag terpisah."
     },
     "4": {
       "perilaku": "Argv asli atau tepat satu shell string; stdin/cwd/env/TTY diwariskan, per-stream bytes/order, exit/signal dipertahankan, tanpa rerun.",
@@ -939,7 +978,9 @@
         "src/distribution/path.rs",
         ".github/workflows/ci.yml",
         "scripts/check-release-version.py",
-        "src/distribution/transaction.rs"
+        "src/distribution/transaction.rs",
+        "scripts/check-codex-release-gate.py",
+        "scripts/m10-public-install.py"
       ],
       "test": [
         "src/distribution/mod.rs",
@@ -948,14 +989,17 @@
         "scripts/m9-artifact-tests.py",
         "scripts/test-release-policy.py",
         "tests/cli.rs",
-        "src/distribution/transaction_tests.rs"
+        "src/distribution/transaction_tests.rs",
+        "scripts/check-codex-release-gate.py",
+        "scripts/test-public-install.sh"
       ],
       "gate": [
         "rust-safety",
         "prepare",
-        "linux-artifact"
+        "linux-artifact",
+        "publish-stable-release"
       ],
-      "cakupan_m10": "Public releases/latest dan job publish baru M10 sesudah user-authorized tag; belum diklaim tersedia."
+      "cakupan_m10": "Publish job hanya berjalan untuk stable tag sesudah aggregate gate sukses. Evidence authenticated lokal diperiksa source digest-nya; smoke installer public latest menunggu publikasi v0.1.0."
     },
     "14.5": {
       "perilaku": "Linux GNU stable latest dipin satu tag HTTPS+SHA; local finalizer bounded streaminghash, strict schema/ownership/no symlink, lock/staging/atomic rename/rollback/pending marker. PATH exact-owned backup/manualfallback; uninstall preserve integration/userconfig/raw/otherprogram. Tag stable matches Cargo/master; semua gates clean ulang, candidate saja. Config existing memakai atomic exchange dan memeriksa file aktual yang tergeser; race sesudah validasi terakhir, rollback, dan uninstall mempertahankan recovery/marker. Binary/metadata commit, rollback, dan uninstall memakai archive aktual, checksum/identity, dan workspace privat dengan receipt; late FD write tidak hilang.",
@@ -967,7 +1011,9 @@
         "src/distribution/path.rs",
         ".github/workflows/ci.yml",
         "scripts/check-release-version.py",
-        "src/distribution/transaction.rs"
+        "src/distribution/transaction.rs",
+        "scripts/check-codex-release-gate.py",
+        "scripts/m10-public-install.py"
       ],
       "test": [
         "src/distribution/mod.rs",
@@ -976,14 +1022,17 @@
         "scripts/m9-artifact-tests.py",
         "scripts/test-release-policy.py",
         "tests/cli.rs",
-        "src/distribution/transaction_tests.rs"
+        "src/distribution/transaction_tests.rs",
+        "scripts/check-codex-release-gate.py",
+        "scripts/test-public-install.sh"
       ],
       "gate": [
         "rust-safety",
         "prepare",
-        "linux-artifact"
+        "linux-artifact",
+        "publish-stable-release"
       ],
-      "cakupan_m10": "Public releases/latest dan job publish baru M10 sesudah user-authorized tag; belum diklaim tersedia."
+      "cakupan_m10": "Publish job hanya berjalan untuk stable tag sesudah aggregate gate sukses. Evidence authenticated lokal diperiksa source digest-nya; smoke installer public latest menunggu publikasi v0.1.0."
     },
     "14": {
       "perilaku": "Full test unit/integration/safety/fixture/monorepo, pinned real tools dan large >=80% bytes termasuk metadata. CI Linux artifact+installer master final acceptance; command exit/signals/env/once dan raw storage isolasi. Tidak mengklaim token/sandbox Codex dari fixture.",

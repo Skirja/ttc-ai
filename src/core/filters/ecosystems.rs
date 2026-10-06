@@ -7,7 +7,7 @@ use serde_json::Value;
 use super::super::classification::{Family, Plan};
 use super::super::raw_store::Stream;
 use super::super::streaming::{CompactKind, Filter};
-use super::{protected, strip_ansi};
+use super::{protected, strip_ansi, successful_test_summary};
 
 const TEXT_PARSER_COUNT: usize = 7;
 const GO_TEST_PARSER: usize = 6;
@@ -111,8 +111,10 @@ impl EcosystemFilter {
             for (index, is_active) in active.iter().copied().enumerate() {
                 if is_active {
                     confidence[index] = 0;
-                    self.diagnostic_block
-                        .insert((stream_index, source.to_owned(), index));
+                    if !successful_test_summary(record) {
+                        self.diagnostic_block
+                            .insert((stream_index, source.to_owned(), index));
+                    }
                 }
             }
             return Ok(None);

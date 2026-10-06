@@ -71,6 +71,19 @@ impl JsFilter {
         let clean = clean.trim_end_matches(['\r', '\n']);
         let trim = clean.trim();
         if structured_line(trim) {
+            // Go's human-readable test protocol uses `--- PASS` records. When
+            // that parser is statically selected, let the ecosystem router
+            // handle them without disabling JavaScript output later in the
+            // same mixed-language command.
+            if self.plan.families.contains(&Family::GoTest)
+                && (trim.starts_with("--- PASS: ")
+                    || trim.starts_with("--- FAIL: ")
+                    || trim.starts_with("--- SKIP: ")
+                    || trim.starts_with("ok "))
+            {
+                self.confidence.entry(key).or_insert([0; 6]).fill(0);
+                return Ok(None);
+            }
             self.structured = true;
             self.confidence.clear();
             return Ok(None);
@@ -80,7 +93,9 @@ impl JsFilter {
             return Ok(None);
         }
         if protected(trim) {
-            self.diagnostic_block.insert(key.clone(), true);
+            if !successful_test_summary(trim) {
+                self.diagnostic_block.insert(key.clone(), true);
+            }
             self.confidence.entry(key).or_insert([0; 6]).fill(0);
             return Ok(None);
         }
@@ -116,6 +131,17 @@ impl JsFilter {
         confidence.fill(0);
         Ok(None)
     }
+}
+
+fn successful_test_summary(text: &str) -> bool {
+    let lower = text.to_ascii_lowercase();
+    (lower.starts_with("test files ")
+        || lower.starts_with("test suites:")
+        || lower.starts_with("tests "))
+        && lower.contains("passed")
+        && !["failed", "error", "warning", "cancelled"]
+            .iter()
+            .any(|word| lower.contains(word))
 }
 
 fn family_index(family: Family) -> Option<usize> {
