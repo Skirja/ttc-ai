@@ -15,6 +15,25 @@ spec.loader.exec_module(policy)
 
 
 class ReleasePolicyTests(unittest.TestCase):
+    def test_existing_tag_has_a_master_only_full_gate_recovery_path(self):
+        workflow = (Path(__file__).parent.parent / ".github/workflows/ci.yml").read_text()
+        self.assertIn("workflow_dispatch:\n    inputs:\n      release_tag:", workflow)
+        self.assertIn("required: true\n        type: string", workflow)
+        self.assertIn("ref: ${{ inputs.release_tag || github.sha }}", workflow)
+        self.assertIn("(github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master' && inputs.release_tag != '')", workflow)
+        self.assertIn("!(github.event_name == 'workflow_dispatch' && inputs.release_tag != '')", workflow)
+        self.assertTrue(policy.STABLE.fullmatch("0.1.0"))
+
+    def test_artifact_checksum_precedes_restoring_executable_mode(self):
+        workflow = (Path(__file__).parent.parent / ".github/workflows/ci.yml").read_text()
+        verify_step = workflow.split("- name: Verify tag, source containment, manual evidence, and checksums", 1)[1]
+        verify_step = verify_step.split("- name: Refuse to overwrite an existing GitHub Release", 1)[0]
+        checksum = verify_step.index("sha256sum --check --status SHA256SUMS")
+        chmod = verify_step.index("chmod 755 ./ttc-x86_64-unknown-linux-gnu")
+        execute = verify_step.index("./ttc-x86_64-unknown-linux-gnu --version")
+        self.assertLess(checksum, chmod)
+        self.assertLess(chmod, execute)
+
     def test_stable_tag_matches_version_and_master_history(self):
         with tempfile.TemporaryDirectory(prefix="ttc-tag-policy-") as temporary:
             root = Path(temporary)
