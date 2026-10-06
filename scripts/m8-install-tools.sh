@@ -21,7 +21,7 @@ mkdir -p "$tool_home/src/ninja"
 unzip -qo "$tool_home/downloads/ninja-linux.zip" -d "$tool_home/src/ninja"
 install -m 0755 "$tool_home/src/ninja/ninja" "$tool_home/bin/ninja"
 
-download https://ftp.gnu.org/gnu/make/make-4.4.1.tar.gz make-4.4.1.tar.gz
+download https://mirrors.kernel.org/gnu/make/make-4.4.1.tar.gz make-4.4.1.tar.gz
 tar -xzf "$tool_home/downloads/make-4.4.1.tar.gz" -C "$tool_home/src"
 (cd "$tool_home/src/make-4.4.1" && ./configure --prefix="$tool_home" && make -j2 && make install)
 
