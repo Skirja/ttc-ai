@@ -1319,6 +1319,9 @@ TTC_M10_TEST_BINARY="$PWD/target/x86_64-unknown-linux-gnu/release/ttc" cargo tes
 - [x] Commit integrasi Codex dicatat.
 - [x] Codex CLI version dan sanitized ephemeral E2E report dicatat.
 - [x] Sandbox matrix serta model-facing byte/token report dilampirkan.
+- [x] Required PR CI dan Linux artifact lulus untuk source commit
+  `212430248d3099fc77dd7ea1f3582eedf100eda8` pada
+  [CI run 37416009048](https://github.com/Skirja/ttc-ai/actions/runs/37416009048).
 - [ ] Successful tag workflow dan GitHub Release URL dicatat.
 
 ### Evidence slice hook/config — 2026-10-03
@@ -1378,6 +1381,9 @@ release policy, CI change policy dan coverage audit lulus. Log lokal berada di
 `target/m10-evidence/final-local-gates-release-runtime.log`; bukti sanitasi E2E
 yang dapat dirilis ada di report tertaut di atas.
 
-Workflow PR masih perlu lulus sebelum siap merge. Tag/release serta
-`./scripts/test-public-install.sh` tetap menunggu merge, permintaan publikasi
-terpisah, dan asset `releases/latest` yang benar-benar tersedia.
+Required PR CI dan Linux artifact lulus untuk commit
+`212430248d3099fc77dd7ea1f3582eedf100eda8` pada run
+[37416009048](https://github.com/Skirja/ttc-ai/actions/runs/37416009048).
+Tag/release serta `./scripts/test-public-install.sh` tetap menunggu merge,
+permintaan publikasi terpisah, dan asset `releases/latest` yang benar-benar
+tersedia.
