@@ -7,11 +7,9 @@ raw. Kompaksi menyediakan ID untuk membaca kembali output asli.
 
 ## Status
 
-M1–M8 menyediakan execution, streaming, raw replay, recognizer ecosystem, dan
-monorepo. M9 menambahkan installer serta kandidat binary Linux
-`x86_64-unknown-linux-gnu` dalam artifact GitHub Actions. M9 selesai setelah
-pengguna merge PR dan artifact dari clean successful `master` run diperiksa.
-Integrasi Codex dan publikasi release berada pada M10.
+TTC v0.1.0 sudah dipublikasikan sebagai GitHub Release. Rilis ini menyediakan
+binary Linux dan integrasi Codex melalui hook Bash. Platform rilis saat ini
+hanya Linux x86_64 dengan GNU runtime; Windows native dan macOS belum didukung.
 
 Kontrak ada pada [`SPEC`](ai_docs/SPEC.md), urutan/evidence pada
 [`TODO`](ai_docs/TODO.md), dan audit standalone pada
@@ -19,10 +17,9 @@ Kontrak ada pada [`SPEC`](ai_docs/SPEC.md), urutan/evidence pada
 
 ## Instalasi
 
-### Quick install setelah publikasi M10
+### Quick install
 
-Command berikut baru tersedia setelah GitHub Release pertama dipublikasikan
-pada M10:
+Pasang stable release terbaru:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -fsSL https://github.com/Skirja/ttc-ai/releases/latest/download/install.sh | sh
@@ -31,7 +28,12 @@ curl --proto '=https' --tlsv1.2 -fsSL https://github.com/Skirja/ttc-ai/releases/
 Installer membutuhkan Linux x86_64 dengan GNU runtime, Bash, `curl`,
 `sha256sum`, `awk`, dan utilitas POSIX. Installer memilih stable latest,
 mengunci executable/checksum pada tag yang sama, memverifikasi checksum serta
-versi, lalu memasang `~/.local/bin/ttc`. Tidak ada version selector.
+versi, lalu memasang `~/.local/bin/ttc`. Tidak ada version selector. Periksa
+instalasi dengan:
+
+```sh
+~/.local/bin/ttc --version
+```
 
 Jika bin belum di PATH, installer membackup `.bashrc` dan menambahkan satu blok
 terkelola. Ikuti instruksi `source ~/.bashrc` atau buka shell baru. Bila config
@@ -43,9 +45,9 @@ export PATH="$HOME/.local/bin${PATH:+:$PATH}"
 
 ### Instalasi manual dengan checksum
 
-Sebelum publikasi M10, unduh artifact kandidat dari successful CI run. Sesudah
-publikasi, unduh executable `ttc-x86_64-unknown-linux-gnu` dan `SHA256SUMS` dari
-**tag release yang sama** melalui HTTPS. Periksa checksum sebelum menjalankan:
+Unduh executable `ttc-x86_64-unknown-linux-gnu` dan `SHA256SUMS` dari **tag
+release yang sama** melalui HTTPS. Untuk v0.1.0, periksa checksum sebelum
+menjalankan:
 
 ```sh
 sha256sum --check SHA256SUMS
@@ -59,6 +61,29 @@ Untuk artifact CI, file `install.sh` juga harus tersedia ketika memeriksa
 `SHA256SUMS`. Instalasi manual tidak membuat metadata; installer dan global
 uninstall tidak mengadopsi atau menimpa binary manual. Pilih path lain seperti
 contoh di atas; hapus binary manual sendiri ketika tidak diperlukan.
+
+## Integrasi Codex
+
+Instalasi binary tidak mengubah konfigurasi Codex. Untuk memasang hook Bash:
+
+```sh
+ttc install codex
+```
+
+Lalu buka Codex, jalankan `/hooks`, dan review/trust hook TTC. Hook mulai bekerja
+setelah dipercaya. Ketika Codex menjalankan command Bash, hook otomatis
+membungkus command dengan binary TTC. Command yang dijalankan langsung di
+terminal biasa tidak otomatis melalui hook; untuk menjalankannya melalui TTC,
+gunakan bentuk standalone seperti `ttc 'npm test'`.
+
+Hapus integrasi Codex dengan:
+
+```sh
+ttc uninstall codex
+```
+
+Uninstall binary menolak bila masih ada integrasi harness aktif. Hapus integrasi
+Codex terlebih dahulu, lalu jalankan `ttc uninstall` bila ingin menghapus TTC.
 
 ### Update dan uninstall
 
@@ -106,7 +131,7 @@ ttc --help
 
 Output structured, watch/dev, interactive/TTY, atau format yang tidak dikenal
 diteruskan raw. Detail batas raw capture dan config opsional ada dalam SPEC.
-Help menampilkan command yang sudah tersedia pada tahap ini.
+Help menampilkan command publik yang tersedia pada rilis ini.
 
 ## Pengembangan
 
@@ -124,11 +149,10 @@ python3 scripts/test-release-policy.py
 python3 scripts/check-spec-coverage.py
 ```
 
-CI PR ke `master`, push `master`, dan stable tag menjalankan gate yang sama,
-termasuk seluruh pinned ecosystem smoke. Tag harus cocok dengan versi Cargo dan
-commit-nya berada dalam `master`. Workflow M9 mengunggah kandidat setelah semua
-gate lulus; publikasi GitHub Release ditambahkan pada M10. Pengguna mengotorisasi
-tag/release dan melakukan merge PR.
+CI untuk pull request ke `master` dan push `master` menjalankan gate yang sama,
+termasuk seluruh pinned ecosystem smoke. Stable tag harus cocok dengan versi
+Cargo dan commit-nya berada dalam `master`; workflow rilis menjalankan ulang
+gate dari checkout bersih sebelum menerbitkan asset GitHub Release.
 
 Lihat [`fixture instructions`](tests/fixtures/README.md) sebelum menambah test.
 
